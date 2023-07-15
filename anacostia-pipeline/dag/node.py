@@ -81,6 +81,9 @@ class Node:
         proc_listen = Thread(target=self.__listen, daemon=True)
         proc_listen.start()
     
+    def teardown(self) -> None:
+        print(f"Node '{self.name}' teardown complete")
+    
     def __repr__(self) -> str:
         return f"Node({self.name})"
 

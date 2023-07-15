@@ -1,5 +1,6 @@
 from node import Node
 from typing import List
+import time
 
 
 class DAG:
@@ -7,7 +8,7 @@ class DAG:
         self.nodes = []
         self.edges = []
     
-    def topological_sort(self) -> None:
+    def topological_sort(self) -> List[Node]:
         topo = []
         visited = set()
         
@@ -25,17 +26,38 @@ class DAG:
         sorted_nodes = self.topological_sort()
         for node in sorted_nodes:
             node.setup()
-
+        
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            for node in sorted_nodes:
+                node.teardown()
+            exit(0)
 
 if __name__ == "__main__":
-    node1 = Node("resource1")
-    node2 = Node("resource2")
-    node3 = Node("resource3")
-    node4 = Node("resource4")
-    node5 = Node("output1", listen_to=[node1, node2])
-    node6 = Node("output2", listen_to=[node3, node4])
-    node7 = Node("output3", listen_to=[node5])
+    def resource1():
+        print("checking resource1")
+        time.sleep(1)
+        print("resource1 triggered")
+        return True
+    
+    def resource2():
+        print("checking resource2")
+        time.sleep(2)
+        print("resource2 triggered")
+        return True
+    
+    def train_model():
+        print("train_model triggered")
+        time.sleep(3)
+        print("train_model finished")
+        return True
+
+    node1 = Node("resource1", resource1)
+    node2 = Node("resource2", resource2)
+    node3 = Node("train_model", train_model, listen_to=[node1, node2])
 
     dag = DAG()
-    dag.nodes = [node5, node6, node1, node2, node3, node7, node4]
+    dag.nodes = [node1, node2, node3]
     dag.start()
