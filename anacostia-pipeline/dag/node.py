@@ -5,25 +5,82 @@ import time
 
 class Node:
     queue = Queue()
-    subscriptions_queues = []
 
-    def __init__(self, name: str, listen_to: List = []) -> None:
+    def __init__(self, 
+        name: str, 
+        action_function: Callable[..., any] = None, 
+        listen_to: List['Node'] = []
+    ) -> None:
+
         self.name = name
-
+        self.action_function = action_function
         self.children = listen_to
-        for child in listen_to:
-            self.subscriptions_queues.append(child.get_queue())
 
     def get_queue(self) -> Queue:
         return self.queue
+
+    def send_signal(self) -> None:
+        print(f"Sending signal from node '{self.name}'")
+        self.queue.put(True)
     
-    def _setup(self) -> None:
+    def trigger(self) -> bool:
+        try:
+            self.action_function()
+            return True
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+
+    def __listen(self) -> None:
+        signals = {}
+
+        try:
+            while True:
+
+                # if node is not listening for signals from other nodes, 
+                # trigger action function (this is done for resource nodes);
+                # otherwise, wait for signals from other nodes
+                if len(self.children) == 0:
+                    result = self.trigger()
+                    if result:
+                        self.send_signal()
+
+                else:
+                    for child in self.children:
+                        queue = child.get_queue()
+                        signal = queue.get()
+
+                        if child.name not in signals:
+                            signals[child.name] = signal
+                        else:
+                            if (signals[child.name] == False) and (signal == True):
+                                signals[child.name] = signal
+
+                        if len(signals) == len(self.children):
+                            if all(signals.values()):
+                                result = self.trigger()
+                                if result:
+                                    signals = {}
+                                    self.send_signal()
+                        
+                    print(f"Received message: {signal}")
+
+        except KeyboardInterrupt:
+            print("Exiting...")
+            exit(0)
+
+    def setup(self) -> None:
         print(f"Setting up node '{self.name}'")
-        time.sleep(1)
         print(f"Node '{self.name}' setup complete")
+
+        print(f"Starting node '{self.name}'")
+        self.__listen()
     
     def __repr__(self) -> str:
         return f"Node({self.name})"
+
+
 
 """
 class Node:
@@ -88,5 +145,18 @@ class Node:
 
 
 if __name__ == "__main__":
-    node = Node()
-    node._setup()
+    def resource1():
+        time.sleep(1)
+        print("resource1 triggered")
+        return True
+    
+    def resource2():
+        time.sleep(1)
+        print("resource2 triggered")
+        return True
+
+    node1 = Node("resource1", resource1)
+    node2 = Node("resource2", resource2, listen_to=[node1])
+
+    node1.setup()
+    #node2.setup()

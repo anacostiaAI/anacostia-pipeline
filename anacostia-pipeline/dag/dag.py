@@ -24,7 +24,8 @@ class DAG:
     def start(self) -> None:
         sorted_nodes = self.topological_sort()
         for node in sorted_nodes:
-            node._setup()
+            node.setup()
+
 
 if __name__ == "__main__":
     node1 = Node("resource1")
