@@ -1,6 +1,7 @@
-from node import Node
+from node import Node, G
 from typing import List
 import time
+import networkx as nx
 
 
 class DAG:
@@ -8,31 +9,19 @@ class DAG:
         self.nodes = []
         self.edges = []
     
-    def topological_sort(self) -> List[Node]:
-        topo = []
-        visited = set()
-        
-        def build_topo(nodes: List[Node]):
-            for node in nodes:
-                if node not in visited:
-                    visited.add(node)
-                    build_topo(node.children)
-                    topo.append(node)
-        
-        build_topo(self.nodes)
-        return topo
-    
     def start(self) -> None:
-        sorted_nodes = self.topological_sort()
-        for node in sorted_nodes:
+        for node in nx.topological_sort(G):
             node.setup()
         
         try:
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
+            print("\nExiting...")
+            sorted_nodes = list(nx.topological_sort(G))
             for node in sorted_nodes:
                 node.teardown()
+            print("All nodes teardown complete")
             exit(0)
 
 if __name__ == "__main__":
@@ -59,5 +48,4 @@ if __name__ == "__main__":
     node3 = Node("train_model", train_model, listen_to=[node1, node2])
 
     dag = DAG()
-    dag.nodes = [node1, node2, node3]
     dag.start()

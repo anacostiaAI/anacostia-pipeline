@@ -2,7 +2,10 @@ from multiprocessing import Process, Queue
 from threading import Thread
 from typing import List, Dict, Any, Callable
 import time
+import networkx as nx
 
+
+G = nx.DiGraph()
 
 class Node:
     queue = Queue()
@@ -16,6 +19,10 @@ class Node:
         self.name = name
         self.action_function = action_function
         self.children = listen_to
+
+        G.add_node(self)
+        for child in self.children:
+            G.add_edge(child, self)
 
     def get_queue(self) -> Queue:
         return self.queue
@@ -32,6 +39,9 @@ class Node:
         except Exception as e:
             print(f"Error: {e}")
             return False
+    
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     def __listen(self) -> None:
         signals = {}
@@ -111,7 +121,8 @@ if __name__ == "__main__":
     node2 = Node("resource2", resource2)
     node3 = Node("train_model", train_model, listen_to=[node1, node2])
 
-    node1.setup()
-    node2.setup()
-    node3.setup()
+    sorted_nodes = nx.topological_sort(G)
+    for node in sorted_nodes:
+        node.setup()
+
     time.sleep(10)
