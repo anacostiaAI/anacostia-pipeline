@@ -22,7 +22,10 @@ class Node:
 
         G.add_node(self)
         for child in self.children:
-            G.add_edge(child, self)
+            # we can add information about signals, e.g. signal type, signal value, etc.
+            # docker information, e.g. docker image, docker container, etc.
+            # and whatever other information needed to recreate the environment and the DAG using the add_edge function
+            G.add_edge(child, self, signal="resource_signal")
 
     def get_queue(self) -> Queue:
         return self.queue
@@ -125,4 +128,8 @@ if __name__ == "__main__":
     for node in sorted_nodes:
         node.setup()
 
-    time.sleep(10)
+    time.sleep(5)
+
+    # we can use the to_dict_of_dicts function to output the graph as a json file
+    graph = nx.to_dict_of_dicts(G)
+    print(graph)
