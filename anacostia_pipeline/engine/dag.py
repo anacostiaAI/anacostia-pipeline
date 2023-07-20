@@ -2,6 +2,7 @@ from node import Node, G
 from typing import List
 import time
 import networkx as nx
+import json
 
 
 class DAG:
@@ -11,7 +12,7 @@ class DAG:
     
     def start(self) -> None:
         for node in nx.topological_sort(G):
-            node.setup()
+            node.start()
         
         try:
             while True:
@@ -23,6 +24,14 @@ class DAG:
                 node.teardown()
             print("All nodes teardown complete")
             exit(0)
+
+    def export_graph(self, file_path: str) -> None:
+        graph = nx.to_dict_of_dicts(G)
+        graph = str(graph).replace("'", '"')
+        graph = json.loads(graph)
+
+        with open(file_path, 'w') as json_file:
+            json.dump(graph, json_file, indent=4)
 
 if __name__ == "__main__":
     def resource1():
@@ -43,9 +52,9 @@ if __name__ == "__main__":
         print("train_model finished")
         return True
 
-    node1 = Node("resource1", resource1)
-    node2 = Node("resource2", resource2)
-    node3 = Node("train_model", train_model, listen_to=[node1, node2])
+    node1 = Node("resource1", "resource", resource1)
+    node2 = Node("resource2", "resource", resource2)
+    node3 = Node("train_model", "resource", train_model, listen_to=[node1, node2])
 
     dag = DAG()
-    dag.start()
+    dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
