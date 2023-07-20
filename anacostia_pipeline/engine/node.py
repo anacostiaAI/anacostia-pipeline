@@ -7,6 +7,46 @@ import networkx as nx
 
 G = nx.DiGraph()
 
+class BaseNode:
+    queue = Queue()
+
+    def __init__(self, 
+        name: str, 
+        signal: str,
+        listen_to: List['Node'] = []
+    ) -> None:
+
+        self.name = name
+        self.children = listen_to
+
+        G.add_node(self)
+        for child in self.children:
+            # we can add information about signals, e.g. signal type, signal value, etc.
+            # docker information, e.g. docker image, docker container, etc.
+            # and whatever other information needed to recreate the environment and the DAG using the add_edge function
+            G.add_edge(child, self, signal=signal)
+    
+    def get_name(self) -> str:
+        return self.name
+
+    def get_queue(self) -> Queue:
+        return self.queue
+
+    def send_signal(self) -> None:
+        print(f"Sending signal from node '{self.name}'")
+        self.queue.put(True)
+    
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+
+class ResourceNode(BaseNode):
+    def __init__(self, name: str) -> None:
+        super().__init__(name, "resource_signal")
+    
+    def trigger(self):
+        raise NotImplementedError
+
 class Node:
     queue = Queue()
 
@@ -36,7 +76,8 @@ class Node:
     
     def trigger(self) -> bool:
         try:
-            self.action_function()
+            if self.action_function is not None:
+                self.action_function()
             return True
 
         except Exception as e:
