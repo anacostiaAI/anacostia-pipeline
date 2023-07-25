@@ -15,7 +15,7 @@ class BaseNode:
         name: str, 
         signal_type: str,
         action_function: Callable[..., any] = None, 
-        listen_to: List['Node'] = []
+        listen_to: List['BaseNode'] = []
     ) -> None:
 
         self.name = name
@@ -38,7 +38,7 @@ class BaseNode:
     def get_queue(self) -> Queue:
         return self.queue
 
-    def send_signal(self) -> None:
+    def __send_signal(self) -> None:
         print(f"Sending signal from node '{self.name}'")
         self.queue.put(self.signal_type)
     
@@ -47,7 +47,7 @@ class BaseNode:
             if self.__poll_resources() is True:
                 self.triggered = True
     
-    def reset_trigger(self):
+    def __reset_trigger(self):
         self.triggered = False
         for name in self.signals_received:
             self.signals_received[name] = False
@@ -115,8 +115,8 @@ class BaseNode:
 
                 print(f"Node '{self.name}' triggered")
                 if self.__execution() is True:
-                    self.reset_trigger()
-                    self.send_signal()
+                    self.__reset_trigger()
+                    self.__send_signal()
 
         except KeyboardInterrupt:
             self.teardown()
@@ -137,115 +137,6 @@ class BaseNode:
     def __repr__(self) -> str:
         return f"Node({self.name})"
     
-
-class Node:
-    queue = Queue()
-
-    def __init__(self, 
-        name: str, 
-        signal_type: str,
-        action_function: Callable[..., any] = None, 
-        listen_to: List['Node'] = []
-    ) -> None:
-
-        self.name = name
-        self.signal_type = signal_type
-        self.action_function = action_function
-        self.children = listen_to
-
-        G.add_node(self)
-        for child in self.children:
-            # we can add information about signals, e.g. signal type, signal value, etc.
-            # docker information, e.g. docker image, docker container, etc.
-            # and whatever other information needed to recreate the environment and the DAG using the add_edge function
-            G.add_edge(child, self, signal=self.signal_type)
-
-    def get_queue(self) -> Queue:
-        return self.queue
-
-    def send_signal(self) -> None:
-        print(f"Sending signal from node '{self.name}'")
-        self.queue.put(
-            {
-                "signal_type": self.signal_type,
-                "value": True
-            }
-        )
-    
-    def get_signal_value(self, queue_value: Dict) -> str:
-        return queue_value["value"]
-    
-    def trigger(self) -> bool:
-        try:
-            if self.action_function is not None:
-                self.action_function()
-            return True
-
-        except Exception as e:
-            print(f"Error: {e}")
-            return False
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
-    def __listen(self) -> None:
-        signals = {}
-
-        try:
-            while True:
-
-                # if node is not listening for signals from other nodes, 
-                # trigger action function (this is done for resource nodes);
-                # otherwise, wait for signals from other nodes
-                if len(self.children) == 0:
-                    result = self.trigger()
-                    if result:
-                        self.send_signal()
-
-                else:
-                    for child in self.children:
-                        queue = child.get_queue()
-                        signal = queue.get()
-
-                        if child.name not in signals:
-                            signals[child.name] = self.get_signal_value(signal)
-                        else:
-                            if (signals[child.name] == False) and (self.get_signal_value(signal) == True):
-                                signals[child.name] = self.get_signal_value(signal)
-                        
-                        print(f"{self.name} received message from {child.name}: {self.get_signal_value(signal)}")
-
-                        if len(signals) == len(self.children):
-                            if all(signals.values()):
-                                result = self.trigger()
-                                if result:
-                                    signals = {}
-                                    self.send_signal()
-
-        except KeyboardInterrupt:
-            print("\nExiting...")
-            self.teardown()
-            exit(0)
-
-    def setup(self) -> None:
-        print(f"Setting up node '{self.name}'")
-        print(f"Node '{self.name}' setup complete")
-    
-    def start(self) -> None:
-        self.setup()
-        # keep in mind that when initializing leaf node, parent nodes may not be initialized yet
-        # so some initial signals sent from leaf node may not be received by parent nodes
-
-        print(f"Starting node '{self.name}'")
-        proc_listen = Thread(target=self.__listen, daemon=True)
-        proc_listen.start()
-    
-    def teardown(self) -> None:
-        print(f"Node '{self.name}' teardown complete")
-    
-    def __repr__(self) -> str:
-        return f"'Node({self.name})'"
-
 
 if __name__ == "__main__":
     def resource1():
