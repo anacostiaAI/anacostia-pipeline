@@ -1,6 +1,6 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 from threading import Thread
-from typing import List, Dict, Any, Callable
+from typing import List, Callable
 import time
 import networkx as nx
 
@@ -135,7 +135,7 @@ class BaseNode:
         print(f"Node '{self.name}' teardown complete")
     
     def __repr__(self) -> str:
-        return f"Node({self.name})"
+        return f"'Node({self.name})'"
     
 
 if __name__ == "__main__":
