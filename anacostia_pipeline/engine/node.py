@@ -42,10 +42,19 @@ class BaseNode:
         print(f"Sending signal from node '{self.name}'")
         self.queue.put(self.signal_type)
     
-    def trigger(self):
-        if self.precheck() is True:
-            if self.__poll_resources() is True:
-                self.triggered = True
+    def trigger(self) -> None:
+        if self.signal_type == "resource":
+            if self.precheck() is True:
+                if self.__poll_resources() is True:
+                    self.triggered = True
+                    return
+
+    def __trigger(self):
+        if self.signal_type != "resource":
+            if self.precheck() is True:
+                if self.__poll_resources() is True:
+                    self.triggered = True
+                    return
     
     def __reset_trigger(self):
         self.triggered = False
@@ -109,11 +118,15 @@ class BaseNode:
     
     def __run(self) -> None:
         try:
-            while True:
-                if self.triggered is False:
-                    self.trigger()
+            self.setup()
+            # keep in mind that when initializing leaf node, parent nodes may not be initialized yet
+            # so some initial signals sent from leaf node may not be received by parent nodes
 
-                print(f"Node '{self.name}' triggered")
+            while True:
+                while self.triggered is False:
+                    self.__trigger()
+
+                #print(f"Node '{self.name}' triggered")
                 if self.__execution() is True:
                     self.__reset_trigger()
                     self.__send_signal()
@@ -123,10 +136,6 @@ class BaseNode:
             exit(0)
     
     def start(self) -> None:
-        self.setup()
-        # keep in mind that when initializing leaf node, parent nodes may not be initialized yet
-        # so some initial signals sent from leaf node may not be received by parent nodes
-
         print(f"Starting node '{self.name}'")
         proc_listen = Thread(target=self.__run, daemon=True)
         proc_listen.start()
