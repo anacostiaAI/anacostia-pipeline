@@ -1,4 +1,4 @@
-from node import BaseNode, G
+from node import ActionNodes, G
 from typing import List
 import time
 import networkx as nx
@@ -52,9 +52,9 @@ if __name__ == "__main__":
         print("train_model finished")
         return True
 
-    node1 = BaseNode("resource1", "resource", resource1)
-    node2 = BaseNode("resource2", "resource", resource2)
-    node3 = BaseNode("train_model", "resource", train_model, listen_to=[node1, node2])
+    node1 = ActionNodes("resource1", "resource", resource1)
+    node2 = ActionNodes("resource2", "resource", resource2)
+    node3 = ActionNodes("train_model", "resource", train_model, listen_to=[node1, node2])
 
     dag = DAG()
     #dag.start()

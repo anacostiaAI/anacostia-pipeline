@@ -8,6 +8,113 @@ import networkx as nx
 G = nx.DiGraph()
 
 
+class BaseNode:
+    queue = Queue()
+
+    def __init__(self, 
+        name: str, 
+        signal_type: str,
+        action_function: Callable[..., any] = None, 
+    ) -> None:
+
+        self.name = name
+        self.signal_type = signal_type
+        self.action_function = action_function
+        self.triggered = False
+
+        G.add_node(self)
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+    def get_name(self) -> str:
+        return self.name
+
+    def get_queue(self) -> Queue:
+        return self.queue
+
+    def setup(self) -> None:
+        print(f"Setting up node '{self.name}'")
+        print(f"Node '{self.name}' setup complete")
+
+    def precheck(self) -> bool:
+        # should be used for continuously checking if the node is ready to start
+        # i.e., checking if database connections, API connections, etc. are ready 
+        return True
+
+    def pre_execution(self) -> None:
+        # override to enable node to do something before execution; 
+        # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
+        pass
+
+    def on_success(self) -> None:
+        # override to enable node to do something after execution in event of success of action_function; 
+        # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
+        pass
+
+    def on_failure(self) -> None:
+        # override to enable node to do something after execution in event of failure of action_function; 
+        # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
+        pass
+    
+    def teardown(self) -> None:
+        print(f"Node '{self.name}' teardown complete")
+    
+    def __repr__(self) -> str:
+        return f"'Node({self.name})'"
+
+    def __send_signal(self) -> None:
+        print(f"Sending signal from node '{self.name}'")
+        self.queue.put(self.signal_type)
+    
+    def __execution(self) -> bool:
+        try:
+            if self.action_function is not None:
+                self.pre_execution()
+                self.action_function()
+                self.on_success()
+            return True
+        
+        except Exception as e:
+            print(f"Node '{self.name}' execution failed: {e}")
+            self.on_failure()
+            return False
+    
+    def reset_listeners(self) -> None:
+        pass
+
+    def __reset_trigger(self) -> None:
+        self.triggered = False
+        self.reset_listeners()
+
+    def set_trigger(self) -> None:
+        pass
+
+    def __run(self) -> None:
+        try:
+            self.setup()
+            # keep in mind that when initializing leaf node, parent nodes may not be initialized yet
+            # so some initial signals sent from leaf node may not be received by parent nodes
+
+            while True:
+                self.set_trigger()
+
+                if self.triggered is True:
+                    #print(f"Node '{self.name}' triggered")
+                    if self.__execution() is True:
+                        self.__reset_trigger()
+                        self.__send_signal()
+
+        except KeyboardInterrupt:
+            self.teardown()
+            exit(0)
+
+    def start(self) -> None:
+        print(f"Starting node '{self.name}'")
+        proc_listen = Thread(target=self.__run, daemon=True)
+        proc_listen.start()
+
+
 class ResourceNode:
     queue = Queue()
 
@@ -111,14 +218,14 @@ class ResourceNode:
         return f"'Node({self.name})'"
 
 
-class BaseNode:
+class ActionNodes:
     queue = Queue()
 
     def __init__(self, 
         name: str, 
         signal_type: str,
         action_function: Callable[..., any] = None, 
-        listen_to: List['BaseNode'] = []
+        listen_to: List['ActionNodes'] = []
     ) -> None:
 
         self.name = name
@@ -145,7 +252,7 @@ class BaseNode:
         print(f"Sending signal from node '{self.name}'")
         self.queue.put(self.signal_type)
     
-    def __trigger(self):
+    def trigger(self):
         if self.precheck() is True:
             if self.__poll_resources() is True:
                 self.triggered = True
@@ -219,7 +326,7 @@ class BaseNode:
 
             while True:
                 if self.triggered is False:
-                    self.__trigger()
+                    self.trigger()
 
                 #print(f"Node '{self.name}' triggered")
                 if self.__execution() is True:
@@ -261,9 +368,9 @@ if __name__ == "__main__":
         print("train_model finished")
         return True
 
-    node1 = BaseNode("resource1", "resource", resource1)
-    node2 = BaseNode("resource2", "resource", resource2)
-    node3 = BaseNode("train_model", "resource", train_model, listen_to=[node1, node2])
+    node1 = ActionNodes("resource1", "resource", resource1)
+    node2 = ActionNodes("resource2", "resource", resource2)
+    node3 = ActionNodes("train_model", "resource", train_model, listen_to=[node1, node2])
 
     sorted_nodes = nx.topological_sort(G)
     for node in sorted_nodes:

@@ -6,11 +6,11 @@ sys.path.append("../../anacostia_pipeline")
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from engine.node import BaseNode, ResourceNode
+from engine.node import ResourceNode
 
 
 class DirChangeHandler(FileSystemEventHandler):
-    def __init__(self, node: BaseNode) -> None:
+    def __init__(self, node: ResourceNode) -> None:
         self.node = node
 
     # on modified event, send signal to parent nodes
