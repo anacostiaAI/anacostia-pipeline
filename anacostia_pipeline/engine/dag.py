@@ -1,5 +1,4 @@
-from node import ActionNodes, G
-from typing import List
+from node import ActionNode, G
 import time
 import networkx as nx
 import json
@@ -52,10 +51,10 @@ if __name__ == "__main__":
         print("train_model finished")
         return True
 
-    node1 = ActionNodes("resource1", "resource", resource1)
-    node2 = ActionNodes("resource2", "resource", resource2)
-    node3 = ActionNodes("train_model", "resource", train_model, listen_to=[node1, node2])
+    node1 = ActionNode("resource1", "preprocess", resource1)
+    node2 = ActionNode("resource2", "load_model", resource2)
+    node3 = ActionNode("train_model", "train", train_model, listen_to=[node1, node2])
 
     dag = DAG()
-    #dag.start()
-    dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
+    dag.start()
+    #dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
