@@ -3,6 +3,7 @@ from threading import Thread
 from typing import List, Any, Callable
 import time
 import networkx as nx
+from constants import Status
 
 
 G = nx.DiGraph()
@@ -25,7 +26,7 @@ class BaseNode:
         self.triggered = False
         self.children = listen_to
         self.auto_trigger = auto_trigger
-        self.signals_received = {child.get_name():False for child in self.children}
+        self.signals_received = {child.get_name():Status.WAITING for child in self.children}
 
         G.add_node(self)
 
@@ -71,9 +72,15 @@ class BaseNode:
     def __repr__(self) -> str:
         return f"'Node({self.name})'"
 
-    def __send_signal(self) -> None:
+    def __send_signal(self, status: Status) -> None:
         print(f"Sending signal from node '{self.name}'")
-        self.queue.put(self.signal_type)
+        signal = {
+            "name": self.name,
+            "signal_type": self.signal_type,
+            "timestamp": time.time(),
+            "status": status
+        }
+        self.queue.put(signal)
     
     def __execution(self) -> bool:
         try:
@@ -91,7 +98,7 @@ class BaseNode:
     def __reset_trigger(self) -> None:
         self.triggered = False
         if len(self.children) > 0:
-            self.signals_received = {child.get_name():False for child in self.children}
+            self.signals_received = {child.get_name():Status.WAITING for child in self.children}
     
     def poll_children(self) -> bool:
         if len(self.children) == 0:
@@ -101,11 +108,11 @@ class BaseNode:
                 queue = child.get_queue()
                 signal = queue.get()
             
-                if self.signals_received[child.get_name()] is False:
-                    self.signals_received[child.get_name()] = True
+                if self.signals_received[child.get_name()] == Status.WAITING:
+                    self.signals_received[child.get_name()] = signal["status"]
                     print(f"Received signal '{signal}' from node '{child.get_name()}'")
             
-            if all(self.signals_received.values()) is True:
+            if all(value == Status.SUCCESS for value in self.signals_received.values()) is True:
                 return True
 
         return False
@@ -115,7 +122,7 @@ class BaseNode:
         if self.precheck() is True:
             self.triggered = True
 
-    def set_auto_trigger(self) -> None:
+    def __set_auto_trigger(self) -> None:
         if self.auto_trigger is True:
             if self.precheck() is True:
                 if self.poll_children() is True:
@@ -128,13 +135,12 @@ class BaseNode:
             # so some initial signals sent from leaf node may not be received by parent nodes
 
             while True:
-                self.set_auto_trigger()
+                self.__set_auto_trigger()
 
                 if self.triggered is True:
-                    #print(f"Node '{self.name}' triggered")
                     if self.__execution() is True:
                         self.__reset_trigger()
-                        self.__send_signal()
+                        self.__send_signal(Status.SUCCESS)
 
         except KeyboardInterrupt:
             self.teardown()
@@ -155,7 +161,7 @@ class AndNode(BaseNode):
 
 
 class OrNode(BaseNode):
-    def __init__(self, listen_to: List['ActionNode']) -> None:
+    def __init__(self, listen_to: List['BaseNode']) -> None:
         if len(listen_to) < 2:
             raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided")
 
@@ -166,7 +172,7 @@ class OrNode(BaseNode):
             queue = child.get_queue()
             signal = queue.get()
         
-            if signal is True:
+            if signal == Status.SUCCESS:
                 return True
         
         return False
