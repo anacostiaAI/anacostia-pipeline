@@ -15,14 +15,22 @@ class BaseNode:
         name: str, 
         signal_type: str,
         action_function: Callable[..., Any] = None, 
+        listen_to: List['BaseNode'] = [],
+        auto_trigger: bool = False
     ) -> None:
 
         self.name = name
         self.signal_type = signal_type
         self.action_function = action_function
         self.triggered = False
+        self.children = listen_to
+        self.auto_trigger = auto_trigger
+        self.signals_received = {child.get_name():False for child in self.children}
 
         G.add_node(self)
+
+        for child in self.children:
+            G.add_edge(child, self, signal_type=self.signal_type)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -79,23 +87,39 @@ class BaseNode:
             print(f"Node '{self.name}' execution failed: {e}")
             self.on_failure()
             return False
-    
-    def reset_listeners(self) -> None:
-        pass
 
     def __reset_trigger(self) -> None:
         self.triggered = False
-        self.reset_listeners()
+        if len(self.children) > 0:
+            self.signals_received = {child.get_name():False for child in self.children}
     
+    def poll_children(self) -> bool:
+        if len(self.children) == 0:
+            return True
+        else:
+            for child in self.children:
+                queue = child.get_queue()
+                signal = queue.get()
+            
+                if self.signals_received[child.get_name()] is False:
+                    self.signals_received[child.get_name()] = True
+                    print(f"Received signal '{signal}' from node '{child.get_name()}'")
+            
+            if all(self.signals_received.values()) is True:
+                return True
+
+        return False
+
     def trigger(self) -> None:
         # method called by user to manually trigger node
         if self.precheck() is True:
             self.triggered = True
-            return
 
     def set_auto_trigger(self) -> None:
-        # override to enable node to automatically set trigger
-        pass
+        if self.auto_trigger is True:
+            if self.precheck() is True:
+                if self.poll_children() is True:
+                    self.triggered = True
 
     def __run(self) -> None:
         try:
@@ -122,6 +146,32 @@ class BaseNode:
         proc_listen.start()
 
 
+class AndNode(BaseNode):
+    def __init__(self, listen_to: List['BaseNode']) -> None:
+        if len(listen_to) < 2:
+            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided")
+        
+        super().__init__("AND", "AND", action_function=None, listen_to=listen_to, auto_trigger=True)
+
+
+class OrNode(BaseNode):
+    def __init__(self, listen_to: List['ActionNode']) -> None:
+        if len(listen_to) < 2:
+            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided")
+
+        super().__init__("OR", "OR", action_function=None, listen_to=listen_to, auto_trigger=True)
+
+    def poll_children(self) -> bool:
+        for child in self.children:
+            queue = child.get_queue()
+            signal = queue.get()
+        
+            if signal is True:
+                return True
+        
+        return False
+
+
 class ResourceNode(BaseNode):
     def __init__(self, name: str) -> None:
         super().__init__(name, "resource")
@@ -131,45 +181,11 @@ class ActionNode(BaseNode):
     def __init__(self, 
         name: str, 
         signal_type: str, 
-        action_function: Callable[..., Any] = None, 
-        listen_to: List['ActionNode'] = []
+        action_function: Callable[..., Any], 
+        listen_to: List['BaseNode'] = []
     ) -> None:
         
-        super().__init__(name, signal_type, action_function)
-
-        # we can add information about signals, e.g. signal type, signal value, etc.
-        # docker information, e.g. docker image, docker container, etc.
-        # and whatever other information needed to recreate the environment and the DAG using the add_edge function
-        self.children = listen_to
-        self.signals_received = {child.get_name():False for child in self.children}
-
-        for child in self.children:
-            G.add_edge(child, self, signal_type=self.signal_type)
-
-    def reset_listeners(self) -> None:
-        for name in self.signals_received:
-            self.signals_received[name] = False
-
-    def set_auto_trigger(self) -> None:
-        if self.precheck() is True:
-            if self.__poll_children() is True:
-                self.triggered = True
-                return
-
-    def __poll_children(self) -> bool:
-        if len(self.children) == 0:
-            return True
-        else:
-            for child in self.children:
-                queue = child.get_queue()
-                signal = queue.get()
-            
-                if self.signals_received[child.get_name()] is False:
-                    self.signals_received[child.get_name()] = True
-                    print(f"Received signal '{signal}' from node '{child.get_name()}'")
-            
-            if all(self.signals_received.values()) is True:
-                return True
+        super().__init__(name, signal_type, action_function, listen_to, auto_trigger=True)
 
 
 if __name__ == "__main__":
@@ -199,7 +215,7 @@ if __name__ == "__main__":
     for node in sorted_nodes:
         node.start()
 
-    time.sleep(5)
+    time.sleep(10)
 
     # we can use the to_dict_of_dicts function to output the graph as a json file
     graph = nx.to_dict_of_dicts(G)

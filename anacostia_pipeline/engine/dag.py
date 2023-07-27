@@ -10,6 +10,10 @@ class DAG:
         self.edges = []
     
     def start(self) -> None:
+        if nx.is_directed_acyclic_graph(G) is False:
+            print(list(nx.find_cycle(G)))
+            raise Exception("Graph is not a DAG")
+        
         for node in nx.topological_sort(G):
             node.start()
         

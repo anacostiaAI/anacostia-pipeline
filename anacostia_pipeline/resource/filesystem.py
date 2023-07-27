@@ -22,7 +22,7 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
     
     def setup(self) -> None:
         print(f"Setting up node '{self.name}'")
-        self.observer.schedule(self, path=self.path, recursive=False)
+        self.observer.schedule(event_handler=self, path=self.path, recursive=False)
         self.observer.start()
         print("Observer started, waiting for file change...")
         print(f"Node '{self.name}' setup complete")
