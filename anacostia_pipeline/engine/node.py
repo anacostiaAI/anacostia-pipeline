@@ -1,6 +1,6 @@
 from multiprocessing import Queue
 from threading import Thread
-from typing import List, Any, Callable
+from typing import List, Any, Callable, Dict
 import time
 import networkx as nx
 from constants import Status
@@ -100,13 +100,24 @@ class BaseNode:
         if len(self.children) > 0:
             self.signals_received = {child.get_name():Status.WAITING for child in self.children}
     
+    def __clear_queue(self, queue: Queue) -> Dict[str, Any]:
+        # sleep for a short time to allow queue to be populated
+        # time.sleep(0.1)
+        signal = queue.get()
+        while not queue.empty():
+            if signal["status"] == Status.SUCCESS:
+                queue.get()
+            else:
+                signal = queue.get()
+        return signal
+
     def poll_children(self) -> bool:
         if len(self.children) == 0:
             return True
         else:
             for child in self.children:
                 queue = child.get_queue()
-                signal = queue.get()
+                signal = self.__clear_queue(queue)
             
                 if self.signals_received[child.get_name()] == Status.WAITING:
                     self.signals_received[child.get_name()] = signal["status"]
