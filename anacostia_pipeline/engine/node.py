@@ -3,7 +3,11 @@ from threading import Thread
 from typing import List, Any, Callable, Dict
 import time
 import networkx as nx
-from constants import Status
+
+if __name__ == "__main__":
+    from constants import Status
+else:
+    from engine.constants import Status
 
 
 G = nx.DiGraph()
@@ -166,7 +170,7 @@ class BaseNode:
 class AndNode(BaseNode):
     def __init__(self, listen_to: List['BaseNode']) -> None:
         if len(listen_to) < 2:
-            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided")
+            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided with at least two nodes")
         
         super().__init__("AND", "AND", action_function=None, listen_to=listen_to, auto_trigger=True)
 
@@ -174,7 +178,7 @@ class AndNode(BaseNode):
 class OrNode(BaseNode):
     def __init__(self, listen_to: List['BaseNode']) -> None:
         if len(listen_to) < 2:
-            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided")
+            raise ValueError("node '{name}' must be listening to at LEAST two nodes; listen_to must be provided with at least two nodes")
 
         super().__init__("OR", "OR", action_function=None, listen_to=listen_to, auto_trigger=True)
 

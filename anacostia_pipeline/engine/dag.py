@@ -1,7 +1,11 @@
-from node import ActionNode, G
 import time
 import networkx as nx
 import json
+
+if __name__ == "__main__":
+    from node import BaseNode, ResourceNode, ActionNode, G
+else:
+    from engine.node import BaseNode, ResourceNode, ActionNode, G
 
 
 class DAG:
