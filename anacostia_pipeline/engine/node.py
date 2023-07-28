@@ -181,7 +181,7 @@ class OrNode(BaseNode):
     def poll_children(self) -> bool:
         for child in self.children:
             queue = child.get_queue()
-            signal = queue.get()
+            signal = self.__clear_queue(queue)
         
             if signal == Status.SUCCESS:
                 return True
