@@ -3,6 +3,7 @@ from threading import Thread
 from typing import List, Any, Callable, Dict
 import time
 import networkx as nx
+from logging import Logger
 
 if __name__ == "__main__":
     from constants import Status
@@ -21,15 +22,18 @@ class BaseNode:
         signal_type: str,
         action_function: Callable[..., Any] = None, 
         listen_to: List['BaseNode'] = [],
-        auto_trigger: bool = False
+        auto_trigger: bool = False,
+        logger: Logger = None
     ) -> None:
 
         self.name = name
         self.signal_type = signal_type
         self.action_function = action_function
-        self.triggered = False
         self.children = listen_to
         self.auto_trigger = auto_trigger
+        self.logger = logger
+
+        self.triggered = False
         self.signals_received = {child.get_name():Status.WAITING for child in self.children}
 
         G.add_node(self)
@@ -47,8 +51,12 @@ class BaseNode:
         return self.queue
 
     def setup(self) -> None:
-        print(f"Setting up node '{self.name}'")
-        print(f"Node '{self.name}' setup complete")
+        if self.logger is not None:
+            self.logger.info(f"Setting up node '{self.name}'")
+            self.logger.info(f"Node '{self.name}' setup complete")
+        else:
+            print(f"Setting up node '{self.name}'")
+            print(f"Node '{self.name}' setup complete")
 
     def precheck(self) -> bool:
         # should be used for continuously checking if the node is ready to start
@@ -194,8 +202,8 @@ class OrNode(BaseNode):
 
 
 class ResourceNode(BaseNode):
-    def __init__(self, name: str) -> None:
-        super().__init__(name, "resource")
+    def __init__(self, name: str, logger: Logger=None) -> None:
+        super().__init__(name, "resource", logger=logger)
     
     
 class ActionNode(BaseNode):

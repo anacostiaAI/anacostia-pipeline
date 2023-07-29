@@ -1,5 +1,6 @@
 import time
 import sys
+from logging import Logger
 sys.path.append("../../anacostia_pipeline")
 
 from watchdog.observers import Observer
@@ -9,27 +10,40 @@ from engine.node import ResourceNode
 
 
 class DirWatchNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name, path):
+    def __init__(self, name: str, path: str, logger: Logger=None):
         self.path = path
-        self.name = name
-        super().__init__(name)
+        super().__init__(name, logger)
         self.observer = Observer()
     
     def on_modified(self, event):
         if event.is_directory:
-            print(f"Detected change: {event.event_type} {event.src_path}")
+            if self.logger is not None:
+                self.logger.info(f"Detected change: {event.event_type} {event.src_path}")
+            else:
+                print(f"Detected change: {event.event_type} {event.src_path}")
             self.trigger()
     
     def setup(self) -> None:
-        print(f"Setting up node '{self.name}'")
+        if self.logger is not None:
+            self.logger.info(f"Setting up node '{self.name}'")
+        else:
+            print(f"Setting up node '{self.name}'")
+        
         self.observer.schedule(event_handler=self, path=self.path, recursive=False)
         self.observer.start()
-        print("Observer started, waiting for file change...")
-        print(f"Node '{self.name}' setup complete")
+
+        if self.logger is not None:
+            self.logger.info(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
+        else:
+            print(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
     
     def teardown(self) -> None:
         self.observer.stop()
         self.observer.join()
+        if self.logger is not None:
+            self.logger.info(f"Node '{self.name}' teardown complete.")
+        else:
+            print(f"Node '{self.name}' teardown complete.")
 
 
 if __name__ == "__main__":
