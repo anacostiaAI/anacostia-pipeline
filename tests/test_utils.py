@@ -38,6 +38,7 @@ def delete_file(file_path):
     except Exception as e:
         print(f"Error deleting the file: {e}")
 
+
 def get_time(log_path: str, log_level: str = "INFO"):
     timestamps = []
 
@@ -62,6 +63,7 @@ def get_time_delta(start_time: str, end_time: str):
     start_time = time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
     end_time = time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
     return time.mktime(end_time) - time.mktime(start_time)
+
 
 if __name__ == '__main__':
     times = get_time(log_path="./testing_artifacts/app.log", log_level="INFO")
