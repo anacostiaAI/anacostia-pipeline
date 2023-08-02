@@ -53,7 +53,7 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
         signal["removed_files"] = get_removed_files(self.path, self.directory_state)
         return signal
     
-    def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "added") -> List[str]:
+    def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "modified") -> List[str]:
         if difference == "added":
             changed_files = get_new_files(self.path, prev_state)
         elif difference == "modified":

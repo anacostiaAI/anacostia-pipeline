@@ -69,7 +69,7 @@ class NodeTests(unittest.TestCase):
         signal = self.dirwatchnode.signal_message_template()
         #print(signal)
         self.assertEqual(5, len(signal["added_files"]))
-        #self.assertEqual(0, len(signal["modified_files"]))
+        self.assertEqual(5, len(signal["modified_files"]))
         #self.assertEqual(0, len(signal["removed_files"]))
         time.sleep(1)
         
