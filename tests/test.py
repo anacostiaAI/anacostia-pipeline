@@ -31,6 +31,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class NodeTests(unittest.TestCase):
+    def __init__(self, methodName: str = "runTest") -> None:
+        self.dirwatchnode = DirWatchNode(
+            name="testing_artifacts", 
+            path="/Users/minhquando/Desktop/anacostia/tests/testing_artifacts/dirwatchnode",
+            logger=logger
+        )
+        self.dirwatchnode.start()
+
+        super().__init__(methodName)
+
     def setUp(self) -> None:
         try:
             os.makedirs("./testing_artifacts/dirwatchnode")
@@ -38,13 +48,7 @@ class NodeTests(unittest.TestCase):
         except OSError as e:
             print(f"Error occurred: {e}")
 
-        dirwatchnode = DirWatchNode(
-            name="testing_artifacts", 
-            path="/Users/minhquando/Desktop/anacostia/tests/testing_artifacts/dirwatchnode",
-            logger=logger
-        )
-        dirwatchnode.start()
-
+    """
     def test_init(self):
         time.sleep(2)
         create_file(file_path="./testing_artifacts/dirwatchnode/test.txt", content="This is the content of the file.\n")
@@ -55,7 +59,20 @@ class NodeTests(unittest.TestCase):
         times = get_time(log_path="./testing_artifacts/app.log", log_level="INFO")
         time_delta = get_time_delta(times[3], times[4])
         self.assertEqual(2.0, time_delta) 
+    """
 
+    def test_initial_message_template(self):
+        for i in range(5):
+            path = f"./testing_artifacts/dirwatchnode/test_{i}.txt"
+            create_file(file_path=path, content="This is the content of the file.\n")
+        
+        signal = self.dirwatchnode.signal_message_template()
+        #print(signal)
+        self.assertEqual(5, len(signal["added_files"]))
+        #self.assertEqual(0, len(signal["modified_files"]))
+        #self.assertEqual(0, len(signal["removed_files"]))
+        time.sleep(1)
+        
     def tearDown(self) -> None:
         try:
             shutil.rmtree("./testing_artifacts/dirwatchnode")

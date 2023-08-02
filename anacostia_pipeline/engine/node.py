@@ -84,15 +84,22 @@ class BaseNode:
     def __repr__(self) -> str:
         return f"'Node({self.name})'"
 
-    def __send_signal(self, status: Status) -> None:
-        print(f"Sending signal from node '{self.name}'")
-        signal = {
+    def signal_message_template(self) -> Dict[str, Any]:
+        return {
             "name": self.name,
             "signal_type": self.signal_type,
             "timestamp": time.time(),
-            "status": status
+            "status": None
         }
+
+    def __send_signal(self, status: Status) -> None:
+        print(f"Sending signal from node '{self.name}'")
+        signal = self.signal_message_template()
+        signal["status"] = status
         self.queue.put(signal)
+    
+    def update_state(self) -> None:
+        pass
     
     def __execution(self) -> bool:
         try:
@@ -117,7 +124,7 @@ class BaseNode:
         # time.sleep(0.1)
         signal = queue.get()
         while not queue.empty():
-            if signal["status"] == Status.SUCCESS:
+            if signal["status"] != Status.SUCCESS:
                 queue.get()
             else:
                 signal = queue.get()
@@ -164,6 +171,9 @@ class BaseNode:
                     if self.__execution() is True:
                         self.__reset_trigger()
                         self.__send_signal(Status.SUCCESS)
+                    else:
+                        self.__reset_trigger()
+                        self.__send_signal(Status.FAILURE)
 
         except KeyboardInterrupt:
             self.teardown()

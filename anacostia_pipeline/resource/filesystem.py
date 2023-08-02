@@ -2,6 +2,7 @@ import time
 import sys
 import os
 from logging import Logger
+from typing import Any, Dict, List
 sys.path.append("../../anacostia_pipeline")
 
 from watchdog.observers import Observer
@@ -19,19 +20,19 @@ def get_file_states(directory: str):
     return file_states
 
 
-def get_new_files(directory: str, prev_states: dict):
+def get_new_files(directory: str, prev_states:  Dict[str, List[str]]) -> List[str]:
     current_states = get_file_states(directory)
     added_files = [filepath for filepath in current_states if filepath not in prev_states]
     return added_files
 
 
-def get_modified_files(directory: str, prev_states: dict):
+def get_modified_files(directory: str, prev_states:  Dict[str, List[str]]) -> List[str]:
     current_states = get_file_states(directory)
     modified_files = [filepath for filepath in current_states if prev_states.get(filepath) != current_states.get(filepath)]
     return modified_files
 
 
-def get_removed_files(directory: str, prev_states: dict):
+def get_removed_files(directory: str, prev_states:  Dict[str, List[str]]) -> List[str]:
     current_states = get_file_states(directory)
     removed_files = [filepath for filepath in prev_states if filepath not in current_states]
     return removed_files
@@ -45,12 +46,31 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
 
         self.directory_state = get_file_states(self.path)
     
+    def signal_message_template(self) -> Dict[str, List[str]]:
+        signal = super().signal_message_template()
+        signal["added_files"] = get_new_files(self.path, self.directory_state)
+        signal["modified_files"] = get_modified_files(self.path, self.directory_state)
+        signal["removed_files"] = get_removed_files(self.path, self.directory_state)
+        return signal
+    
+    def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "added") -> List[str]:
+        if difference == "added":
+            changed_files = get_new_files(self.path, prev_state)
+        elif difference == "modified":
+            changed_files = get_modified_files(self.path, prev_state)
+        elif difference == "removed":
+            changed_files = get_removed_files(self.path, prev_state)
+        
+        self.directory_state = get_file_states(self.path)
+        return changed_files
+
     def on_modified(self, event):
         if event.is_directory:
             if self.logger is not None:
                 self.logger.info(f"Detected change: {event.event_type} {event.src_path}")
             else:
                 print(f"Detected change: {event.event_type} {event.src_path}")
+
             self.trigger()
     
     def setup(self) -> None:
