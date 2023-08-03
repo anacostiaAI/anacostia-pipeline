@@ -32,9 +32,15 @@ logger = logging.getLogger(__name__)
 
 class NodeTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
+        try:
+            os.makedirs("./testing_artifacts/dirwatchnode")
+            os.chmod("./testing_artifacts/dirwatchnode", 0o777)
+        except OSError as e:
+            print(f"Error occurred: {e}")
+
         self.dirwatchnode = DirWatchNode(
             name="testing_artifacts", 
-            path="/Users/minhquando/Desktop/anacostia/tests/testing_artifacts/dirwatchnode",
+            path="./testing_artifacts/dirwatchnode",
             logger=logger
         )
         self.dirwatchnode.start()
