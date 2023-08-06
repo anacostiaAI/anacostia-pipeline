@@ -4,9 +4,7 @@ import networkx as nx
 import json
 import sys
 import os
-from signal import SIGTERM, SIGINT, SIGKILL, signal
-from multiprocessing import Process, Event, Value
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Process, Value
 
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
@@ -25,8 +23,6 @@ class DAG:
         self.node_pids = []
         self.nodes = list(nx.topological_sort(G))
         self.processes = []
-        self.executor = ProcessPoolExecutor()
-        self.running = True
 
     def start(self) -> None:
         # Create a multiprocessing value to control the loop execution
@@ -65,12 +61,12 @@ class DAG:
 
                         # tearing down nodes and waiting for nodes to finish executing
                         print("\nExiting... tearing down all nodes in DAG")
-                        for node in self.nodes:
+                        for node in reversed(self.nodes):
                             node.teardown()
-                        print("All nodes teardown complete")
 
                         for process in self.processes:
                             process.join()
+                        print("Dag teardown complete")
                             
                         break 
 
@@ -90,7 +86,7 @@ class DAG:
             json.dump(graph, json_file, indent=4)
 
 
-class FeatureStoreWatchNode(ResourceNode):
+class FeatureStoreWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
         super().__init__(name, "feature_store")
 
@@ -106,7 +102,7 @@ class FeatureStoreWatchNode(ResourceNode):
         print("teardown complete")
     
 
-class ModelRegistryWatchNode(ResourceNode):
+class ModelRegistryWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
         super().__init__(name, "model_registry")
 
@@ -139,8 +135,8 @@ class TrainNode(ActionNode):
 
 if __name__ == "__main__":
     feature_store_node = FeatureStoreWatchNode("feature store")
-    #model_registry_node = ModelRegistryWatchNode("model registry")
-    #train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
+    model_registry_node = ModelRegistryWatchNode("model registry")
+    train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
 
     dag = DAG()
     dag.start()

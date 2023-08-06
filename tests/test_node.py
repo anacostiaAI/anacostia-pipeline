@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath('../anacostia_pipeline'))
 
 from test_utils import get_log_messages
 from anacostia_pipeline.engine.node import BaseNode, AndNode
+from anacostia_pipeline.engine.constants import Status
 
 if os.path.exists("./testing_artifacts") is False:
     os.makedirs("./testing_artifacts")
@@ -44,6 +45,18 @@ class NodeTests(unittest.TestCase):
 
         log_messages = get_log_messages(log_path)
         self.assertEqual(log_messages[0], message)
+    
+    def test_queue(self):
+        node = BaseNode("base", "resource")
+        signal = node.signal_message_template()
+        signal["status"] = Status.SUCCESS
+        queue = node.get_queue()
+        
+        for i in range(10):
+            queue.put(signal)
+        
+        node.clear_queue(queue)
+        self.assertTrue(queue.empty())
 
 if __name__ == "__main__":
    unittest.main()

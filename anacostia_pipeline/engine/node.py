@@ -1,11 +1,10 @@
-from multiprocessing import Queue, Process, Lock, Value
+from multiprocessing import Queue, Lock, Value
 from typing import List, Any, Dict
 import time
 import networkx as nx
 from logging import Logger
 import uuid
 from uuid import UUID
-import signal
 
 if __name__ == "__main__":
     from constants import Status
@@ -31,7 +30,7 @@ class BaseNode:
         self.auto_trigger = auto_trigger
 
         self.id = uuid.uuid4()
-        self.queue = Queue
+        self.queue = Queue()
         self.logger = None
         self.resource_lock = Lock()
 
@@ -217,14 +216,20 @@ class BaseNode:
             return
 
         while True:
-            self.__set_auto_trigger()
-
             try:
                 if run_flag.value == 0:
                     time.sleep(0.5)
 
                 elif run_flag.value == 1:
-                    self.__execution()
+                    self.__set_auto_trigger()
+
+                    if self.triggered is True:
+                        if self.__execution() is True:
+                            self.__reset_trigger()
+                            self.__send_signal(Status.SUCCESS)
+                        else:
+                            self.__reset_trigger()
+                            self.__send_signal(Status.FAILURE)
                 
                 elif run_flag.value == 2:
                     print(f"ending {str(self)} child process")
