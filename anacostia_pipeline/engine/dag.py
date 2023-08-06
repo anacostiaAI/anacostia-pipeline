@@ -5,7 +5,8 @@ import json
 import sys
 import os
 from signal import SIGTERM, SIGINT, SIGKILL, signal
-from multiprocessing import Process
+from multiprocessing import Process, Event, Value
+from concurrent.futures import ProcessPoolExecutor
 
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
@@ -23,63 +24,62 @@ class DAG:
         
         self.node_pids = []
         self.nodes = list(nx.topological_sort(G))
-    
-    def pause_nodes(self, signum, frame):
-        for node in self.nodes:
-            node.pause_execution(None, None)
-    
-    def terminate_nodes(self, signum, frame):
-        for node in self.nodes:
-            node.terminate_execution(None, None)
-    
-    def unpause_nodes(self, signum, frame):
-        for node in self.nodes:
-            node.continue_execution(None, None)
-    
+        self.processes = []
+        self.executor = ProcessPoolExecutor()
+        self.running = True
+
     def start(self) -> None:
-        """
+        # Create a multiprocessing value to control the loop execution
+        # 0 = paused
+        # 1 = running
+        # 2 = terminate
+        resume_flag = Value('i', 1) 
+
         for node in self.nodes:
-            process = Process(target=node.run)
+            process = Process(target=node.run, args=(resume_flag,))
             process.start()
             self.node_pids.append(process.pid)
+            self.processes.append(process)
 
-        signal(SIGINT, self.pause_nodes) 
-        signal(SIGTERM, self.terminate_nodes)
-        """
-        
         while True:
             try:
                 time.sleep(1)
             except KeyboardInterrupt:
                 
-                user_input = input("\nAre you sure you want to stop the pipeline? (yes/no) ")
-                if user_input == "yes":
+                print("\nPausing DAG execution...")
+                resume_flag.value = 0
+                user_input = input("\nAre you sure you want to stop the pipeline? (yes/no) Press Enter to abort. ")
 
-                    user_input = input("Do you want to hard stop or soft stop or abort? (hard/soft/abort) ")
-                    if user_input == "hard":
-                        exit(0)
+                if user_input.lower() == "yes":
+
+                    user_input = input("Enter 'hard' for a hard stop, enter 'soft' for a soft stop? Press Enter to abort. ")
+
+                    if user_input.lower() == "hard":
+                        resume_flag.value = 2
+                        for process in self.processes:
+                            process.join()
+                        break
 
                     elif user_input == "soft":
+                        resume_flag.value = 2
+
+                        # tearing down nodes and waiting for nodes to finish executing
                         print("\nExiting... tearing down all nodes in DAG")
-
-                        time.sleep(2)
-                        """
-                        for node, pid in zip(self.nodes, self.node_pids):
-                            os.kill(pid, SIGTERM)
-                            node.process.join()
+                        for node in self.nodes:
                             node.teardown()
-                        """
-
                         print("All nodes teardown complete")
-                        exit(0)
 
-                    elif user_input == "abort":
-                        continue
+                        for process in self.processes:
+                            process.join()
+                            
+                        break 
+
                     else:
-                        continue
+                        print("Resuming the pipeline")
+                        resume_flag.value = 1
                 else:
-                    continue
-
+                    print("Resuming the pipeline")
+                    resume_flag.value = 1
 
     def export_graph(self, file_path: str) -> None:
         graph = nx.to_dict_of_dicts(G)

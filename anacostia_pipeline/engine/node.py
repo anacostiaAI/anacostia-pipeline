@@ -1,4 +1,4 @@
-from multiprocessing import Queue, Process, Lock
+from multiprocessing import Queue, Process, Lock, Value
 from typing import List, Any, Dict
 import time
 import networkx as nx
@@ -34,10 +34,6 @@ class BaseNode:
         self.queue = Queue
         self.logger = None
         self.resource_lock = Lock()
-        self.is_running = True
-        self.pause = False
-        self.pid = None
-        self.process = None
 
         self.triggered = False
         self.signals_received = {child.get_name():Status.WAITING for child in self.children}
@@ -61,9 +57,6 @@ class BaseNode:
 
     def get_uuid(self) -> UUID:
         return self.id
-    
-    def get_pid(self):
-        return self.pid
     
     def get_resource_lock(self) -> Lock:
         # listening nodes can call this node's get_resource_lock() method inside a context manager to access resources like so:
@@ -216,46 +209,32 @@ class BaseNode:
         except Exception as e:
             self.log(f"Node '{self.name}' execution failed: {e}")
 
-    def terminate_execution(self, signum, frame):
-        self.is_running = False
-        print("sigterm handler called")
-
-    def pause_execution(self, signum, frame):
-        self.pause = True
-        print(f"Pausing node {str(self)}")
-    
-    def continue_execution(self, signum, frame):
-        self.pause = False
-        print(f"Unpausing node {str(self)}")
-
-    def run(self) -> None:
+    def run(self, run_flag: Value) -> None:
         try:
             self.setup()
         except Exception as e:
             print(f"{str(self)} setup failed")
+            return
 
         while True:
             self.__set_auto_trigger()
 
             try:
-                if self.pause == False:
+                if run_flag.value == 0:
+                    time.sleep(0.5)
+
+                elif run_flag.value == 1:
                     self.__execution()
                 
-                if self.is_running == False:
+                elif run_flag.value == 2:
+                    print(f"ending {str(self)} child process")
                     break
 
             except Exception as e:
                 self.log(f"Node '{self.name}' execution failed: {e}")
-
-    def start(self) -> None:
-        self.log(f"Starting node '{self.name}'")
-        #proc_listen = Process(target=self.__run)
-        #signal.signal(signal.SIGTERM, self.terminate_execution)
-        #signal.signal(signal.SIGINT, self.pause_execution)
-
-        self.process = Process(target=self.run)
-        self.process.start()
-        self.pid = self.process.pid
+            
+            except KeyboardInterrupt:
+                time.sleep(0.2)
 
 
 class AndNode(BaseNode):
