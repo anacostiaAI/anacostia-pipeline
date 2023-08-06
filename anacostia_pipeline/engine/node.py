@@ -5,6 +5,7 @@ import networkx as nx
 from logging import Logger
 import uuid
 from uuid import UUID
+import signal
 
 if __name__ == "__main__":
     from constants import Status
@@ -33,6 +34,10 @@ class BaseNode:
         self.queue = Queue
         self.logger = None
         self.resource_lock = Lock()
+        self.is_running = True
+        self.pause = False
+        self.pid = None
+        self.process = None
 
         self.triggered = False
         self.signals_received = {child.get_name():Status.WAITING for child in self.children}
@@ -56,6 +61,9 @@ class BaseNode:
 
     def get_uuid(self) -> UUID:
         return self.id
+    
+    def get_pid(self):
+        return self.pid
     
     def get_resource_lock(self) -> Lock:
         # listening nodes can call this node's get_resource_lock() method inside a context manager to access resources like so:
@@ -208,10 +216,46 @@ class BaseNode:
         except Exception as e:
             self.log(f"Node '{self.name}' execution failed: {e}")
 
+    def terminate_execution(self, signum, frame):
+        self.is_running = False
+        print("sigterm handler called")
+
+    def pause_execution(self, signum, frame):
+        self.pause = True
+        print(f"Pausing node {str(self)}")
+    
+    def continue_execution(self, signum, frame):
+        self.pause = False
+        print(f"Unpausing node {str(self)}")
+
+    def run(self) -> None:
+        try:
+            self.setup()
+        except Exception as e:
+            print(f"{str(self)} setup failed")
+
+        while True:
+            self.__set_auto_trigger()
+
+            try:
+                if self.pause == False:
+                    self.__execution()
+                
+                if self.is_running == False:
+                    break
+
+            except Exception as e:
+                self.log(f"Node '{self.name}' execution failed: {e}")
+
     def start(self) -> None:
         self.log(f"Starting node '{self.name}'")
-        proc_listen = Process(target=self.__run)
-        proc_listen.start()
+        #proc_listen = Process(target=self.__run)
+        #signal.signal(signal.SIGTERM, self.terminate_execution)
+        #signal.signal(signal.SIGINT, self.pause_execution)
+
+        self.process = Process(target=self.run)
+        self.process.start()
+        self.pid = self.process.pid
 
 
 class AndNode(BaseNode):
@@ -219,6 +263,17 @@ class AndNode(BaseNode):
         if len(listen_to) < 2:
             raise ValueError("AND node must be listening to more than two nodes")
         super().__init__("AND", "AND", listen_to, auto_trigger)
+
+
+class ActionNode(BaseNode):
+    def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = []) -> None:
+        super().__init__(name, signal_type, listen_to, auto_trigger=True)
+
+
+class ResourceNode(BaseNode):
+    def __init__(self, name: str, signal_type: str) -> None:
+        super().__init__(name, signal_type)
+
 
 if __name__ == "__main__":
     print("hello")
