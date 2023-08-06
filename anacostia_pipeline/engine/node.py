@@ -184,30 +184,6 @@ class BaseNode:
                 if self.poll_children() is True:
                     self.triggered = True
 
-    def __run(self) -> None:
-        try:
-            self.setup()
-            # keep in mind that when initializing leaf node, parent nodes may not be initialized yet
-            # so some initial signals sent from leaf node may not be received by parent nodes
-
-            while True:
-                self.__set_auto_trigger()
-
-                if self.triggered is True:
-                    if self.__execution() is True:
-                        self.__reset_trigger()
-                        self.__send_signal(Status.SUCCESS)
-                    else:
-                        self.__reset_trigger()
-                        self.__send_signal(Status.FAILURE)
-
-        except KeyboardInterrupt:
-            self.teardown()
-            exit(0)
-
-        except Exception as e:
-            self.log(f"Node '{self.name}' execution failed: {e}")
-
     def run(self, run_flag: Value) -> None:
         try:
             self.setup()
