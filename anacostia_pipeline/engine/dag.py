@@ -61,11 +61,11 @@ class DAG:
 
                         # tearing down nodes and waiting for nodes to finish executing
                         print("\nExiting... tearing down all nodes in DAG")
-                        for node in reversed(self.nodes):
-                            node.teardown()
-
                         for process in self.processes:
                             process.join()
+
+                        for node in reversed(self.nodes):
+                            node.teardown()
                         print("Dag teardown complete")
                             
                         break 
