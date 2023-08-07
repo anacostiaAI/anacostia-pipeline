@@ -5,6 +5,7 @@ import json
 import sys
 import os
 from multiprocessing import Process, Value
+from logging import Logger
 
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
@@ -15,14 +16,17 @@ else:
 
 
 class DAG:
-    def __init__(self) -> None:
+    def __init__(self, logger: Logger = None) -> None:
         if nx.is_directed_acyclic_graph(G) is False:
             print(list(nx.find_cycle(G)))
             raise Exception("Graph is not a DAG")
         
         self.node_pids = []
-        self.nodes = list(nx.topological_sort(G))
         self.processes = []
+
+        self.nodes = list(nx.topological_sort(G))
+        for node in self.nodes:
+            node.set_logger(logger)
 
     def start(self) -> None:
         # Create a multiprocessing value to control the loop execution

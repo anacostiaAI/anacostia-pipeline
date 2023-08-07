@@ -132,6 +132,7 @@ class BaseNode:
     
     def __execution(self) -> bool:
         try:
+            # in the case of resource nodes, the resource lock will always be acquired because the node is not listening to any other nodes
             with self.resource_lock:
                 self.pre_execution()
                 self.execute()
@@ -193,9 +194,11 @@ class BaseNode:
 
         while True:
             try:
+                # if run_flag is 0, node is paused
                 if run_flag.value == 0:
                     time.sleep(0.5)
 
+                # if run_flag is 1, node is running
                 elif run_flag.value == 1:
                     self.__set_auto_trigger()
 
@@ -207,6 +210,7 @@ class BaseNode:
                             self.__reset_trigger()
                             self.__send_signal(Status.FAILURE)
                 
+                # if run_flag is 2, node is shutting down
                 elif run_flag.value == 2:
                     print(f"ending {str(self)} child process")
                     break
