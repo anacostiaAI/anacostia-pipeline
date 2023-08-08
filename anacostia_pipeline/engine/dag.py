@@ -11,10 +11,10 @@ sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
 if __name__ == "__main__":
     from node import BaseNode, ResourceNode, ActionNode, G
+    from constants import Status
 else:
     from engine.node import BaseNode, ResourceNode, ActionNode, G
-
-from constants import Status
+    from engine.constants import Status
 
 
 class DAG:
@@ -29,14 +29,6 @@ class DAG:
         self.nodes = list(nx.topological_sort(G))
         for node in self.nodes:
             node.set_logger(logger)
-
-    def __new__(cls, *args, **kwargs):
-        # Singleton pattern to ensure only one DAG exists
-        if cls.__instance is None:
-            cls.__instance = super(DAG, cls).__new__(cls)
-            return cls.__instance
-        else:
-            raise Exception("DAG already exists")
 
     def start(self) -> None:
         # Create a multiprocessing value to control the loop execution

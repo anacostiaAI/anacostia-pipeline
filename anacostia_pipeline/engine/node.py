@@ -32,7 +32,6 @@ class BaseNode:
         self.id = uuid.uuid4()
         self.queue = Queue()
         self.logger = None
-        self.resource_lock = Lock()
 
         self.triggered = False
         self.signals_received = {child.get_name():Status.WAITING for child in self.children}
@@ -56,13 +55,6 @@ class BaseNode:
 
     def get_uuid(self) -> UUID:
         return self.id
-    
-    def get_resource_lock(self) -> Lock:
-        # listening nodes can call this node's get_resource_lock() method inside a context manager to access resources like so:
-        # model_loader = ModelLoadingNode()
-        # with model_loader.get_resource_lock():
-        #     do something with the resource
-        return self.resource_lock
     
     def set_logger(self, logger: Logger) -> None:
         # to be called by dag.py to set logger for all nodes
@@ -132,11 +124,9 @@ class BaseNode:
     
     def __execution(self) -> bool:
         try:
-            # in the case of resource nodes, the resource lock will always be acquired because the node is not listening to any other nodes
-            with self.resource_lock:
-                self.pre_execution()
-                self.execute()
-                self.on_success()
+            self.pre_execution()
+            self.execute()
+            self.on_success()
             return True
         
         except Exception as e:
@@ -221,6 +211,26 @@ class BaseNode:
                 time.sleep(0.2)
 
 
+class ResourceNode(BaseNode):
+    def __init__(self, name: str, signal_type: str) -> None:
+        self.name = name
+        self.signal_type = signal_type
+        self.resource_lock = Lock()
+        super().__init__(name, signal_type)
+
+    def get_resource_lock(self):
+        # listening nodes can call this node's get_resource_lock() method inside a context manager to access resources like so:
+        # model_loader = ModelLoadingNode()
+        # with model_loader.get_resource_lock():
+        #     do something with the resource
+        return self.resource_lock
+    
+    def trigger(self) -> None:
+        # method called by user to manually trigger node
+        if self.precheck() is True:
+            self.triggered = True
+
+
 class AndNode(BaseNode):
     def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = [], auto_trigger: bool = False) -> None:
         if len(listen_to) < 2:
@@ -231,11 +241,6 @@ class AndNode(BaseNode):
 class ActionNode(BaseNode):
     def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = []) -> None:
         super().__init__(name, signal_type, listen_to, auto_trigger=True)
-
-
-class ResourceNode(BaseNode):
-    def __init__(self, name: str, signal_type: str) -> None:
-        super().__init__(name, signal_type)
 
 
 if __name__ == "__main__":

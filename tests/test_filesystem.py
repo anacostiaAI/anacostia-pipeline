@@ -4,14 +4,16 @@ import sys
 import os
 import shutil
 import time
+from multiprocessing import Process, Queue
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 
 from anacostia_pipeline.resource.filesystem import DirWatchNode
 from anacostia_pipeline.engine.node import ActionNode
 from anacostia_pipeline.engine.dag import DAG
+from anacostia_pipeline.engine.constants import Status
 
-from test_utils import get_log_messages, create_file, get_time_delta, get_time, delete_file
+from test_utils import get_log_messages, create_file, get_time_delta, get_time, delete_file, run_node
 
 
 if os.path.exists("./testing_artifacts") is False:
@@ -43,9 +45,10 @@ class NodeTests(unittest.TestCase):
             path="./testing_artifacts/dirwatchnode",
             logger=logger
         )
-        self.dirwatchnode.start()
 
         super().__init__(methodName)
+
+        self.process, self.resume_flag = run_node(self.dirwatchnode)
 
     def setUp(self) -> None:
         try:
@@ -80,6 +83,8 @@ class NodeTests(unittest.TestCase):
         time.sleep(1)
         
     def tearDown(self) -> None:
+        self.resume_flag.value = int(Status.STOPPING)
+        self.process.join()
         try:
             shutil.rmtree("./testing_artifacts/dirwatchnode")
         except OSError as e:

@@ -1,5 +1,12 @@
 import time
 import os
+import sys
+from multiprocessing import Process, Value
+
+sys.path.append('..')
+sys.path.append('../anacostia_pipeline')
+from anacostia_pipeline.engine.node import BaseNode
+from anacostia_pipeline.engine.constants import Status
 
 
 def get_log_messages(log_path: str, log_level: str = "INFO"):
@@ -64,6 +71,12 @@ def get_time_delta(start_time: str, end_time: str):
     end_time = time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
     return time.mktime(end_time) - time.mktime(start_time)
 
+
+def run_node(node: BaseNode):
+    resume_flag = Value('i', int(Status.RUNNING)) 
+    process = Process(target=node.run, args=(resume_flag,))
+    process.start()
+    return process, resume_flag
 
 if __name__ == '__main__':
     times = get_time(log_path="./testing_artifacts/app.log", log_level="INFO")
