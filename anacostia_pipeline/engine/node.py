@@ -40,6 +40,8 @@ class BaseNode:
 
         for child in self.children:
             G.add_edge(child, self, signal_type=self.signal_type)
+        
+        self.setup()
     
     def __hash__(self) -> int:
         return hash(self.id)
@@ -176,12 +178,6 @@ class BaseNode:
                     self.triggered = True
 
     def run(self, run_flag: Value) -> None:
-        try:
-            self.setup()
-        except Exception as e:
-            print(f"{str(self)} setup failed")
-            return
-
         while True:
             try:
                 if run_flag.value == int(Status.PAUSED):

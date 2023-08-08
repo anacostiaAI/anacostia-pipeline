@@ -102,8 +102,6 @@ class FileWatchNode(ResourceNode, FileSystemEventHandler):
     def __init__(self, name: str, path: str) -> None:
         self.path = path
         super().__init__(name, "filewatch")
-        observer.schedule(event_handler=self, path=self.path, recursive=True)
-        observer.start()
 
         # the Observer class in watchdog uses a threading.RLock() to monitor the directory
         # this reentrant lock is not picklable, so we cannot use it in a multiprocessing environment
@@ -116,6 +114,8 @@ class FileWatchNode(ResourceNode, FileSystemEventHandler):
     
     def setup(self) -> None:
         print(f"Setting up node '{self.name}'")
+        observer.schedule(event_handler=self, path=self.path, recursive=True)
+        observer.start()
         print("setup complete")
     
     def teardown(self) -> None:
