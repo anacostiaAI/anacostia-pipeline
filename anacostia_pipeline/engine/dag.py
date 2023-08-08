@@ -14,6 +14,8 @@ if __name__ == "__main__":
 else:
     from engine.node import BaseNode, ResourceNode, ActionNode, G
 
+from constants import Status
+
 
 class DAG:
     def __init__(self, logger: Logger = None) -> None:
@@ -28,12 +30,17 @@ class DAG:
         for node in self.nodes:
             node.set_logger(logger)
 
+    def __new__(cls, *args, **kwargs):
+        # Singleton pattern to ensure only one DAG exists
+        if cls.__instance is None:
+            cls.__instance = super(DAG, cls).__new__(cls)
+            return cls.__instance
+        else:
+            raise Exception("DAG already exists")
+
     def start(self) -> None:
         # Create a multiprocessing value to control the loop execution
-        # 0 = paused
-        # 1 = running
-        # 2 = terminate
-        resume_flag = Value('i', 1) 
+        resume_flag = Value('i', int(Status.RUNNING)) 
 
         for node in self.nodes:
             process = Process(target=node.run, args=(resume_flag,))
@@ -47,7 +54,7 @@ class DAG:
             except KeyboardInterrupt:
                 
                 print("\nPausing DAG execution...")
-                resume_flag.value = 0
+                resume_flag.value = int(Status.PAUSED)
                 user_input = input("\nAre you sure you want to stop the pipeline? (yes/no) Press Enter to abort. ")
 
                 if user_input.lower() == "yes":
@@ -55,13 +62,13 @@ class DAG:
                     user_input = input("Enter 'hard' for a hard stop, enter 'soft' for a soft stop? Press Enter to abort. ")
 
                     if user_input.lower() == "hard":
-                        resume_flag.value = 2
+                        resume_flag.value = int(Status.STOPPING)
                         for process in self.processes:
                             process.join()
                         break
 
                     elif user_input == "soft":
-                        resume_flag.value = 2
+                        resume_flag.value = int(Status.STOPPING)
 
                         # tearing down nodes and waiting for nodes to finish executing
                         print("\nExiting... tearing down all nodes in DAG")
@@ -76,10 +83,10 @@ class DAG:
 
                     else:
                         print("Resuming the pipeline")
-                        resume_flag.value = 1
+                        resume_flag.value = int(Status.RUNNING)
                 else:
                     print("Resuming the pipeline")
-                    resume_flag.value = 1
+                    resume_flag.value = int(Status.RUNNING)
 
     def export_graph(self, file_path: str) -> None:
         graph = nx.to_dict_of_dicts(G)
@@ -143,5 +150,5 @@ if __name__ == "__main__":
     train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
 
     dag = DAG()
+    dag.export_graph("../../tests/testing_artifacts/graph.json")
     dag.start()
-    #dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")

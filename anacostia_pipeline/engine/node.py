@@ -110,7 +110,7 @@ class BaseNode:
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
-    def on_failure(self) -> None:
+    def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
@@ -141,7 +141,7 @@ class BaseNode:
         
         except Exception as e:
             self.log(f"Node '{self.name}' execution failed: {e}")
-            self.on_failure()
+            self.on_failure(e)
             return False
 
     def __reset_trigger(self) -> None:
@@ -194,12 +194,11 @@ class BaseNode:
 
         while True:
             try:
-                # if run_flag is 0, node is paused
-                if run_flag.value == 0:
+                if run_flag.value == int(Status.PAUSED):
                     time.sleep(0.5)
 
                 # if run_flag is 1, node is running
-                elif run_flag.value == 1:
+                elif run_flag.value == int(Status.RUNNING):
                     self.__set_auto_trigger()
 
                     if self.triggered is True:
@@ -211,12 +210,12 @@ class BaseNode:
                             self.__send_signal(Status.FAILURE)
                 
                 # if run_flag is 2, node is shutting down
-                elif run_flag.value == 2:
+                elif run_flag.value == int(Status.STOPPING):
                     print(f"ending {str(self)} child process")
                     break
 
             except Exception as e:
-                self.log(f"Node '{self.name}' execution failed: {e}")
+                self.on_failure(e)
             
             except KeyboardInterrupt:
                 time.sleep(0.2)
