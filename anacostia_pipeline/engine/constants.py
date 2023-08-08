@@ -7,7 +7,12 @@ class Status(Enum):
     WAITING = 3,
     SKIPPED = 4,
     ERROR = 5,
-    EXITED = 6
+    EXITED = 6,
+    # Node.run() has not been executed yet
+    OFF = 7,
+    PAUSING = 8,
+    PAUSED = 9
+    STOPPING = 10
 
     def __repr__(self) -> str:
         status_words = {
@@ -20,3 +25,9 @@ class Status(Enum):
             Status.EXITED: "EXITED"
         }
         return status_words[self]
+
+class ASTOperation(Enum):
+    NOT = 0
+    AND = 1
+    OR = 2
+    XOR = 3
