@@ -44,7 +44,7 @@ def get_removed_files(directory: str, prev_states:  Dict[str, List[str]]) -> Lis
 class DirWatchNode(ResourceNode, FileSystemEventHandler):
     def __init__(self, name: str, path: str):
         self.path = path
-        super().__init__(name)
+        super().__init__(name, "folderwatch")
         self.directory_state = get_file_states(self.path)
     
     def signal_message_template(self) -> Dict[str, List[str]]:
@@ -55,16 +55,16 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
         return signal
     
     def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "modified") -> List[str]:
-        #with self.get_resource_lock():
-        if difference == "added":
-            changed_files = get_new_files(self.path, prev_state)
-        elif difference == "modified":
-            changed_files = get_modified_files(self.path, prev_state)
-        elif difference == "removed":
-            changed_files = get_removed_files(self.path, prev_state)
-        
-        self.directory_state = get_file_states(self.path)
-        return changed_files
+        with self.get_resource_lock():
+            if difference == "added":
+                changed_files = get_new_files(self.path, prev_state)
+            elif difference == "modified":
+                changed_files = get_modified_files(self.path, prev_state)
+            elif difference == "removed":
+                changed_files = get_removed_files(self.path, prev_state)
+            
+            self.directory_state = get_file_states(self.path)
+            return changed_files
 
     def on_modified(self, event):
         if event.is_directory:
@@ -127,5 +127,5 @@ class FileWatchNode(ResourceNode, FileSystemEventHandler):
 
 
 if __name__ == "__main__":
-    folder1_node = FileWatchNode("folder1", "/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1")
+    folder1_node = DirWatchNode("folder1", "/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1")
     DAG().start()
