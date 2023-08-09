@@ -11,6 +11,10 @@ from engine.node import ResourceNode
 from engine.dag import DAG
 
 
+# the Observer class in watchdog uses a threading.RLock() to monitor the directory.
+# this reentrant lock is not picklable, so we cannot use it in a multiprocessing environment,
+# thus, we cannot create a new Observer instance for each DirWatchNode instance;
+# so we create a global observer object that can be used by all DirWatchNode instances
 observer = Observer()
 
 
@@ -96,34 +100,6 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
             self.logger.info(f"Node '{self.name}' teardown complete.")
         else:
             print(f"Node '{self.name}' teardown complete.")
-
-
-class FileWatchNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str) -> None:
-        self.path = path
-        super().__init__(name, "filewatch")
-
-        # the Observer class in watchdog uses a threading.RLock() to monitor the directory
-        # this reentrant lock is not picklable, so we cannot use it in a multiprocessing environment
-        #self.observer = Observer()
-
-    def on_modified(self, event):
-        if event.is_directory:
-            print(f"Detected change: {event.event_type} {event.src_path}")
-            self.trigger()
-    
-    def setup(self) -> None:
-        print(f"Setting up node '{self.name}'")
-        observer.schedule(event_handler=self, path=self.path, recursive=True)
-        observer.start()
-        print("setup complete")
-    
-    def teardown(self) -> None:
-        observer.stop()
-        observer.join()
-        print("tearing down DirWatchNode node")
-        time.sleep(1)
-        print("teardown complete")
 
 
 if __name__ == "__main__":
