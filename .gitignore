@@ -1,3 +1,5 @@
 __pycache__/
 virtualenv/
 tests/testing_artifacts/
+.vscode/
+anacostia_pipeline/engine/subexample.py

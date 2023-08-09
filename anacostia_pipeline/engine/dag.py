@@ -4,7 +4,7 @@ import networkx as nx
 import json
 import sys
 import os
-from multiprocessing import Process, Value
+from threading import Thread
 from logging import Logger
 
 sys.path.append(os.path.abspath('..'))
@@ -23,22 +23,37 @@ class DAG:
             print(list(nx.find_cycle(G)))
             raise Exception("Graph is not a DAG")
         
-        self.node_pids = []
-        self.processes = []
+        self.threads = []
 
         self.nodes = list(nx.topological_sort(G))
         for node in self.nodes:
             node.set_logger(logger)
 
-    def start(self) -> None:
-        # Create a multiprocessing value to control the loop execution
-        resume_flag = Value('i', int(Status.RUNNING)) 
+    def terminate_nodes(self) -> None:
+        for node in reversed(self.nodes):
+            node.set_status(Status.STOPPING)
 
+        for thread in self.threads:
+            thread.join() 
+    
+    def pause_nodes(self) -> None:
+        # pausing node need to be done in reverse order so that the parent nodes are paused before the child nodes
+        # this is because the parent nodes will continue to listen for signals from the child nodes, 
+        # and if the child nodes are paused first, then the parent nodes will never receive the signals,
+        # and the parent nodes will never be paused
+        for node in reversed(self.nodes):
+            node.set_status(Status.PAUSED)
+
+    def run_nodes(self) -> None:
         for node in self.nodes:
-            process = Process(target=node.run, args=(resume_flag,))
-            process.start()
-            self.node_pids.append(process.pid)
-            self.processes.append(process)
+            node.set_status(Status.RUNNING)
+
+    def start(self) -> None:
+        self.run_nodes()
+        for node in self.nodes:
+            thread = Thread(target=node.run)
+            thread.start()
+            self.threads.append(thread)
 
         while True:
             try:
@@ -46,7 +61,7 @@ class DAG:
             except KeyboardInterrupt:
                 
                 print("\nPausing DAG execution...")
-                resume_flag.value = int(Status.PAUSED)
+                self.pause_nodes()
                 user_input = input("\nAre you sure you want to stop the pipeline? (yes/no) Press Enter to abort. ")
 
                 if user_input.lower() == "yes":
@@ -54,31 +69,26 @@ class DAG:
                     user_input = input("Enter 'hard' for a hard stop, enter 'soft' for a soft stop? Press Enter to abort. ")
 
                     if user_input.lower() == "hard":
-                        resume_flag.value = int(Status.STOPPING)
-                        for process in self.processes:
-                            process.join()
+                        self.terminate_nodes()
                         break
 
                     elif user_input == "soft":
-                        resume_flag.value = int(Status.STOPPING)
-
                         # tearing down nodes and waiting for nodes to finish executing
                         print("\nExiting... tearing down all nodes in DAG")
-                        for process in self.processes:
-                            process.join()
-
+                        
+                        self.terminate_nodes()
                         for node in reversed(self.nodes):
                             node.teardown()
-                        print("Dag teardown complete")
-                            
+                        
+                        print("Dag teardown complete")                            
                         break 
 
                     else:
                         print("Resuming the pipeline")
-                        resume_flag.value = int(Status.RUNNING)
+                        self.run_nodes()
                 else:
                     print("Resuming the pipeline")
-                    resume_flag.value = int(Status.RUNNING)
+                    self.run_nodes()
 
     def export_graph(self, file_path: str) -> None:
         graph = nx.to_dict_of_dicts(G)

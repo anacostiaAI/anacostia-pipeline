@@ -45,6 +45,15 @@ class Status(Enum):
             Status.STOPPING: 10
         }
         return status_ints[self]
+    
+    def __eq__(self, other: 'Status') -> bool:
+        if other.value == self.value:
+            return True
+        else:
+            return False
+    
+    def __hash__(self) -> int:
+        return super().__hash__()
 
 class ASTOperation(Enum):
     NOT = 0

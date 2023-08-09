@@ -32,6 +32,7 @@ class BaseNode:
         self.id = uuid.uuid4()
         self.queue = Queue()
         self.logger = None
+        self.status = Status.WAITING
 
         self.triggered = False
         self.signals_received = {child.get_name():Status.WAITING for child in self.children}
@@ -62,6 +63,12 @@ class BaseNode:
         # to be called by dag.py to set logger for all nodes
         self.logger = logger
     
+    def get_status(self) -> Status:
+        return self.status
+    
+    def set_status(self, status: Status) -> None:
+        self.status = status
+
     def log(self, message: str) -> None:
         if self.logger is not None:
             self.logger.info(message)
@@ -177,14 +184,13 @@ class BaseNode:
                 if self.poll_children() is True:
                     self.triggered = True
 
-    def run(self, run_flag: Value) -> None:
+    def run(self) -> None:
         while True:
             try:
-                if run_flag.value == int(Status.PAUSED):
+                if self.get_status() == Status.PAUSED:
                     time.sleep(0.5)
 
-                # if run_flag is 1, node is running
-                elif run_flag.value == int(Status.RUNNING):
+                elif self.get_status() == Status.RUNNING:
                     self.__set_auto_trigger()
 
                     if self.triggered is True:
@@ -195,13 +201,14 @@ class BaseNode:
                             self.__reset_trigger()
                             self.__send_signal(Status.FAILURE)
                 
-                # if run_flag is 2, node is shutting down
-                elif run_flag.value == int(Status.STOPPING):
+                elif self.get_status() == Status.STOPPING:
                     print(f"ending {str(self)} child process")
                     break
 
             except Exception as e:
                 self.on_failure(e)
+                print(f"Node '{self.name}' execution failed: {e}")
+                break
             
             except KeyboardInterrupt:
                 time.sleep(0.2)
@@ -237,7 +244,3 @@ class AndNode(BaseNode):
 class ActionNode(BaseNode):
     def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = []) -> None:
         super().__init__(name, signal_type, listen_to, auto_trigger=True)
-
-
-if __name__ == "__main__":
-    print("hello")
