@@ -11,11 +11,10 @@ from engine.node import ResourceNode
 from engine.dag import DAG
 
 
-# the Observer class in watchdog uses a threading.RLock() to monitor the directory.
+# Note: the Observer class in watchdog uses a threading.RLock() to monitor the directory.
 # this reentrant lock is not picklable, so we cannot use it in a multiprocessing environment,
 # thus, we cannot create a new Observer instance for each DirWatchNode instance;
-# so we create a global observer object that can be used by all DirWatchNode instances
-observer = Observer()
+# so we have to create a global observer object that can be used by all DirWatchNode instances
 
 
 def get_file_states(directory: str):
@@ -48,6 +47,7 @@ def get_removed_files(directory: str, prev_states:  Dict[str, List[str]]) -> Lis
 class DirWatchNode(ResourceNode, FileSystemEventHandler):
     def __init__(self, name: str, path: str):
         self.path = path
+        self.observer = Observer()
         super().__init__(name, "folderwatch")
         self.directory_state = get_file_states(self.path)
     
@@ -85,8 +85,8 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
         else:
             print(f"Setting up node '{self.name}'")
         
-        observer.schedule(event_handler=self, path=self.path, recursive=True)
-        observer.start()
+        self.observer.schedule(event_handler=self, path=self.path, recursive=True)
+        self.observer.start()
 
         if self.logger is not None:
             self.logger.info(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
@@ -94,8 +94,8 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
             print(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
     
     def teardown(self) -> None:
-        observer.stop()
-        observer.join()
+        self.observer.stop()
+        self.observer.join()
         if self.logger is not None:
             self.logger.info(f"Node '{self.name}' teardown complete.")
         else:
