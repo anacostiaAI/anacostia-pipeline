@@ -1,7 +1,6 @@
-import time
 import sys
 import os
-from typing import Any, Dict, List
+from typing import Dict, List
 sys.path.append("../../anacostia_pipeline")
 
 from watchdog.observers import Observer
@@ -53,23 +52,15 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
     
     def signal_message_template(self) -> Dict[str, List[str]]:
         signal = super().signal_message_template()
-        signal["added_files"] = get_new_files(self.path, self.directory_state)
-        signal["modified_files"] = get_modified_files(self.path, self.directory_state)
-        signal["removed_files"] = get_removed_files(self.path, self.directory_state)
+
+        with self.get_resource_lock():
+            signal["added_files"] = get_new_files(self.path, self.directory_state)
+            signal["modified_files"] = get_modified_files(self.path, self.directory_state)
+            signal["removed_files"] = get_removed_files(self.path, self.directory_state)
+            self.directory_state = get_file_states(self.path)
+
         return signal
     
-    def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "modified") -> List[str]:
-        with self.get_resource_lock():
-            if difference == "added":
-                changed_files = get_new_files(self.path, prev_state)
-            elif difference == "modified":
-                changed_files = get_modified_files(self.path, prev_state)
-            elif difference == "removed":
-                changed_files = get_removed_files(self.path, prev_state)
-            
-            self.directory_state = get_file_states(self.path)
-            return changed_files
-
     def on_modified(self, event):
         if event.is_directory:
             if self.logger is not None:

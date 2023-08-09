@@ -1,4 +1,5 @@
-from multiprocessing import Queue, Lock, Value
+from threading import Lock
+from queue import Queue
 from typing import List, Any, Dict
 import time
 import networkx as nx
