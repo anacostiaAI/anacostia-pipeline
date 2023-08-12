@@ -148,8 +148,9 @@ class BaseNode(Thread):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
     def __repr__(self) -> str:
-        return f"'Node(name: {self.name}, uuid: {str(self.id)})'"
+        return f"'Node(name: {self.name}, status: {str(self.status)})'"
     
     def __and__(self, other) -> SignalAST:
         '''Overwrites the & bitwise operator'''
@@ -256,14 +257,28 @@ class BaseNode(Thread):
         self._status = value
         self._status_lock.release()
 
+    def pause(self):
+        self.status = Status.PAUSED
+
+    def resume(self):
+        self.status = Status.RUNNING
+
+    def stop(self):
+        self.status = Status.STOPPING
+
+    def force_stop(self):
+        # TODO
+        pass
+
+
     def run(self) -> None:
         self.status = Status.INIT
-        # try:
-        #     self.setup()
-        # except Exception as e:
-        #     print(f"{str(self)} setup failed: {e}")
-        #     self.status = Status.ERROR
-        #     return
+        try:
+            self.setup()
+        except Exception as e:
+            print(f"{str(self)} setup failed: {e}")
+            self.status = Status.ERROR
+            return
 
         self.status = Status.RUNNING
 
@@ -285,6 +300,7 @@ class BaseNode(Thread):
                 
                 # Run the action function
                 try:
+                    self.triggered = True
                     ret = self.execute()
                     if ret:
                         self.on_success()
@@ -319,6 +335,8 @@ class BaseNode(Thread):
             if self.status == Status.EXITED:
                 break
 
+            time.sleep(.1)
+
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''
     def execute(self):
@@ -338,5 +356,3 @@ class ActionNode(BaseNode):
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type)
-
-

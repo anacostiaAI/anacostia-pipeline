@@ -1,10 +1,9 @@
-import time
 from typing import List, Iterable
-
+import time
 import json
 import sys
 import os
-from multiprocessing import Process, Value
+import pkg_resources
 from logging import Logger
 
 import networkx as nx
@@ -13,7 +12,7 @@ from rich.prompt import Prompt, Confirm
 
 from .node import BaseNode, ResourceNode, ActionNode
 from .constants import Status
-
+# import IPython
 class InvalidNodeDependencyError(Exception):
     pass
 
@@ -28,12 +27,15 @@ class Pipeline:
     def __init__(self, nodes:Iterable[BaseNode], logger: Logger = None) -> None:
         self.console = Console()
         self.graph = nx.DiGraph()
+        
+        # Add nodes into graph 
         for n in nodes:
             self.graph.add_node(n)
             for dependent_n in n.dependent_nodes:
                 self.graph.add_node(dependent_n)
                 self.graph.add_edge(n, dependent_n)
 
+        # self.graph must be a dag
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
         
@@ -41,8 +43,13 @@ class Pipeline:
         for node in self.nodes:
             node.set_logger(logger)
         
+    def help_cmd(self):
+        pass
 
     def launch_nodes(self):
+        '''
+        Lanches all the registered nodes
+        '''
         running_nodes = set()
         with self.console.status("Initializing Nodes...") as status:
             for node in self.nodes:
@@ -54,73 +61,40 @@ class Pipeline:
                         self.console.log(f"Node {node.name} Started!")
                         running_nodes.add(node)
 
-    def help_cmd(self):
+    def pipe_cmds(self):
+        pass
 
+    def node_cmds(self):
+        pass
 
     def start(self) -> None:
         self.launch_nodes()
-        self.console.print("")
+        # self.console.print("")
+        # IPython.embed()
         while True:
             try:
-                cmd = self.console.input("> ")
-                
-                match cmd:
-                    case "h":
-                        help_cmd()
-                    case "pause":
-                        pass
-                    case "stop":
-                        pass
+                cmd_string = self.console.input("> ")
+                cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
+                self.console.print(cmd)
 
-                    # Force Stop
-                    case "fstop":
-                        pass
+                match cmd:
+                    case "help":
+                        self.help_text()
+                    case "version":
+                        version = pkg_resources.get_distribution("anacostia").version
+                        self.console.print(f"Version {version}")
+                    case "pipe":
+                        self.pipe_cmds()
+                    case "node":
+                        self.node_cmds()
+
             except KeyboardInterrupt:
                 self.console.print("Ctrl+C Detected")
-                answer = Prompt("Are you sure you want to shutdown the pipeline?")
-                if answer:
+                answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
+                if answer == 'y':
                     # TODO graceful shutdown
-                    pass
+                    break
                 
-
-        # while True:
-        #     try:
-        #         time.sleep(1)
-        #     except KeyboardInterrupt:
-        #         print("\nPausing DAG execution...")
-        #         resume_flag.value = 0
-        #         user_input = input("\nAre you sure you want to stop the pipeline? (yes/no) Press Enter to abort. ")
-
-        #         if user_input.lower() == "yes":
-
-        #             user_input = input("Enter 'hard' for a hard stop, enter 'soft' for a soft stop? Press Enter to abort. ")
-
-        #             if user_input.lower() == "hard":
-        #                 resume_flag.value = 2
-        #                 for process in self.processes:
-        #                     process.join()
-        #                 break
-
-        #             elif user_input == "soft":
-        #                 resume_flag.value = 2
-
-        #                 # tearing down nodes and waiting for nodes to finish executing
-        #                 print("\nExiting... tearing down all nodes in DAG")
-        #                 for process in self.processes:
-        #                     process.join()
-
-        #                 for node in reversed(self.nodes):
-        #                     node.teardown()
-        #                 print("Dag teardown complete")
-                            
-        #                 break 
-
-        #             else:
-        #                 print("Resuming the pipeline")
-        #                 resume_flag.value = 1
-        #         else:
-        #             print("Resuming the pipeline")
-        #             resume_flag.value = 1
 
     def export_graph(self, file_path: str) -> None:
         graph = nx.to_dict_of_dicts(G)
