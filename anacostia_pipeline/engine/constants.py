@@ -23,9 +23,25 @@ class Status(Enum):
             Status.WAITING: "WAITING",
             Status.SKIPPED: "SKIPPED",
             Status.ERROR: "ERROR",
-            Status.EXITED: "EXITED"
+            Status.EXITED: "EXITED",
+            Status.OFF: "OFF",
+            Status.PAUSING: "PAUSING",
+            Status.PAUSED: "PAUSED",
+            Status.STOPPING: "STOPPING"
         }
         return status_words[self]
+    
+    def __int__(self) -> int:
+        return self.value
+    
+    def __eq__(self, other: 'Status') -> bool:
+        if other.value == self.value:
+            return True
+        else:
+            return False
+    
+    def __hash__(self) -> int:
+        return super().__hash__()
 
 class ASTOperation(Enum):
     NOT = 0

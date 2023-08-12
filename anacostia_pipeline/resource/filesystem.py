@@ -1,14 +1,19 @@
-import time
 import sys
 import os
-from logging import Logger
-from typing import Any, Dict, List
+from typing import Dict, List
 sys.path.append("../../anacostia_pipeline")
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from engine.node import ResourceNode
+from engine.dag import DAG
+
+
+# Note: the Observer class in watchdog uses a threading.RLock() to monitor the directory.
+# this reentrant lock is not picklable, so we cannot use it in a multiprocessing environment,
+# thus, we cannot create a new Observer instance for each DirWatchNode instance;
+# so we have to create a global observer object that can be used by all DirWatchNode instances
 
 
 def get_file_states(directory: str):
@@ -39,40 +44,43 @@ def get_removed_files(directory: str, prev_states:  Dict[str, List[str]]) -> Lis
 
 
 class DirWatchNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str, logger: Logger=None):
+    def __init__(self, name: str, path: str):
         self.path = path
-        super().__init__(name, logger)
         self.observer = Observer()
-
+        super().__init__(name, "folderwatch")
         self.directory_state = get_file_states(self.path)
     
     def signal_message_template(self) -> Dict[str, List[str]]:
         signal = super().signal_message_template()
+
+        #with self.get_resource_lock():
         signal["added_files"] = get_new_files(self.path, self.directory_state)
         signal["modified_files"] = get_modified_files(self.path, self.directory_state)
         signal["removed_files"] = get_removed_files(self.path, self.directory_state)
+        #self.directory_state = get_file_states(self.path)
+
         return signal
     
-    def get_changed_files(self, prev_state: Dict[str, List[str]], difference: str = "modified") -> List[str]:
-        if difference == "added":
-            changed_files = get_new_files(self.path, prev_state)
-        elif difference == "modified":
-            changed_files = get_modified_files(self.path, prev_state)
-        elif difference == "removed":
-            changed_files = get_removed_files(self.path, prev_state)
-        
-        self.directory_state = get_file_states(self.path)
-        return changed_files
-
     def on_modified(self, event):
-        if event.is_directory:
-            if self.logger is not None:
-                self.logger.info(f"Detected change: {event.event_type} {event.src_path}")
-            else:
-                print(f"Detected change: {event.event_type} {event.src_path}")
+        with self.get_resource_lock():
+            #modified_files = get_modified_files(self.path, self.directory_state)
+            directory_state = get_file_states(self.path) 
+            signal = self.signal_message_template()
+            modified_files = signal["modified_files"]
+            
+            if event.is_directory:
+                if self.logger is not None:
+                    for file_path in modified_files:
+                        self.logger.info(f"Detected change: {event.event_type} {file_path}")
+                else:
+                    for file_path in modified_files:
+                        print(f"Detected change: {event.event_type} {event.src_path}")
 
-            self.trigger()
+            if len(modified_files) > 0:
+                self.trigger()
     
+        self.directory_state = directory_state
+
     def setup(self) -> None:
         if self.logger is not None:
             self.logger.info(f"Setting up node '{self.name}'")
@@ -98,6 +106,4 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
 
 if __name__ == "__main__":
     folder1_node = DirWatchNode("folder1", "/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1")
-    folder1_node.start()
-
-    time.sleep(20)
+    DAG().start()

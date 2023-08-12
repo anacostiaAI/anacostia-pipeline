@@ -116,7 +116,7 @@ class BaseNode(Thread):
         super().__init__()
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
-        self.auto_trigger = auto_trigger # TODO what is this for exactly?
+        self.auto_trigger = auto_trigger
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
@@ -178,6 +178,12 @@ class BaseNode(Thread):
     def set_logger(self, logger: Logger) -> None:
         self.logger = logger
     
+    def get_status(self) -> Status:
+        return self.status
+    
+    def set_status(self, status: Status) -> None:
+        self.status = status
+
     def log(self, message: str) -> None:
         if self.logger is not None:
             self.logger.info(message)
@@ -228,7 +234,7 @@ class BaseNode(Thread):
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
-    def on_failure(self, e:Exception=None) -> None:
+    def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
@@ -249,6 +255,7 @@ class BaseNode(Thread):
         pass
 
     def reset_trigger(self):
+        # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
         self.triggered = False
 
     @property
@@ -325,7 +332,8 @@ class BaseNode(Thread):
                     self.post_execution()
                     self.send_signals(Status.FAILURE)
 
-                self.reset_trigger()
+                # Commented out until other parts of the project are built out
+                # self.reset_trigger()
 
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action

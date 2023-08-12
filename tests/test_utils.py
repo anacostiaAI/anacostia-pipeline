@@ -1,5 +1,12 @@
 import time
 import os
+import sys
+from threading import Thread
+
+sys.path.append('..')
+sys.path.append('../anacostia_pipeline')
+from anacostia_pipeline.engine.node import BaseNode
+from anacostia_pipeline.engine.constants import Status
 
 
 def get_log_messages(log_path: str, log_level: str = "INFO"):
@@ -63,6 +70,19 @@ def get_time_delta(start_time: str, end_time: str):
     start_time = time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
     end_time = time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
     return time.mktime(end_time) - time.mktime(start_time)
+
+
+def run_node(node: BaseNode):
+    node.set_status(Status.RUNNING)
+    thread = Thread(target=node.run)
+    thread.start()
+    return thread
+
+
+def stop_node(node: BaseNode, thread: Thread):
+    node.set_status(Status.STOPPING)
+    thread.join()
+    node.teardown()
 
 
 if __name__ == '__main__':

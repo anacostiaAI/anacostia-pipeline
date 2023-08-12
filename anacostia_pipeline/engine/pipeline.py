@@ -16,6 +16,13 @@ from .constants import Status
 class InvalidNodeDependencyError(Exception):
     pass
 
+# TODO
+# Global Node Registry
+# knows all nodes
+# knowns which nodes are part of which pipeline
+# Pipeline.start updates the registry denoting which nodes are running on THIS machine
+# any access to nodes that arent marked running are assumed to be on other machines
+
 class Pipeline:
     '''
     Pipeline is a class that is in charge of:
