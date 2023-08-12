@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from threading import Thread, Lock
 from queue import Queue, Empty
-from typing import List, Any, Dict, Optional, Tuple, Callable, Set
+from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce
 import time
 import networkx as nx
