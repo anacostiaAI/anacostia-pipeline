@@ -4,11 +4,13 @@ import sys
 import os
 import shutil
 import time
+
+# TODO remove
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
 
 from test_utils import get_log_messages
-from anacostia_pipeline.engine.node import BaseNode, AndNode
+from anacostia_pipeline.engine.node import BaseNode, AndNode, TrueNode, FalseNode
 from anacostia_pipeline.engine.constants import Status
 
 if os.path.exists("./testing_artifacts") is False:
@@ -57,6 +59,23 @@ class NodeTests(unittest.TestCase):
         
         node.clear_queue(queue)
         self.assertTrue(queue.empty())
+
+class NodeASTOperationTests(unittest.TestCase):
+    def __init__(self, method_name:str = "ast_test"):
+        super().__init__(method_name)
+
+    def test_not(self):
+        t = TrueNode()
+        
+
+    def test_and(self):
+        pass
+
+    def test_and_multiple(self):
+        pass
+
+    def test_overloaded_operators(self):
+        pass
 
 if __name__ == "__main__":
    unittest.main()

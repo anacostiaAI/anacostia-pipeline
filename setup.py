@@ -11,5 +11,6 @@ setup(
         "networkx==3.1",
         "watchdog==3.0.0",
         "pydantic",
+        "rich"
     ],
 )
