@@ -1,7 +1,7 @@
 import time
 import os
 import sys
-from multiprocessing import Process, Value
+from threading import Thread
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -73,10 +73,17 @@ def get_time_delta(start_time: str, end_time: str):
 
 
 def run_node(node: BaseNode):
-    resume_flag = Value('i', int(Status.RUNNING)) 
-    process = Process(target=node.run, args=(resume_flag,))
-    process.start()
-    return process, resume_flag
+    node.set_status(Status.RUNNING)
+    thread = Thread(target=node.run)
+    thread.start()
+    return thread
+
+
+def stop_node(node: BaseNode, thread: Thread):
+    node.set_status(Status.STOPPING)
+    thread.join()
+    node.teardown()
+
 
 if __name__ == '__main__':
     times = get_time(log_path="./testing_artifacts/app.log", log_level="INFO")

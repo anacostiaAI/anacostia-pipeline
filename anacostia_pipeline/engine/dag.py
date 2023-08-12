@@ -28,6 +28,9 @@ class DAG:
         self.nodes = list(nx.topological_sort(G))
         for node in self.nodes:
             node.set_logger(logger)
+        
+        for node in self.nodes:
+            node.setup()
 
     def terminate_nodes(self) -> None:
         for node in reversed(self.nodes):

@@ -43,8 +43,6 @@ class BaseNode:
         for child in self.children:
             G.add_edge(child, self, signal_type=self.signal_type)
         
-        self.setup()
-    
     def __hash__(self) -> int:
         return hash(self.id)
 
@@ -127,9 +125,9 @@ class BaseNode:
             self.triggered = True
 
     def __send_signal(self, status: Status) -> None:
-        self.log(f"Sending signal from node '{self.name}'")
         signal = self.signal_message_template()
         signal["status"] = status
+        self.log(f"Sending signal from node '{self.name}': {signal}")
         self.queue.put(signal)
     
     def __execution(self) -> bool:

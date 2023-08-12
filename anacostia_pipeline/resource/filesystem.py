@@ -53,23 +53,34 @@ class DirWatchNode(ResourceNode, FileSystemEventHandler):
     def signal_message_template(self) -> Dict[str, List[str]]:
         signal = super().signal_message_template()
 
-        with self.get_resource_lock():
-            signal["added_files"] = get_new_files(self.path, self.directory_state)
-            signal["modified_files"] = get_modified_files(self.path, self.directory_state)
-            signal["removed_files"] = get_removed_files(self.path, self.directory_state)
-            self.directory_state = get_file_states(self.path)
+        #with self.get_resource_lock():
+        signal["added_files"] = get_new_files(self.path, self.directory_state)
+        signal["modified_files"] = get_modified_files(self.path, self.directory_state)
+        signal["removed_files"] = get_removed_files(self.path, self.directory_state)
+        #self.directory_state = get_file_states(self.path)
 
         return signal
     
     def on_modified(self, event):
-        if event.is_directory:
-            if self.logger is not None:
-                self.logger.info(f"Detected change: {event.event_type} {event.src_path}")
-            else:
-                print(f"Detected change: {event.event_type} {event.src_path}")
+        with self.get_resource_lock():
+            #modified_files = get_modified_files(self.path, self.directory_state)
+            directory_state = get_file_states(self.path) 
+            signal = self.signal_message_template()
+            modified_files = signal["modified_files"]
+            
+            if event.is_directory:
+                if self.logger is not None:
+                    for file_path in modified_files:
+                        self.logger.info(f"Detected change: {event.event_type} {file_path}")
+                else:
+                    for file_path in modified_files:
+                        print(f"Detected change: {event.event_type} {event.src_path}")
 
-            self.trigger()
+            if len(modified_files) > 0:
+                self.trigger()
     
+        self.directory_state = directory_state
+
     def setup(self) -> None:
         if self.logger is not None:
             self.logger.info(f"Setting up node '{self.name}'")
