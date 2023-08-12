@@ -91,6 +91,8 @@ def XOr(*args:Union[SignalAST, BaseNode]):
     )
 
 class Message(BaseModel):
+    # TODO allow dynamic key-values
+    # https://docs.pydantic.dev/latest/usage/models/#dynamic-model-creation
     sender: str
     signal_type:str
     timestamp: datetime
@@ -101,14 +103,14 @@ class BaseNode(Thread):
         name: str, 
         signal_type: str = "DEFAULT_SIGNAL",
         listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
-        auto_trigger: bool = False,
+        auto_trigger: bool = True,
 
     ) -> None:
         '''
         :param name: a name given to the node
         :param signal_type: ???
         :param listen_to: The list of nodes or boolean expression of nodes (SignalAST) that this node requires signals of to trigger. Items in the list will be boolean AND'd together
-        :param auto_trigger: ???
+        :param auto_trigger: If False, then the node requires another object to trigger 
         '''
 
         super().__init__()
@@ -132,7 +134,14 @@ class BaseNode(Thread):
                 self.dependent_nodes |= item.nodes()
             else:
                 self.dependent_nodes |= {item}
-        
+
+        # Nodes to signal
+        self.next_nodes = list()
+
+        # set next_nodes for each dependent node with self
+        for node in self.dependent_nodes:
+            node.next_nodes.append(self)
+
         # Queue of incoming signals from the dependent_nodes
         self.incoming_signals = Queue()
 
@@ -140,8 +149,6 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
 
-        # Nodes to signal
-        self.next_nodes = list()
         
         self.wait_time = 3
         self.logger = None
@@ -284,6 +291,9 @@ class BaseNode(Thread):
 
         while True:
             if self.status == Status.RUNNING:               
+
+                # TODO conditiona on auto-trigger
+
                 # If pre-check fails, then just wait and try again
                 if not self.pre_check():
                     self.status = Status.WAITING
@@ -342,10 +352,16 @@ class TrueNode(BaseNode):
     def execute(self):
         return True
 
+    def setup(self):
+        time.sleep(2)
+
 class FalseNode(BaseNode):
     '''A Node that does nothing and always returns a failure'''
     def execute(self):
         return False
+
+    def setup(self):
+        time.sleep(1)
 
 
 class ActionNode(BaseNode):

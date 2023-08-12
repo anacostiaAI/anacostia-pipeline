@@ -69,7 +69,7 @@ class Pipeline:
 
     def start(self) -> None:
         self.launch_nodes()
-        # self.console.print("")
+        self.console.print("All Nodes Launched")
         # IPython.embed()
         while True:
             try:
