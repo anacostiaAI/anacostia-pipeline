@@ -13,7 +13,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from .constants import Status, ASTOperation
+from constants import Status, ASTOperation
 
 
 class SignalAST:
@@ -266,7 +266,7 @@ class BaseNode(Thread):
         return s
 
     @status.setter
-    def status(self, value:Status):
+    def status(self, value: Status):
         self._status_lock.acquire()
         self._status = value
         self._status_lock.release()

@@ -10,8 +10,8 @@ import networkx as nx
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
-from .node import BaseNode, ResourceNode, ActionNode
-from .constants import Status
+from node import BaseNode, ResourceNode, ActionNode
+from constants import Status
 # import IPython
 class InvalidNodeDependencyError(Exception):
     pass
@@ -31,7 +31,7 @@ class Pipeline:
     3. interfacing with a set of nodes (stop, start, pause, add, remove, etc..) 
     '''
 
-    def __init__(self, nodes:Iterable[BaseNode], logger: Logger = None) -> None:
+    def __init__(self, nodes: Iterable[BaseNode], logger: Logger = None) -> None:
         self.console = Console()
         self.graph = nx.DiGraph()
         
@@ -46,7 +46,7 @@ class Pipeline:
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
         
-        self.nodes = set(nx.topological_sort(self.graph))
+        self.nodes = list(nx.topological_sort(self.graph))      # switched to list to preserve topological order of nodes
         for node in self.nodes:
             node.set_logger(logger)
         
@@ -60,6 +60,7 @@ class Pipeline:
         running_nodes = set()
         with self.console.status("Initializing Nodes...") as status:
             for node in self.nodes:
+                # Note: since node is a subclass of Thread, calling start() will run the run() method
                 node.start()
             
             while len(running_nodes) != len(self.nodes):
@@ -100,11 +101,20 @@ class Pipeline:
                 answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
                 if answer == 'y':
                     # TODO graceful shutdown
+                    print("Shutting down pipeline")
+                    for node in reversed(self.nodes):
+                        node.stop()
+
+                    for node in reversed(self.nodes):
+                        node.join()
+                    
+                    for node in reversed(self.nodes):
+                        node.teardown()
+                    print("Pipeline shutdown complete")
                     break
                 
-
     def export_graph(self, file_path: str) -> None:
-        graph = nx.to_dict_of_dicts(G)
+        graph = nx.to_dict_of_dicts(self.graph)
         graph = str(graph).replace("'", '"')
         graph = json.loads(graph)
 
@@ -164,6 +174,8 @@ if __name__ == "__main__":
     model_registry_node = ModelRegistryWatchNode("model registry")
     train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
 
-    dag = DAG()
+    dag = Pipeline([feature_store_node, model_registry_node, train_node])
     dag.start()
+    #dag = DAG()
+    #dag.start()
     #dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
