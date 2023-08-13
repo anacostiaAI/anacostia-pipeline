@@ -148,13 +148,15 @@ class Pipeline:
                         node.resume()
                 
     def export_graph(self, file_path: str) -> None:
-        graph = nx.to_dict_of_dicts(self.graph)
-        graph = str(graph).replace("'", '"')
-        graph = json.loads(graph)
+        if file_path.endswith(".json"):
+            graph = nx.to_dict_of_dicts(self.graph)
+            graph = str(graph).replace("'", '"')
+            graph = json.loads(graph)
 
-        with open(file_path, 'w') as json_file:
-            json.dump(graph, json_file, indent=4)
-
+            with open(file_path, 'w') as json_file:
+                json.dump(graph, json_file, indent=4)
+        else:
+            raise ValueError("file_path must end with .json")
 
 class FeatureStoreWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
@@ -209,7 +211,5 @@ if __name__ == "__main__":
     train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
 
     dag = Pipeline([feature_store_node, model_registry_node, train_node])
+    dag.export_graph("../../tests/testing_artifacts/graph.json")
     dag.start()
-    #dag = DAG()
-    #dag.start()
-    #dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
