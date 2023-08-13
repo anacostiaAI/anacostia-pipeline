@@ -75,6 +75,21 @@ class Pipeline:
     def node_cmds(self):
         pass
 
+    def pause_nodes(self) -> None:
+        # pausing node need to be done in reverse order so that the parent nodes are paused before the child nodes
+        # this is because the parent nodes will continue to listen for signals from the child nodes, 
+        # and if the child nodes are paused first, then the parent nodes will never receive the signals,
+        # and the parent nodes will never be paused
+        for node in reversed(self.nodes):
+            node.pause()
+
+    def terminate_nodes(self) -> None:
+        for node in self.nodes:
+            node.stop()
+        
+        for node in self.nodes:
+            node.join()
+
     def start(self) -> None:
         self.launch_nodes()
         self.console.print("All Nodes Launched")
@@ -98,20 +113,39 @@ class Pipeline:
 
             except KeyboardInterrupt:
                 self.console.print("Ctrl+C Detected")
+                self.pause_nodes()
                 answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
-                if answer == 'y':
-                    # TODO graceful shutdown
-                    print("Shutting down pipeline")
-                    for node in reversed(self.nodes):
-                        node.stop()
 
-                    for node in reversed(self.nodes):
-                        node.join()
+                if answer == 'y':
+
+                    answer = Prompt.ask(
+                        "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
+                        console=self.console, default='abort',
+                        choices=['hard', 'soft', 'abort']
+                    )
                     
-                    for node in reversed(self.nodes):
-                        node.teardown()
-                    print("Pipeline shutdown complete")
-                    break
+                    if answer == 'hard':
+                        self.console.print("Hard Shutdown")
+                        self.terminate_nodes()
+                        break
+
+                    elif answer == 'soft':
+                        print("Shutting down pipeline")
+                        self.terminate_nodes() 
+                        for node in reversed(self.nodes):
+                            node.teardown()
+                        print("Pipeline shutdown complete")
+                        break
+
+                    else:
+                        print("Aborting shutdown, resuming pipeline")
+                        for node in self.nodes:
+                            node.resume()
+                
+                else:
+                    print("Aborting shutdown, resuming pipeline")
+                    for node in self.nodes:
+                        node.resume()
                 
     def export_graph(self, file_path: str) -> None:
         graph = nx.to_dict_of_dicts(self.graph)
