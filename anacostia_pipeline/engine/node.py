@@ -5,15 +5,15 @@ from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce
 import time
-import networkx as nx
 from logging import Logger
-import uuid
-from uuid import UUID
 from datetime import datetime
 
 from pydantic import BaseModel
 
-from constants import Status, ASTOperation
+if __name__ == "__main__":
+    from constants import Status, ASTOperation
+else:
+    from engine.constants import Status, ASTOperation
 
 
 class SignalAST:
@@ -66,25 +66,25 @@ class SignalAST:
             else:
                 yield param
 
-def Not(n:Union[SignalAST, BaseNode]):
+def Not(n: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.NOT,
         parameters = [n]
     )
 
-def And(*args:Union[SignalAST, BaseNode]):
+def And(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.AND,
         parameters = args
     )
 
-def Or(*args:Union[SignalAST, BaseNode]):
+def Or(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.OR,
         parameters = args
     )
 
-def XOr(*args:Union[SignalAST, BaseNode]):
+def XOr(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.XOR,
         parameters = args
@@ -117,12 +117,16 @@ class BaseNode(Thread):
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
         self.auto_trigger = auto_trigger
+        if self.auto_trigger:
+            self.triggered = True
+        else:
+            self.triggered = False
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
         self._status = Status.OFF
-        
-        self.triggered = False
+
+        self.resource_lock = Lock()
 
         self.dependent_nodes = set()
         
@@ -254,9 +258,13 @@ class BaseNode(Thread):
         # override to specify actions to be executed upon removal of node from dag or on pipeline shutdown
         pass
 
+    def trigger(self) -> None:
+        self.triggered = True
+
     def reset_trigger(self):
         # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        self.triggered = False
+        if self.auto_trigger == False:
+            self.triggered = False
 
     @property
     def status(self):
@@ -284,7 +292,6 @@ class BaseNode(Thread):
         # TODO
         pass
 
-
     def run(self) -> None:
         self.status = Status.INIT
         try:
@@ -299,41 +306,42 @@ class BaseNode(Thread):
         while True:
             if self.status == Status.RUNNING:               
 
-                # TODO conditiona on auto-trigger
+                # TODO conditional on auto-trigger
+                if self.triggered:
 
-                # If pre-check fails, then just wait and try again
-                if not self.pre_check():
-                    self.status = Status.WAITING
-                    continue
+                    # If pre-check fails, then just wait and try again
+                    if not self.pre_check():
+                        self.status = Status.WAITING
+                        continue
 
-                # If not all signals received / boolean statement of signals is false
-                # wait and try again
-                if not self.check_signals():
-                    self.status = Status.WAITING
-                    continue
+                    # If not all signals received / boolean statement of signals is false
+                    # wait and try again
+                    if not self.check_signals():
+                        self.status = Status.WAITING
+                        continue
 
-                # Precheck is good and the signals we want are good
-                self.pre_execution()
-                
-                # Run the action function
-                try:
-                    self.triggered = True
-                    ret = self.execute()
-                    if ret:
-                        self.on_success()
-                        self.post_execution()
-                        self.send_signals(Status.SUCCESS)
-                    else:
-                        self.on_failure()
+                    # Precheck is good and the signals we want are good
+                    self.pre_execution()
+                    
+                    # Run the action function
+                    try:
+                        self.triggered = True
+                        ret = self.execute()
+                        if ret:
+                            self.on_success()
+                            self.post_execution()
+                            self.send_signals(Status.SUCCESS)
+                        else:
+                            self.on_failure()
+                            self.post_execution()
+                            self.send_signals(Status.FAILURE)
+                    except Exception as e:
+                        self.on_failure(e)
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
-                except Exception as e:
-                    self.on_failure(e)
-                    self.post_execution()
-                    self.send_signals(Status.FAILURE)
 
-                # Commented out until other parts of the project are built out
-                # self.reset_trigger()
+                    # Commented out until other parts of the project are built out
+                    self.reset_trigger()
 
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action

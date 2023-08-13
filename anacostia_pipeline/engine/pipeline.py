@@ -10,8 +10,15 @@ import networkx as nx
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
-from node import BaseNode, ResourceNode, ActionNode
-from constants import Status
+sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath('../anacostia_pipeline'))
+if __name__ == "__main__":
+    from node import BaseNode, ResourceNode, ActionNode
+    from constants import Status
+else:
+    from engine.node import BaseNode, ResourceNode, ActionNode
+    from engine.constants import Status
+
 # import IPython
 class InvalidNodeDependencyError(Exception):
     pass

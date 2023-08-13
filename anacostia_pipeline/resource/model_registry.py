@@ -8,22 +8,21 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from engine.node import ResourceNode
-from engine.dag import DAG
+from engine.pipeline import Pipeline
 
 
 class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str) -> None:
+    def __init__(self, name: str, path: str, num_old_models: int = 1, num_new_models: int = 1) -> None:
         self.model_resgistry_path = os.path.join(path, "model_registry")
         self.old_models_path = os.path.join(self.model_resgistry_path, "old_models")
         self.new_models_path = os.path.join(self.model_resgistry_path, "new_models")
+        self.num_old_models = num_old_models
         
         self.last_checked_time = time.time()
         
         self.observer = Observer()
         super().__init__(name, "model_registry")
 
-        self.signal = super().signal_message_template()
-    
     def setup(self) -> None:
         os.makedirs(self.model_resgistry_path, exist_ok=True)
         os.makedirs(self.old_models_path, exist_ok=True)
@@ -42,11 +41,8 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         else:
             print(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
-    def signal_message_template(self) -> Dict[str, List[str]]:
-        return self.signal
-
     def on_modified(self, event):
-        with self.get_resource_lock():
+        with self.resource_lock:
             if event.is_directory:
                 if self.logger is not None:
                     for model_paths in self.new_models_paths():
@@ -56,15 +52,30 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
                         print(f"New models detected: {event.event_type} {model_paths}")
 
                 # make sure signal is created before triggering
-                self.signal["added_files"] = self.new_models_paths()
                 self.trigger()
 
             self.last_checked_time = time.time()
 
-    def load_old_models(self, limit: int = 1) -> None:
-        print("loading old models")
-        time.sleep(1)
-        print("old models loaded")
+    """
+    def load_old_model(self, path: str) -> None:
+        raise NotImplementedError
+    
+    def load_new_model(self, path: str) -> None:
+        raise NotImplementedError
+
+    def load_new_models(self) -> None:
+        for model_path in self.new_models_paths():
+            yield self.load_new_model(model_path)
+    
+    def load_old_models(self) -> None:
+        for i, model_path in enumerate(self.old_models_paths()):
+            if i < self.num_old_models:
+                yield self.load_old_model(model_path)
+    """
+
+    def old_models_paths(self) -> None:
+        models = os.listdir(self.old_models_path)
+        return models
 
     def new_models_paths(self) -> None:
         models = os.listdir(self.new_models_path)
@@ -86,4 +97,5 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
 
 if __name__ == "__main__":
     model_registry_node = ModelRegistryNode(name="model_registry", path="../../tests/testing_artifacts")
-    DAG().start()
+    dag = Pipeline([model_registry_node])
+    dag.start()
