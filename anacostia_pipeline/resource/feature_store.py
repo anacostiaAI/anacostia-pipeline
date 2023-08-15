@@ -14,7 +14,17 @@ from watchdog.events import FileSystemEventHandler
 
 
 class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str, num_old_vectors: int = 1, num_new_vectors: int = 1) -> None:
+    def __init__(
+        self, name: str, 
+        path: str, 
+        max_old_vectors: int = None, 
+    ) -> None:
+
+        # max_old_vectors may be used to limit the number of feature vectors
+        # stored in the feature store. If None, then there is no limit.
+        # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
+        self.max_old_vectors = max_old_vectors
+
         self.feature_store_path = os.path.join(path, "feature_store")
         self.feature_store_json_path = os.path.join(self.feature_store_path, "feature_store.json")
         self.last_checked_time = time.time()
@@ -39,10 +49,22 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
     def get_current_feature_vectors(self) -> list:
-        # with self.resource_lock:
-        with open(self.feature_store_json_path, 'r') as json_file:
-            json_data = json.load(json_file)
-            return [json_data["filepath"] for json_entry in json_data["files"] if json_entry["state"] == "current"]
+        with self.resource_lock:
+            with open(self.feature_store_json_path, 'r') as json_file:
+                json_data = json.load(json_file)
+                current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == "current"]
+
+        for path in current_feature_vectors_paths:
+            print(path)
+            with self.resource_lock:
+                try:
+                    array = np.load(path)
+                    for row in array:
+                        yield row
+
+                except Exception as e:
+                    self.log(f"Error loading feature vector file: {e}")
+                    continue
         
     def on_modified(self, event):
         if not event.is_directory:

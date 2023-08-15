@@ -61,6 +61,24 @@ class NodeTests(unittest.TestCase):
                     shape=(random_number, 3)
                 )
         time.sleep(1)
+
+        for row, sample in enumerate(self.feature_store_node.get_current_feature_vectors()):
+            if row == 0:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+
+            elif row == 1:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+
+            elif row == 81:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+            
+            elif row == 82:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+            
+            if 70 < row < 90:
+                print(sample)
+
+        self.feature_store_node.get_current_feature_vectors()
         self.feature_store_node.stop()
         self.feature_store_node.join()
     
