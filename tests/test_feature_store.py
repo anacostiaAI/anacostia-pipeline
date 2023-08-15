@@ -52,14 +52,14 @@ class NodeTests(unittest.TestCase):
 
     def test_get_current_feature_vectors(self):
         self.feature_store_node.start()
+
         time.sleep(1)
-        with self.feature_store_node.resource_lock:
-            for i in range(5):
-                random_number = random.randint(0, 100)
-                create_numpy_file(
-                    file_path=f"./testing_artifacts/feature_store/feature_{i}.npy", 
-                    shape=(random_number, 3)
-                )
+
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            self.feature_store_node.save_feature_vector(array)
+
         time.sleep(1)
 
         for row, sample in enumerate(self.feature_store_node.get_current_feature_vectors()):
@@ -78,7 +78,6 @@ class NodeTests(unittest.TestCase):
             if 70 < row < 90:
                 print(sample)
 
-        self.feature_store_node.get_current_feature_vectors()
         self.feature_store_node.stop()
         self.feature_store_node.join()
     

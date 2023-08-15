@@ -7,7 +7,6 @@ import json
 
 sys.path.append("../../anacostia_pipeline")
 from engine.node import ResourceNode
-from engine.pipeline import Pipeline
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -27,7 +26,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
 
         self.feature_store_path = os.path.join(path, "feature_store")
         self.feature_store_json_path = os.path.join(self.feature_store_path, "feature_store.json")
-        self.last_checked_time = time.time()
         self.observer = Observer()
         super().__init__(name, "feature_store")
     
@@ -55,7 +53,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == "current"]
 
         for path in current_feature_vectors_paths:
-            print(path)
+            # print(path)
             with self.resource_lock:
                 try:
                     array = np.load(path)
@@ -95,15 +93,22 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 # make sure signal is created before triggering
                 self.trigger()
 
-            self.last_checked_time = time.time()
-
     def create_filename(self) -> str:
         """
         Default implementaion to create a filename for the new feature vector file.
         Method can be overridden to create a custom filename; but user must ensure that the filename is unique.
         """
         num_files = len(os.listdir(self.feature_store_path))
-        return f"features_{num_files+1}.npy"
+        return f"features_{num_files}.npy"
+
+    def save_feature_vector(self, feature_vector: np.ndarray) -> None:
+        with self.resource_lock:
+            try:
+                new_file_path = os.path.join(self.feature_store_path, self.create_filename())
+                np.save(new_file_path, feature_vector)
+                self.log(f"New feature vector saved: {new_file_path}")
+            except Exception as e:
+                self.log(f"Error saving feature vector: {e}")
 
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")

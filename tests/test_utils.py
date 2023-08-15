@@ -95,6 +95,15 @@ def create_numpy_file(file_path: str, shape: tuple = (10, 3)):
     np.save(file_path, array)
 
 
+def create_array(shape: tuple = (10, 3)):
+    array = np.zeros(shape)
+
+    for i in range(array.shape[0]):
+        array[i, :] = i
+
+    return array
+
+
 if __name__ == '__main__':
     array = np.zeros((10, 3))
 
