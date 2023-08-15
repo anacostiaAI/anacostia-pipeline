@@ -30,11 +30,9 @@ logger = logging.getLogger(__name__)
 
 class NodeTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
-        try:
+        if os.path.exists("./testing_artifacts") is False:
             os.makedirs("./testing_artifacts")
             os.chmod("./testing_artifacts", 0o777)
-        except OSError as e:
-            print(f"Error occurred: {e}")
 
         self.model_registry_node = ModelRegistryNode(name="model_registry", path="./testing_artifacts")
         self.model_registry_node.set_logger(logger)

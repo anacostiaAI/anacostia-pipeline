@@ -152,7 +152,6 @@ class BaseNode(Thread):
         # Store for signals after processing them (and in the future after acknowledging them too maybe?)
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
-
         
         self.wait_time = 3
         self.logger = None
@@ -292,6 +291,10 @@ class BaseNode(Thread):
         # TODO
         pass
 
+    def on_exit(self):
+        # TODO
+        pass
+
     def run(self) -> None:
         self.status = Status.INIT
         try:
@@ -356,6 +359,7 @@ class BaseNode(Thread):
                 # TODO release locks
                 # TODO release resources
                 # TODO maybe annouce to other nodes we have stopped?
+                self.on_exit()
                 self.status = Status.EXITED
 
             if self.status == Status.EXITED:
@@ -387,4 +391,4 @@ class ActionNode(BaseNode):
 
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
-        super().__init__(name, signal_type)
+        super().__init__(name, signal_type, auto_trigger=False)
