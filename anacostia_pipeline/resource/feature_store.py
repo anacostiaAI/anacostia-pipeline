@@ -46,7 +46,18 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             self.observer.start()
             self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
+    def get_num_current_feature_vectors(self) -> int:
+        with self.resource_lock:
+            with open(self.feature_store_json_path, 'r') as json_file:
+                json_data = json.load(json_file)
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "current"])
+                return total_num_samples
+
     def get_current_feature_vectors(self) -> list:
+        # TODO: account for the case where the feature store is empty
+        # TODO: account for the case where the feature store is not empty, but there are no current feature vectors
+        # TODO: acquire resource semaphore, then release it after the method is done
+        # once resource semaphore is back to 0, update the state of the feature vectors to "old"
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
@@ -64,6 +75,15 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     self.log(f"Error loading feature vector file: {e}")
                     continue
         
+    def create_json_entry(self, filepath: str, num_samples: int, shape: tuple, state: str) -> dict:
+        return {
+            "filepath": filepath,
+            "num_samples": num_samples,
+            "shape": str(shape),
+            "state": state,
+            "created_at": str(datetime.now())
+        }
+
     def on_modified(self, event):
         if not event.is_directory:
             with self.resource_lock:
@@ -71,6 +91,9 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     json_data = json.load(json_file)
 
                 try:
+                    # change of direction: use the on_modified method to monitor the change of the feature store json file
+                    # once we see enough feature vectors, we can trigger the next node
+
                     if event.src_path.endswith(".npy"):
                         array = np.load(os.path.join(self.feature_store_path, event.src_path))
 
@@ -101,11 +124,15 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         num_files = len(os.listdir(self.feature_store_path))
         return f"features_{num_files}.npy"
 
-    def save_feature_vector(self, feature_vector: np.ndarray) -> None:
+    def save_feature_vector(self, feature_vector: np.ndarray, split: str) -> None:
         with self.resource_lock:
             try:
+                if split not in ["train", "val", "test"]:
+                    raise ValueError(f"Invalid split: {split}")
+
                 new_file_path = os.path.join(self.feature_store_path, self.create_filename())
                 np.save(new_file_path, feature_vector)
+
                 self.log(f"New feature vector saved: {new_file_path}")
             except Exception as e:
                 self.log(f"Error saving feature vector: {e}")

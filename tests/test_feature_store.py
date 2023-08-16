@@ -58,7 +58,7 @@ class NodeTests(unittest.TestCase):
         for _ in range(5):
             random_number = random.randint(0, 100)
             array = create_array(shape=(random_number, 3))
-            self.feature_store_node.save_feature_vector(array)
+            self.feature_store_node.save_feature_vector(array, "train")
 
         time.sleep(1)
 
