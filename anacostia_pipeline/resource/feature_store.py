@@ -1,7 +1,6 @@
 import numpy as np
 import sys
 import os
-import time
 from datetime import datetime
 import json
 
@@ -47,7 +46,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
     def get_num_current_feature_vectors(self) -> int:
-        with self.resource_lock:
+        with self.current_resource_semaphore:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
                 total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "current"])
@@ -58,14 +57,14 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         # TODO: account for the case where the feature store is not empty, but there are no current feature vectors
         # TODO: acquire resource semaphore, then release it after the method is done
         # once resource semaphore is back to 0, update the state of the feature vectors to "old"
-        with self.resource_lock:
+        with self.current_resource_semaphore:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
                 current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == "current"]
 
         for path in current_feature_vectors_paths:
             # print(path)
-            with self.resource_lock:
+            with self.current_resource_semaphore:
                 try:
                     array = np.load(path)
                     for row in array:
@@ -75,7 +74,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     self.log(f"Error loading feature vector file: {e}")
                     continue
         
-    def create_json_entry(self, filepath: str, num_samples: int, shape: tuple, state: str) -> dict:
+    def create_file_entry(self, filepath: str, num_samples: int, shape: tuple, state: str) -> dict:
         return {
             "filepath": filepath,
             "num_samples": num_samples,
@@ -101,7 +100,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                         json_entry["filepath"] = event.src_path
                         json_entry["num_samples"] = array.shape[0]
                         json_entry["shape"] = str(array.shape)
-                        json_entry["state"] = "current"
+                        json_entry["state"] = "current" if self.get_num_current_feature_vectors() == 0 else "new"
                         json_entry["created_at"] = str(datetime.now())
                         json_data["files"].append(json_entry)
 
@@ -137,6 +136,23 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             except Exception as e:
                 self.log(f"Error saving feature vector: {e}")
 
+    def update_state(self):
+        with self.current_resource_semaphore:
+            with self.resource_lock:
+                with open(self.feature_store_json_path, 'r') as json_file:
+                    json_data = json.load(json_file)
+
+                for file_entry in json_data["files"]:
+                    if file_entry["state"] == "current":
+                        file_entry["state"] = "old"
+                
+                for file_entry in json_data["files"]:
+                    if file_entry["state"] == "new":
+                        file_entry["state"] = "current"
+
+                with open(self.feature_store_json_path, 'w') as json_file:
+                    json.dump(json_data, json_file, indent=4)
+    
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()

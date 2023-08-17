@@ -37,6 +37,7 @@ class NodeTests(unittest.TestCase):
         
         self.feature_store_node = FeatureStoreNode(name="feature_store", path="./testing_artifacts")
         self.feature_store_node.set_logger(logger)
+        self.feature_store_node.set_semaphore(value=1)
 
         super().__init__(methodName)
     
@@ -46,6 +47,38 @@ class NodeTests(unittest.TestCase):
         with self.feature_store_node.resource_lock:
             self.assertTrue(os.path.exists("./testing_artifacts/feature_store"))
             self.assertTrue(os.path.exists("./testing_artifacts/feature_store/feature_store.json"))
+        self.feature_store_node.stop()
+        self.feature_store_node.join()
+
+    def test_get_current_feature_vectors_different_setup(self):
+        os.makedirs("./testing_artifacts/feature_store", exist_ok=True)
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            self.feature_store_node.save_feature_vector(array, "train")
+
+        time.sleep(1)
+
+        self.feature_store_node.start()
+
+        time.sleep(1)
+
+        for row, sample in enumerate(self.feature_store_node.get_current_feature_vectors()):
+            if row == 0:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+
+            elif row == 1:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+
+            elif row == 81:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+            
+            elif row == 82:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+            
+            if 70 < row < 90:
+                print(sample)
+
         self.feature_store_node.stop()
         self.feature_store_node.join()
     """

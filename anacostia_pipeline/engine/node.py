@@ -151,7 +151,7 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
         
-        self.wait_time = 3
+        self.wait_time = 3      # Proposal: lower this to 0.1 or 0.5
         self.logger = None
 
     def __hash__(self) -> int:
@@ -293,6 +293,9 @@ class BaseNode(Thread):
         # TODO
         pass
 
+    def update_state(self):
+        pass
+
     def run(self) -> None:
         self.status = Status.INIT
         try:
@@ -340,6 +343,8 @@ class BaseNode(Thread):
                         self.on_failure(e)
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
+
+                    #self.update_state()
 
                     # Commented out until other parts of the project are built out
                     self.reset_trigger()
@@ -391,8 +396,11 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
-        self.current_resource_semaphore = Semaphore(value=1)
+        self.current_resource_semaphore = None
         
+    def set_semaphore(self, value: int) -> None:
+        self.current_resource_semaphore = Semaphore(value=value)
+
         # TODO: implement resource semaphore
         # resource semaphore is used to track the number of nodes still using the resource's current state
         # semaphore value is set based on the number of nodes listening to the resource
@@ -408,3 +416,5 @@ class ResourceNode(BaseNode):
         # then the ResourceNode might update the resource state prior to the signalled node can access the current state of the resource;
         # thus, since we don't want the next node to start using the resource's new state before it is updated, 
         # we need to signal the next node first before releasing the resource semaphore)
+        # Note: all nodes that use the resource's current state should acquire the semaphore
+        # Note: all nodes that want to write to the resource should acquire the resource lock
