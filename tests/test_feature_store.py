@@ -17,8 +17,14 @@ from test_utils import *
 seed_value = 42
 random.seed(seed_value)
 
+if os.path.exists("./testing_artifacts/feature_store_tests") is True:
+    shutil.rmtree("./testing_artifacts/feature_store_tests")
+
+os.makedirs("./testing_artifacts/feature_store_tests")
+os.chmod("./testing_artifacts/feature_store_tests", 0o777)
+
 # Create a logger
-log_path = "./testing_artifacts/feature_store.log"
+log_path = "./testing_artifacts/feature_store_tests/feature_store.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -31,96 +37,81 @@ logger = logging.getLogger(__name__)
 
 class NodeTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
-        if os.path.exists("./testing_artifacts") is False:
-            os.makedirs("./testing_artifacts")
-            os.chmod("./testing_artifacts", 0o777)
-        
-        self.feature_store_node = FeatureStoreNode(name="feature_store", path="./testing_artifacts")
-        self.feature_store_node.set_logger(logger)
-        self.feature_store_node.set_semaphore(value=1)
-
         super().__init__(methodName)
     
-    """
-    def test_setup(self):
-        self.feature_store_node.start()
-        with self.feature_store_node.resource_lock:
-            self.assertTrue(os.path.exists("./testing_artifacts/feature_store"))
-            self.assertTrue(os.path.exists("./testing_artifacts/feature_store/feature_store.json"))
-        self.feature_store_node.stop()
-        self.feature_store_node.join()
+    def setUp(self) -> None:
+        self.feature_store_dirs = os.listdir("./testing_artifacts/feature_store_tests")
+        self.path = f"./testing_artifacts/feature_store_tests/feature_store_{self._testMethodName}"
+        os.makedirs(self.path)
 
-    def test_get_current_feature_vectors_different_setup(self):
-        os.makedirs("./testing_artifacts/feature_store", exist_ok=True)
-        for _ in range(5):
-            random_number = random.randint(0, 100)
-            array = create_array(shape=(random_number, 3))
-            self.feature_store_node.save_feature_vector(array, "train")
-
+    def test_save_feature_vectors(self):
+        feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
+        feature_store_node.set_logger(logger)
+        feature_store_node.set_semaphore(value=1)
+        feature_store_node.start()
         time.sleep(1)
-
-        self.feature_store_node.start()
-
-        time.sleep(1)
-
-        for row, sample in enumerate(self.feature_store_node.get_current_feature_vectors()):
-            if row == 0:
-                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
-
-            elif row == 1:
-                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
-
-            elif row == 81:
-                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
-            
-            elif row == 82:
-                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
-            
-            if 70 < row < 90:
-                print(sample)
-
-        self.feature_store_node.stop()
-        self.feature_store_node.join()
-    """
-
-    def test_get_current_feature_vectors(self):
-        self.feature_store_node.start()
-
-        time.sleep(1)
-
-        for _ in range(5):
-            random_number = random.randint(0, 100)
-            array = create_array(shape=(random_number, 3))
-            self.feature_store_node.save_feature_vector(array, "train")
-
-        time.sleep(1)
-
-        for row, sample in enumerate(self.feature_store_node.get_current_feature_vectors()):
-            if row == 0:
-                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
-
-            elif row == 1:
-                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
-
-            elif row == 81:
-                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
-            
-            elif row == 82:
-                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
-            
-            if 70 < row < 90:
-                print(sample)
-
-        self.feature_store_node.stop()
-        self.feature_store_node.join()
-    
-    def tearDown(self) -> None:
-        try:
-            shutil.move("./testing_artifacts/feature_store/feature_store.json", "./testing_artifacts/feature_store.json")
-            shutil.rmtree("./testing_artifacts/feature_store")
-        except OSError as e:
-            print(f"Error occurred: {e}")
         
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+        
+        time.sleep(1)
+        feature_store_node.stop()
+        feature_store_node.join()
+    
+    def test_setup(self):
+        # putting files into the feature_store folder before starting
+        os.makedirs(f"{self.path}/feature_store")
+        for i in range(5):
+            random_number = random.randint(0, 100)
+            create_numpy_file(file_path=f"{self.path}/feature_store/features_{i}", shape=(random_number, 3)) 
+        
+        feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
+        feature_store_node.set_logger(logger)
+        feature_store_node.set_semaphore(value=1)
+        feature_store_node.start()
+        
+        time.sleep(1)
+
+        feature_store_node.stop()
+        feature_store_node.join()
+
+    """
+    def test_get_current_feature_vectors(self):
+        feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
+        feature_store_node.set_logger(logger)
+        feature_store_node.set_semaphore(value=1)
+        feature_store_node.start()
+        time.sleep(1)
+        
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+        
+        time.sleep(1)
+
+        for row, sample in enumerate(feature_store_node.get_current_feature_vectors()):
+            if row == 0:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+
+            elif row == 1:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+
+            elif row == 81:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+            
+            elif row == 82:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+            
+            if 70 < row < 90:
+                print(sample)
+
+        feature_store_node.stop()
+        feature_store_node.join()
+    """
+
 
 if __name__ == "__main__":
     unittest.main()

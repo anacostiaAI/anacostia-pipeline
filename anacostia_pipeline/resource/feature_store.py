@@ -36,6 +36,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             if os.path.exists(self.feature_store_json_path) is False:
                 with open(self.feature_store_json_path, 'w') as json_file:
                     json_entry = {
+                        "node": self.name,
                         "files": []
                     }
                     json.dump(json_entry, json_file, indent=4)
@@ -100,7 +101,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                         json_entry["filepath"] = event.src_path
                         json_entry["num_samples"] = array.shape[0]
                         json_entry["shape"] = str(array.shape)
-                        json_entry["state"] = "current" if self.get_num_current_feature_vectors() == 0 else "new"
+                        json_entry["state"] = "new"
                         json_entry["created_at"] = str(datetime.now())
                         json_data["files"].append(json_entry)
 
@@ -123,12 +124,9 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         num_files = len(os.listdir(self.feature_store_path))
         return f"features_{num_files}.npy"
 
-    def save_feature_vector(self, feature_vector: np.ndarray, split: str) -> None:
+    def save_feature_vector(self, feature_vector: np.ndarray) -> None:
         with self.resource_lock:
             try:
-                if split not in ["train", "val", "test"]:
-                    raise ValueError(f"Invalid split: {split}")
-
                 new_file_path = os.path.join(self.feature_store_path, self.create_filename())
                 np.save(new_file_path, feature_vector)
 
@@ -144,10 +142,12 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
 
                 for file_entry in json_data["files"]:
                     if file_entry["state"] == "current":
+                        self.log(f'current -> old: {file_entry["filepath"]}')
                         file_entry["state"] = "old"
                 
                 for file_entry in json_data["files"]:
                     if file_entry["state"] == "new":
+                        self.log(f'new -> current: {file_entry["filepath"]}')
                         file_entry["state"] = "current"
 
                 with open(self.feature_store_json_path, 'w') as json_file:
