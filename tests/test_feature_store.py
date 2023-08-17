@@ -77,7 +77,6 @@ class NodeTests(unittest.TestCase):
         feature_store_node.stop()
         feature_store_node.join()
 
-    """
     def test_get_current_feature_vectors(self):
         feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
         feature_store_node.set_logger(logger)
@@ -110,7 +109,6 @@ class NodeTests(unittest.TestCase):
 
         feature_store_node.stop()
         feature_store_node.join()
-    """
 
 
 if __name__ == "__main__":

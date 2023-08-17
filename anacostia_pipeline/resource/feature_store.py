@@ -68,6 +68,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             with self.current_resource_semaphore:
                 try:
                     array = np.load(path)
+                    self.log(f"extracting current data from {path}")
                     for row in array:
                         yield row
 

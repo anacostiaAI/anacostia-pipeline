@@ -329,7 +329,9 @@ class BaseNode(Thread):
                     
                     # Run the action function
                     try:
-                        self.triggered = True
+                        # the following line seems unecessary because self.trigger=True 
+                        # regardless if auto-trigger=True or not (i.e., we're using manual trigger)
+                        # self.triggered = True
                         ret = self.execute()
                         if ret:
                             self.on_success()
@@ -344,7 +346,7 @@ class BaseNode(Thread):
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
 
-                    #self.update_state()
+                    self.update_state()
 
                     # Commented out until other parts of the project are built out
                     self.reset_trigger()
