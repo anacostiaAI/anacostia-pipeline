@@ -13,7 +13,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from constants import Status, ASTOperation
+from .constants import Status, ASTOperation
 
 
 class SignalAST:
@@ -121,6 +121,7 @@ class BaseNode(Thread):
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
         self._status = Status.OFF
+        self._status_updated = False
         
         self.triggered = False
 
@@ -151,6 +152,7 @@ class BaseNode(Thread):
 
         
         self.wait_time = 3
+        self.throttle = .100
         self.logger = None
 
     def __hash__(self) -> int:
@@ -199,11 +201,13 @@ class BaseNode(Thread):
         # therefore, it is best to put set up logic here that is not dependent on other nodes.
         pass
 
+    @self.pausable
     def pre_check(self) -> bool:
         # should be used for continuously checking if the node is ready to start
         # i.e., checking if database connections, API connections, etc. are ready 
         return True
 
+    @self.pausable
     def check_signals(self) -> bool:
         '''
         Verify all received signal statuses match the condition for this node to execute
@@ -217,28 +221,34 @@ class BaseNode(Thread):
         # Check if the signals match the execute condition
         return self.signal_ast.evaluate(self)
 
+    @self.pausable
     def pre_execution(self) -> None:
         # override to enable node to do something before execution; 
         # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
         pass
 
+    @self.pausable
     def execute(self, *args, **kwargs) -> bool:
         # the logic for a particular stage in the MLOps pipeline
         pass
 
+    @self.pausable
     def post_execution(self) -> None:
         pass
 
+    @self.pausable
     def on_success(self) -> None:
         # override to enable node to do something after execution in event of success of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
+    @self.pausable
     def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
     
+    @self.pausable
     def send_signals(self, status:Status):
         msg = Message(
             sender = self.name,
@@ -271,11 +281,25 @@ class BaseNode(Thread):
         self._status = value
         self._status_lock.release()
 
+    def pausable(self, func):
+        '''
+        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
+        '''
+        def wrapper(*args, **kwargs):
+            ret = func(*args, **kwargs)
+
+            while self.status == Status.PAUSED:
+                time.sleep(self.wait_time)
+
+            return ret
+        return wrapper
+
     def pause(self):
         self.status = Status.PAUSED
 
     def resume(self):
-        self.status = Status.RUNNING
+        if self.status == Status.PAUSED:
+            self.status = Status.RUNNING
 
     def stop(self):
         self.status = Status.STOPPING
@@ -297,7 +321,7 @@ class BaseNode(Thread):
         self.status = Status.RUNNING
 
         while True:
-            if self.status == Status.RUNNING:               
+            if self.status == Status.RUNNING and not self.triggered:
 
                 # TODO conditiona on auto-trigger
 
@@ -311,16 +335,17 @@ class BaseNode(Thread):
                 if not self.check_signals():
                     self.status = Status.WAITING
                     continue
-
+                
                 # Precheck is good and the signals we want are good
                 self.pre_execution()
-                
+
                 # Run the action function
                 try:
                     self.triggered = True
                     ret = self.execute()
+                    
                     if ret:
-                        self.on_success()
+                        self.on_success()        
                         self.post_execution()
                         self.send_signals(Status.SUCCESS)
                     else:
@@ -331,11 +356,14 @@ class BaseNode(Thread):
                     self.on_failure(e)
                     self.post_execution()
                     self.send_signals(Status.FAILURE)
+                    #todo go to errored? conditional on user set var
 
                 # Commented out until other parts of the project are built out
                 # self.reset_trigger()
 
-            elif self.status == Status.PAUSED:
+                self.status == Status.COMPLETED
+
+            elif self.status == Status.PAUSED or self.status == Status.COMPLETED:
                 # Stay Indefinitely Paused until external action
                 time.sleep(self.wait_time)
 
@@ -345,6 +373,7 @@ class BaseNode(Thread):
                 self.status = Status.RUNNING
 
             elif self.status == Status.STOPPING:
+                # TODO lock status lock? disable state change here. force into closing
                 # TODO release locks
                 # TODO release resources
                 # TODO maybe annouce to other nodes we have stopped?
@@ -353,7 +382,7 @@ class BaseNode(Thread):
             if self.status == Status.EXITED:
                 break
 
-            time.sleep(.1)
+            time.sleep(self.throttle)
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''

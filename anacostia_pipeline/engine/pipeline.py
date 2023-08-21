@@ -10,9 +10,9 @@ import networkx as nx
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
-from node import BaseNode, ResourceNode, ActionNode
-from constants import Status
-# import IPython
+from .node import BaseNode, ResourceNode, ActionNode
+from .constants import Status
+
 class InvalidNodeDependencyError(Exception):
     pass
 
@@ -49,9 +49,40 @@ class Pipeline:
         self.nodes = list(nx.topological_sort(self.graph))      # switched to list to preserve topological order of nodes
         for node in self.nodes:
             node.set_logger(logger)
+
+    def motd(self):
+        msg = \
+r'''    _                                     _    _          ____   _               _  _              
+   / \    _ __    __ _   ___   ___   ___ | |_ (_)  __ _  |  _ \ (_) _ __    ___ | |(_) _ __    ___ 
+  / _ \  | '_ \  / _` | / __| / _ \ / __|| __|| | / _` | | |_) || || '_ \  / _ \| || || '_ \  / _ \
+ / ___ \ | | | || (_| || (__ | (_) |\__ \| |_ | || (_| | |  __/ | || |_) ||  __/| || || | | ||  __/
+/_/   \_\|_| |_| \__,_| \___| \___/ |___/ \__||_| \__,_| |_|    |_|| .__/  \___||_||_||_| |_| \___|
+                                                                   |_|                             
+'''
+        self.console.print(msg)
         
     def help_cmd(self):
-        pass
+        repo_url = "TODO"
+
+        common_commands = {
+            "help": "Displays this help text",
+            "version": "Prints the anacostia-pipeline module version number",
+        }
+
+        management_commands = {
+            "pipe": "Manage the Pipeline",
+            "node": "Manage Individual Nodes",
+        }
+
+        help_text = "\nA Machine Learning DevOps Pipeline\n\n" + \
+                    "Common Commands:\n" + \
+                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in common_commands.items()) + "\n\n" + \
+                    "Management COmmands:\n" + \
+                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in management_commands.items()) + "\n\n" + \
+                    "Run \'COMMAND --help\' for more information on a command\n" + \
+                    f"For more information see {repo_url}\n"
+
+        self.console.print(help_text)
 
     def launch_nodes(self):
         '''
@@ -75,7 +106,24 @@ class Pipeline:
     def node_cmds(self):
         pass
 
+    def graceful_shutdown(self):
+        with self.console.status("Shutting down pipeline"):    
+            for node in reversed(self.nodes):
+                node.stop()
+
+            for node in reversed(self.nodes):
+                node.join()
+            
+            for node in reversed(self.nodes):
+                node.teardown()
+
+        self.console.print("Pipeline shutdown complete")
+
+    # TODO move cli shell stuff to its own class
+    # i.e. dont pollute pipeline.py with shell parsing and shell commands
     def start(self) -> None:
+        self.motd()
+        self.console.print("Starting Pipeline!")
         self.launch_nodes()
         self.console.print("All Nodes Launched")
         # IPython.embed()
@@ -83,13 +131,13 @@ class Pipeline:
             try:
                 cmd_string = self.console.input("> ")
                 cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
-                self.console.print(cmd)
+                # self.console.print(cmd)
 
-                match cmd:
+                match cmd[0]:
                     case "help":
-                        self.help_text()
+                        self.help_cmd()
                     case "version":
-                        version = pkg_resources.get_distribution("anacostia").version
+                        version = pkg_resources.get_distribution("anacostia-pipeline").version
                         self.console.print(f"Version {version}")
                     case "pipe":
                         self.pipe_cmds()
@@ -101,16 +149,7 @@ class Pipeline:
                 answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
                 if answer == 'y':
                     # TODO graceful shutdown
-                    print("Shutting down pipeline")
-                    for node in reversed(self.nodes):
-                        node.stop()
-
-                    for node in reversed(self.nodes):
-                        node.join()
                     
-                    for node in reversed(self.nodes):
-                        node.teardown()
-                    print("Pipeline shutdown complete")
                     break
                 
     def export_graph(self, file_path: str) -> None:
