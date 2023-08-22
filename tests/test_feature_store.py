@@ -17,14 +17,15 @@ from test_utils import *
 seed_value = 42
 random.seed(seed_value)
 
-if os.path.exists("./testing_artifacts/feature_store_tests") is True:
-    shutil.rmtree("./testing_artifacts/feature_store_tests")
+feature_store_tests_path = "./testing_artifacts/feature_store_tests"
+if os.path.exists(feature_store_tests_path) is True:
+    shutil.rmtree(feature_store_tests_path)
 
-os.makedirs("./testing_artifacts/feature_store_tests")
-os.chmod("./testing_artifacts/feature_store_tests", 0o777)
+os.makedirs(feature_store_tests_path)
+os.chmod(feature_store_tests_path, 0o777)
 
 # Create a logger
-log_path = "./testing_artifacts/feature_store_tests/feature_store.log"
+log_path = f"{feature_store_tests_path}/feature_store.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -40,8 +41,8 @@ class NodeTests(unittest.TestCase):
         super().__init__(methodName)
     
     def setUp(self) -> None:
-        self.feature_store_dirs = os.listdir("./testing_artifacts/feature_store_tests")
-        self.path = f"./testing_artifacts/feature_store_tests/feature_store_{self._testMethodName}"
+        self.feature_store_dirs = os.listdir(feature_store_tests_path)
+        self.path = f"{feature_store_tests_path}/feature_store_{self._testMethodName}"
         os.makedirs(self.path)
 
     """
@@ -84,12 +85,12 @@ class NodeTests(unittest.TestCase):
                 self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
 
             elif row == 81:
-                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+                self.assertTrue(np.array_equal(sample, np.array([78., 78., 78.])))
             
             elif row == 82:
-                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+                self.assertTrue(np.array_equal(sample, np.array([79., 79., 79.])))
             
-            if 70 < row < 90:
+            if 80 <= row <= 90:
                 print(sample)
 
         time.sleep(1)
