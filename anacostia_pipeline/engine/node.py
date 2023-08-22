@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Semaphore
+from threading import Thread, Lock, Semaphore, Barrier
 from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce
@@ -398,25 +398,21 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
-        self.current_resource_semaphore = None
+        self.barrier = None
         
-    def set_semaphore(self, value: int) -> None:
-        self.current_resource_semaphore = Semaphore(value=value)
+    def set_barrier(self, num_successors: int) -> None:
+        # we set parties=num_children+1 to account for the thread running the resource node
+        self.barrier = Barrier(parties = num_successors+1)
 
-        # TODO: implement resource semaphore
-        # resource semaphore is used to track the number of nodes still using the resource's current state
-        # semaphore value is set based on the number of nodes listening to the resource
-        # once a node is done using the resource's current state, it releases the semaphore;
-        # when the semaphore value reaches 0, the resource's state can be updated as follows:
+        # TODO: implement resource barrier
+        # resource barrier is used to track the number of nodes still using the resource's current state
+        # parties argument in barrier is set based on the number of nodes listening to the resource 
+        # (i.e., number of successors of the resource node)
+        # once a node is done using the resource's current state, it calls .wait()
+        # when all nodes have called .wait(), the resource state can be updated as follows:
         # 1. acquire the resource lock
         # 2. update the resource's state (current state -> old state, new state -> current state)
         # 3. release the resource lock
-        # Note: the resource semaphore should be acquired before the resource lock is acquired
-        # Note: the resource semaphore should be released after the resource lock is released
-        # Note: make sure to signal the next node first before releasing the resource semaphore 
-        # (if the resource semaphore goes down to zero before the next node triggers, 
-        # then the ResourceNode might update the resource state prior to the signalled node can access the current state of the resource;
-        # thus, since we don't want the next node to start using the resource's new state before it is updated, 
-        # we need to signal the next node first before releasing the resource semaphore)
-        # Note: all nodes that use the resource's current state should acquire the semaphore
+        # resource node should call .wait() before the resource lock is acquired to update the state
+        # Note: all nodes that use the resource's current state should call .wait()
         # Note: all nodes that want to write to the resource should acquire the resource lock

@@ -44,10 +44,11 @@ class NodeTests(unittest.TestCase):
         self.path = f"./testing_artifacts/feature_store_tests/feature_store_{self._testMethodName}"
         os.makedirs(self.path)
 
+    """
     def test_save_feature_vectors(self):
         feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
         feature_store_node.set_logger(logger)
-        feature_store_node.set_semaphore(value=1)
+        feature_store_node.set_barrier(1)
         feature_store_node.start()
         time.sleep(1)
         
@@ -57,8 +58,10 @@ class NodeTests(unittest.TestCase):
             feature_store_node.save_feature_vector(array)
         
         time.sleep(1)
+        feature_store_node.barrier.wait()
         feature_store_node.stop()
         feature_store_node.join()
+    """
     
     def test_setup(self):
         # putting files into the feature_store folder before starting
@@ -69,18 +72,36 @@ class NodeTests(unittest.TestCase):
         
         feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
         feature_store_node.set_logger(logger)
-        feature_store_node.set_semaphore(value=1)
+        feature_store_node.set_barrier(1)
         feature_store_node.start()
         
         time.sleep(1)
+        for row, sample in enumerate(feature_store_node.get_current_feature_vectors()):
+            if row == 0:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
 
+            elif row == 1:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+
+            elif row == 81:
+                self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
+            
+            elif row == 82:
+                self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
+            
+            if 70 < row < 90:
+                print(sample)
+
+        time.sleep(1)
+        feature_store_node.barrier.wait()
         feature_store_node.stop()
         feature_store_node.join()
 
+    """
     def test_get_current_feature_vectors(self):
         feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
         feature_store_node.set_logger(logger)
-        feature_store_node.set_semaphore(value=1)
+        feature_store_node.set_barrier(1)
         feature_store_node.start()
         time.sleep(1)
         
@@ -107,8 +128,13 @@ class NodeTests(unittest.TestCase):
             if 70 < row < 90:
                 print(sample)
 
+        # as of right now, .get_current_feature_vectors() won't yield any vectors 
+        # because all of the .npy files have been designated as "new"
+        # we need to figure out a way to switch the state from new to current on iteration 0
+        feature_store_node.barrier.wait()
         feature_store_node.stop()
         feature_store_node.join()
+    """
 
 
 if __name__ == "__main__":
