@@ -76,7 +76,7 @@ class NodeTests(unittest.TestCase):
         feature_store_node.set_barrier(1)
         feature_store_node.start()
         
-        time.sleep(1)
+        time.sleep(0.5)
         for row, sample in enumerate(feature_store_node.get_current_feature_vectors()):
             if row == 0:
                 self.assertTrue(np.array_equal(sample, np.array([0., 0., 0.])))
@@ -95,7 +95,7 @@ class NodeTests(unittest.TestCase):
             if 80 <= row <= 90:
                 print(sample)
 
-        time.sleep(1)
+        time.sleep(0.5)
         feature_store_node.barrier.wait()
         feature_store_node.stop()
         feature_store_node.join()

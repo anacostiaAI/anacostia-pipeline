@@ -79,7 +79,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
                 current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == "current"]
-                print(current_feature_vectors_paths)
+                #print(current_feature_vectors_paths)
 
         for path in current_feature_vectors_paths:
             # print(path)
