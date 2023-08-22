@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Semaphore, Barrier
+from threading import Thread, Lock, Semaphore, Barrier, Event
 from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce
@@ -399,6 +399,7 @@ class ResourceNode(BaseNode):
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
         self.barrier = None
+        self.event = Event()
         
     def set_barrier(self, num_successors: int) -> None:
         # we set parties=num_children+1 to account for the thread running the resource node
