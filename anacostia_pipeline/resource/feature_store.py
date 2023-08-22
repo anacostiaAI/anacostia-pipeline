@@ -23,7 +23,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
         self.max_old_vectors = max_old_vectors
 
-        self.feature_store_path = os.path.join(path, "feature_store")
+        self.feature_store_path = os.path.join(os.path.abspath(path), "feature_store")
         self.feature_store_json_path = os.path.join(self.feature_store_path, "feature_store.json")
         self.observer = Observer()
         super().__init__(name, "feature_store")
@@ -94,15 +94,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     self.log(f"Error loading feature vector file: {e}")
                     continue
         
-    def create_file_entry(self, filepath: str, num_samples: int, shape: tuple, state: str) -> dict:
-        return {
-            "filepath": filepath,
-            "num_samples": num_samples,
-            "shape": str(shape),
-            "state": state,
-            "created_at": str(datetime.now())
-        }
-
     def on_modified(self, event):
         if not event.is_directory:
             with self.resource_lock:
