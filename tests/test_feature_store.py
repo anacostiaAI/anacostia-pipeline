@@ -73,7 +73,7 @@ class NodeTests(unittest.TestCase):
         
         feature_store_node = FeatureStoreNode(name=f"feature_store_{self._testMethodName}", path=self.path)
         feature_store_node.set_logger(logger)
-        feature_store_node.set_barrier(1)
+        feature_store_node.num_successors = 1
         feature_store_node.start()
         
         time.sleep(0.5)
@@ -96,7 +96,7 @@ class NodeTests(unittest.TestCase):
                 print(sample)
 
         time.sleep(0.5)
-        feature_store_node.barrier.wait()
+        feature_store_node.event.set()
         feature_store_node.stop()
         feature_store_node.join()
 

@@ -146,7 +146,9 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 self.log(f"Error saving feature vector: {e}")
 
     def update_state(self):
-        self.barrier.wait()
+        for _ in range(self.num_successors):
+            self.event.wait()
+
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)

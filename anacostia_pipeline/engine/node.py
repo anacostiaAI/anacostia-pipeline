@@ -154,6 +154,8 @@ class BaseNode(Thread):
         self.wait_time = 3      # Proposal: lower this to 0.1 or 0.5
         self.logger = None
 
+        self.num_successors = 0
+
     def __hash__(self) -> int:
         return hash(self.name)
 
@@ -398,13 +400,8 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
-        self.barrier = None
         self.event = Event()
         
-    def set_barrier(self, num_successors: int) -> None:
-        # we set parties=num_children+1 to account for the thread running the resource node
-        self.barrier = Barrier(parties = num_successors+1)
-
         # TODO: implement resource barrier
         # resource barrier is used to track the number of nodes still using the resource's current state
         # parties argument in barrier is set based on the number of nodes listening to the resource 
