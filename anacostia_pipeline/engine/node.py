@@ -155,6 +155,7 @@ class BaseNode(Thread):
         self.logger = None
 
         self.num_successors = 0
+        self.event = Event()
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -348,8 +349,14 @@ class BaseNode(Thread):
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
 
+                    for _ in range(self.num_successors):
+                        self.event.wait()
+
                     self.update_state()
 
+                    if self.event.is_set():
+                        self.event.clear()
+    
                     # Commented out until other parts of the project are built out
                     self.reset_trigger()
 
@@ -400,17 +407,3 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
-        self.event = Event()
-        
-        # TODO: implement resource barrier
-        # resource barrier is used to track the number of nodes still using the resource's current state
-        # parties argument in barrier is set based on the number of nodes listening to the resource 
-        # (i.e., number of successors of the resource node)
-        # once a node is done using the resource's current state, it calls .wait()
-        # when all nodes have called .wait(), the resource state can be updated as follows:
-        # 1. acquire the resource lock
-        # 2. update the resource's state (current state -> old state, new state -> current state)
-        # 3. release the resource lock
-        # resource node should call .wait() before the resource lock is acquired to update the state
-        # Note: all nodes that use the resource's current state should call .wait()
-        # Note: all nodes that want to write to the resource should acquire the resource lock
