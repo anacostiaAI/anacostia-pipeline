@@ -113,6 +113,36 @@ class NodeTests(unittest.TestCase):
 
         self.tearDown_node(feature_store_node)
 
+    def test_many_iterations(self):
+        feature_store_node = FeatureStoreNode(name=f"{self._testMethodName}", path=self.path)
+        self.start_node(feature_store_node)
+        
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+            time.sleep(0.1)
+        
+        feature_store_node.event.set()
+        feature_store_node.log("Starting second iteration")
+
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+            time.sleep(0.1)
+
+        feature_store_node.event.set()
+        feature_store_node.log("Starting third iteration")
+
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+            time.sleep(0.1)
+
+        self.tearDown_node(feature_store_node)
+
 
 if __name__ == "__main__":
     unittest.main()

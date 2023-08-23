@@ -162,6 +162,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
 
             with open(self.feature_store_json_path, 'w') as json_file:
                 json.dump(json_data, json_file, indent=4)
+        
+        self.event.clear()
     
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
