@@ -71,10 +71,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 return total_num_samples
 
     def get_current_feature_vectors(self) -> list:
-        # TODO: account for the case where the feature store is empty
         # TODO: account for the case where the feature store is not empty, but there are no current feature vectors
-        # TODO: acquire resource semaphore, then release it after the method is done
-        # once resource semaphore is back to 0, update the state of the feature vectors to "old"
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
