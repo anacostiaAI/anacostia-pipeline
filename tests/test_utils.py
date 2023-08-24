@@ -2,6 +2,7 @@ import time
 import os
 import sys
 from threading import Thread
+import numpy as np
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -85,8 +86,28 @@ def stop_node(node: BaseNode, thread: Thread):
     node.teardown()
 
 
+def create_numpy_file(file_path: str, shape: tuple = (10, 3)):
+    array = np.zeros(shape)
+
+    for i in range(array.shape[0]):
+        array[i, :] = i
+
+    np.save(file_path, array)
+
+
+def create_array(shape: tuple = (10, 3)):
+    array = np.zeros(shape)
+
+    for i in range(array.shape[0]):
+        array[i, :] = i
+
+    return array
+
+
 if __name__ == '__main__':
-    times = get_time(log_path="./testing_artifacts/app.log", log_level="INFO")
-    time_delta = get_time_delta(times[2], times[3])
-    print(times)
-    print(time_delta)
+    array = np.zeros((10, 3))
+
+    for i in range(array.shape[0]):
+        array[i, :] = i
+
+    print(array)

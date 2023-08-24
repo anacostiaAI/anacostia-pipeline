@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-from threading import Thread, Lock
+from threading import Thread, Lock, Semaphore
 from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce
 import time
-import networkx as nx
 from logging import Logger
-import uuid
-from uuid import UUID
 from datetime import datetime
 
 from pydantic import BaseModel
 
 from .constants import Status, ASTOperation
-
 
 class SignalAST:
     '''
@@ -66,25 +62,25 @@ class SignalAST:
             else:
                 yield param
 
-def Not(n:Union[SignalAST, BaseNode]):
+def Not(n: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.NOT,
         parameters = [n]
     )
 
-def And(*args:Union[SignalAST, BaseNode]):
+def And(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.AND,
         parameters = args
     )
 
-def Or(*args:Union[SignalAST, BaseNode]):
+def Or(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.OR,
         parameters = args
     )
 
-def XOr(*args:Union[SignalAST, BaseNode]):
+def XOr(*args: Union[SignalAST, BaseNode]):
     return SignalAST(
         operation = ASTOperation.XOR,
         parameters = args
@@ -117,12 +113,15 @@ class BaseNode(Thread):
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
         self.auto_trigger = auto_trigger
+        if self.auto_trigger:
+            self.triggered = True
+        else:
+            self.triggered = False
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
         self._status = Status.OFF
-        self._status_updated = False
-        
+
         self.triggered = False
 
         self.dependent_nodes = set()
@@ -149,7 +148,6 @@ class BaseNode(Thread):
         # Store for signals after processing them (and in the future after acknowledging them too maybe?)
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
-
         
         self.wait_time = 3
         self.throttle = .100
@@ -264,9 +262,13 @@ class BaseNode(Thread):
         # override to specify actions to be executed upon removal of node from dag or on pipeline shutdown
         pass
 
+    def trigger(self) -> None:
+        self.triggered = True
+
     def reset_trigger(self):
         # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        self.triggered = False
+        if self.auto_trigger == False:
+            self.triggered = False
 
     @property
     def status(self):
@@ -308,6 +310,9 @@ class BaseNode(Thread):
         # TODO
         pass
 
+    def on_exit(self):
+        # TODO
+        pass
 
     def run(self) -> None:
         self.status = Status.INIT
@@ -321,9 +326,12 @@ class BaseNode(Thread):
         self.status = Status.RUNNING
 
         while True:
-            if self.status == Status.RUNNING and not self.triggered:
 
-                # TODO conditiona on auto-trigger
+            if self.status == Status.RUNNING:
+                
+                # Don't run the rest if the node has already been triggered
+                if self.triggered:
+                    continue
 
                 # If pre-check fails, then just wait and try again
                 if not self.pre_check():
@@ -358,8 +366,8 @@ class BaseNode(Thread):
                     self.send_signals(Status.FAILURE)
                     #todo go to errored? conditional on user set var
 
-                # Commented out until other parts of the project are built out
-                # self.reset_trigger()
+                    # Commented out until other parts of the project are built out
+                    self.reset_trigger()
 
                 self.status == Status.COMPLETED
 
@@ -377,6 +385,7 @@ class BaseNode(Thread):
                 # TODO release locks
                 # TODO release resources
                 # TODO maybe annouce to other nodes we have stopped?
+                self.on_exit()
                 self.status = Status.EXITED
 
             if self.status == Status.EXITED:
@@ -408,4 +417,22 @@ class ActionNode(BaseNode):
 
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
-        super().__init__(name, signal_type)
+        super().__init__(name, signal_type, auto_trigger=False)
+        self.resource_lock = Lock()
+        self.current_resource_semaphore = Semaphore(value=1)
+        
+        # TODO: implement resource semaphore
+        # resource semaphore is used to track the number of nodes still using the resource's current state
+        # semaphore value is set based on the number of nodes listening to the resource
+        # once a node is done using the resource's current state, it releases the semaphore;
+        # when the semaphore value reaches 0, the resource's state can be updated as follows:
+        # 1. acquire the resource lock
+        # 2. update the resource's state (current state -> old state, new state -> current state)
+        # 3. release the resource lock
+        # Note: the resource semaphore should be acquired before the resource lock is acquired
+        # Note: the resource semaphore should be released after the resource lock is released
+        # Note: make sure to signal the next node first before releasing the resource semaphore 
+        # (if the resource semaphore goes down to zero before the next node triggers, 
+        # then the ResourceNode might update the resource state prior to the signalled node can access the current state of the resource;
+        # thus, since we don't want the next node to start using the resource's new state before it is updated, 
+        # we need to signal the next node first before releasing the resource semaphore)

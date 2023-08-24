@@ -121,6 +121,21 @@ r'''    _                                     _    _          ____   _          
 
     # TODO move cli shell stuff to its own class
     # i.e. dont pollute pipeline.py with shell parsing and shell commands
+    def pause_nodes(self) -> None:
+        # pausing node need to be done in reverse order so that the parent nodes are paused before the child nodes
+        # this is because the parent nodes will continue to listen for signals from the child nodes, 
+        # and if the child nodes are paused first, then the parent nodes will never receive the signals,
+        # and the parent nodes will never be paused
+        for node in reversed(self.nodes):
+            node.pause()
+
+    def terminate_nodes(self) -> None:
+        for node in self.nodes:
+            node.stop()
+        
+        for node in self.nodes:
+            node.join()
+
     def start(self) -> None:
         self.motd()
         self.console.print("Starting Pipeline!")
@@ -146,20 +161,50 @@ r'''    _                                     _    _          ____   _          
 
             except KeyboardInterrupt:
                 self.console.print("Ctrl+C Detected")
+                self.pause_nodes()
                 answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
+
                 if answer == 'y':
-                    # TODO graceful shutdown
+
+                    answer = Prompt.ask(
+                        "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
+                        console=self.console, default='abort',
+                        choices=['hard', 'soft', 'abort']
+                    )
                     
-                    break
+                    if answer == 'hard':
+                        self.console.print("Hard Shutdown")
+                        self.terminate_nodes()
+                        break
+
+                    elif answer == 'soft':
+                        print("Shutting down pipeline")
+                        self.terminate_nodes() 
+                        for node in reversed(self.nodes):
+                            node.teardown()
+                        print("Pipeline shutdown complete")
+                        break
+
+                    else:
+                        print("Aborting shutdown, resuming pipeline")
+                        for node in self.nodes:
+                            node.resume()
+                
+                else:
+                    print("Aborting shutdown, resuming pipeline")
+                    for node in self.nodes:
+                        node.resume()
                 
     def export_graph(self, file_path: str) -> None:
-        graph = nx.to_dict_of_dicts(self.graph)
-        graph = str(graph).replace("'", '"')
-        graph = json.loads(graph)
+        if file_path.endswith(".json"):
+            graph = nx.to_dict_of_dicts(self.graph)
+            graph = str(graph).replace("'", '"')
+            graph = json.loads(graph)
 
-        with open(file_path, 'w') as json_file:
-            json.dump(graph, json_file, indent=4)
-
+            with open(file_path, 'w') as json_file:
+                json.dump(graph, json_file, indent=4)
+        else:
+            raise ValueError("file_path must end with .json")
 
 class FeatureStoreWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
@@ -214,7 +259,5 @@ if __name__ == "__main__":
     train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
 
     dag = Pipeline([feature_store_node, model_registry_node, train_node])
+    dag.export_graph("../../tests/testing_artifacts/graph.json")
     dag.start()
-    #dag = DAG()
-    #dag.start()
-    #dag.export_graph("/Users/minhquando/Desktop/anacostia/anacostia_pipeline/resource/folder1/graph.json")
