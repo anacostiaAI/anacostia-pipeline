@@ -88,16 +88,33 @@ class NodeTests(unittest.TestCase):
             elif row == 1:
                 self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
 
-            """
-            elif row == 81:
-                self.assertTrue(np.array_equal(sample, np.array([78., 78., 78.])))
-            
-            elif row == 82:
-                self.assertTrue(np.array_equal(sample, np.array([79., 79., 79.])))
-            """
-            
-            if 80 <= row <= 90:
+            if 75 <= row <= 90:
                 print(sample)
+
+        self.tearDown_node(feature_store_node)
+
+    def test_get_num_current_feature_vectors(self):
+        feature_store_node = FeatureStoreNode(name=f"{self._testMethodName}", path=self.path)
+        self.start_node(feature_store_node)
+
+        # we have not added any feature vectors yet, so the number of current feature vectors should be 0
+        self.assertEqual(0, feature_store_node.get_num_current_feature_vectors())
+
+        total_num_samples = 0
+        for _ in range(5):
+            random_number = random.randint(0, 100)
+            array = create_array(shape=(random_number, 3))
+            feature_store_node.save_feature_vector(array)
+            total_num_samples += random_number
+            time.sleep(0.1)
+
+        # before we call event.set(), the number of current feature vectors should be 0 because all the feature vectors are marked as "new"
+        self.assertEqual(0, feature_store_node.get_num_current_feature_vectors())
+
+        feature_store_node.event.set()
+        time.sleep(0.1)
+        
+        self.assertEqual(total_num_samples, feature_store_node.get_num_current_feature_vectors())
 
         self.tearDown_node(feature_store_node)
 
