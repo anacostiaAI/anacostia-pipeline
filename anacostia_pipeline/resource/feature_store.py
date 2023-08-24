@@ -69,6 +69,20 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 json_data = json.load(json_file)
                 total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "current"])
                 return total_num_samples
+    
+    def get_num_old_feature_vectors(self) -> int:
+        with self.resource_lock:
+            with open(self.feature_store_json_path, 'r') as json_file:
+                json_data = json.load(json_file)
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "old"])
+                return total_num_samples
+    
+    def get_num_new_feature_vectors(self) -> int:
+        with self.resource_lock:
+            with open(self.feature_store_json_path, 'r') as json_file:
+                json_data = json.load(json_file)
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "new"])
+                return total_num_samples
 
     def get_current_feature_vectors(self) -> list:
         # TODO: account for the case where the feature store is not empty, but there are no current feature vectors

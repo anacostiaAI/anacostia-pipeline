@@ -51,8 +51,6 @@ class NodeTests(unittest.TestCase):
         feature_store_node.start()
 
     def tearDown_node(self, feature_store_node: FeatureStoreNode) -> None:
-        time.sleep(0.5)
-        feature_store_node.event.set()
         feature_store_node.stop()
         feature_store_node.join()
 
@@ -67,6 +65,8 @@ class NodeTests(unittest.TestCase):
             create_numpy_file(file_path=f"{self.path}/feature_store/features_{i}", shape=(random_number, 3)) 
             time.sleep(0.1)
 
+        time.sleep(0.1)
+        feature_store_node.event.set()
         self.tearDown_node(feature_store_node)
 
     def test_nonempty_setup(self):
@@ -91,14 +91,18 @@ class NodeTests(unittest.TestCase):
             if 75 <= row <= 90:
                 print(sample)
 
+        time.sleep(0.1)
+        feature_store_node.event.set()
         self.tearDown_node(feature_store_node)
 
-    def test_get_num_current_feature_vectors(self):
+    def test_get_num_feature_vectors(self):
         feature_store_node = FeatureStoreNode(name=f"{self._testMethodName}", path=self.path)
         self.start_node(feature_store_node)
 
         # we have not added any feature vectors yet, so the number of current feature vectors should be 0
+        self.assertEqual(0, feature_store_node.get_num_old_feature_vectors())
         self.assertEqual(0, feature_store_node.get_num_current_feature_vectors())
+        self.assertEqual(0, feature_store_node.get_num_new_feature_vectors())
 
         total_num_samples = 0
         for _ in range(5):
@@ -109,12 +113,27 @@ class NodeTests(unittest.TestCase):
             time.sleep(0.1)
 
         # before we call event.set(), the number of current feature vectors should be 0 because all the feature vectors are marked as "new"
+        # the number of new feature vectors should be equal to the total number of samples we added
+        # the number of old feature vectors should be 0 because we have not called event.set() yet
+        self.assertEqual(0, feature_store_node.get_num_old_feature_vectors())
         self.assertEqual(0, feature_store_node.get_num_current_feature_vectors())
+        self.assertEqual(total_num_samples, feature_store_node.get_num_new_feature_vectors())
 
         feature_store_node.event.set()
         time.sleep(0.1)
         
+        self.assertEqual(0, feature_store_node.get_num_old_feature_vectors())
         self.assertEqual(total_num_samples, feature_store_node.get_num_current_feature_vectors())
+        self.assertEqual(0, feature_store_node.get_num_new_feature_vectors())
+
+        # it seems like we need to add some delays here to make sure that the feature store node has time to update its internal state
+        time.sleep(0.1)
+        feature_store_node.event.set()
+        time.sleep(0.1)
+
+        self.assertEqual(total_num_samples, feature_store_node.get_num_old_feature_vectors())
+        self.assertEqual(0, feature_store_node.get_num_current_feature_vectors())
+        self.assertEqual(0, feature_store_node.get_num_new_feature_vectors())
 
         self.tearDown_node(feature_store_node)
 
@@ -128,6 +147,8 @@ class NodeTests(unittest.TestCase):
             feature_store_node.save_feature_vector(array)
             time.sleep(0.1)
 
+        time.sleep(0.1)
+        feature_store_node.event.set()
         self.tearDown_node(feature_store_node)
 
     def test_many_iterations(self):
@@ -158,6 +179,8 @@ class NodeTests(unittest.TestCase):
             feature_store_node.save_feature_vector(array)
             time.sleep(0.1)
 
+        time.sleep(0.1)
+        feature_store_node.event.set()
         self.tearDown_node(feature_store_node)
 
 
