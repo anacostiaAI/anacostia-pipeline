@@ -63,37 +63,26 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             self.observer.start()
             self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
-    def get_num_current_feature_vectors(self) -> int:
+    def get_num_feature_vectors(self, state: str) -> int:
+        if state not in ["current", "old", "new"]:
+            raise ValueError("state must be one of ['current', 'old', 'new']")
+        
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
-                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "current"])
-                return total_num_samples
-    
-    def get_num_old_feature_vectors(self) -> int:
-        with self.resource_lock:
-            with open(self.feature_store_json_path, 'r') as json_file:
-                json_data = json.load(json_file)
-                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "old"])
-                return total_num_samples
-    
-    def get_num_new_feature_vectors(self) -> int:
-        with self.resource_lock:
-            with open(self.feature_store_json_path, 'r') as json_file:
-                json_data = json.load(json_file)
-                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == "new"])
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == state])
                 return total_num_samples
 
-    def get_current_feature_vectors(self) -> list:
-        # TODO: account for the case where the feature store is not empty, but there are no current feature vectors
+    def get_feature_vectors(self, state: str) -> iter:
+        if state not in ["current", "old", "new"]:
+            raise ValueError("state must be one of ['current', 'old', 'new']")
+        
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
-                current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == "current"]
-                #print(current_feature_vectors_paths)
+                current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
 
         for path in current_feature_vectors_paths:
-            # print(path)
             with self.resource_lock:
                 try:
                     array = np.load(path)
