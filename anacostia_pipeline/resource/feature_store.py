@@ -21,6 +21,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         # max_old_vectors may be used to limit the number of feature vectors
         # stored in the feature store. If None, then there is no limit.
         # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
+        # TODO: implement deletion of old feature vectors
         self.max_old_vectors = max_old_vectors
 
         self.feature_store_path = os.path.join(os.path.abspath(path), "feature_store")
@@ -80,9 +81,9 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         with self.resource_lock:
             with open(self.feature_store_json_path, 'r') as json_file:
                 json_data = json.load(json_file)
-                current_feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
+                feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
 
-        for path in current_feature_vectors_paths:
+        for path in feature_vectors_paths:
             with self.resource_lock:
                 try:
                     array = np.load(path)
