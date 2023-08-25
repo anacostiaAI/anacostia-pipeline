@@ -23,7 +23,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
         # TODO: implement deletion of old feature vectors
         self.max_old_vectors = max_old_vectors
-
         self.feature_store_path = os.path.join(os.path.abspath(path), "feature_store")
         self.feature_store_json_path = os.path.join(self.feature_store_path, "feature_store.json")
         self.observer = Observer()
@@ -38,12 +37,13 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 with open(self.feature_store_json_path, 'w') as json_file:
                     json_entry = {
                         "node": self.name,
+                        "resource_path": self.feature_store_path,
                         "files": []
                     }
 
                     for filepath in os.listdir(self.feature_store_path):
                         try:
-                            if filepath.endswith(".npy"):
+                            if filepath.endswith(".json") is False:
                                 path = os.path.join(self.feature_store_path, filepath)
                                 array = np.load(path)
                                 json_file_entry = {}
@@ -106,7 +106,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     # once we see enough feature vectors, we can trigger the next node
 
                     logged_files = [entry["filepath"] for entry in json_data["files"]]
-                    if (event.src_path.endswith(".npy")) and (event.src_path not in logged_files):
+                    if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
                         array = np.load(os.path.join(self.feature_store_path, event.src_path))
 
                         json_entry = {}
