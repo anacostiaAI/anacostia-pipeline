@@ -82,6 +82,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
             # make sure signal is created before triggering
             self.trigger()
 
+    @ResourceNode.lock_decorator
     def create_filename(self, file_extension: str = None) -> str:
         """
         Default implementaion to create a filename for the new feature vector file.

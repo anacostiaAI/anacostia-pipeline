@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Semaphore, Barrier, Event
+from threading import Thread, Lock, Semaphore, Barrier, Event, RLock
 from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
 from functools import reduce, wraps
@@ -151,7 +151,7 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
         
-        self.wait_time = 3      # Proposal: lower this to 0.1 or 0.5
+        self.wait_time = 0.1      # Proposal: lower this to 0.1 or 0.5
         self.logger = None
 
         self.num_successors = 0
@@ -390,7 +390,7 @@ class ActionNode(BaseNode):
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
-        self.resource_lock = Lock()
+        self.resource_lock = RLock()
         self.event = Event()
 
     def lock_decorator(func):
@@ -401,7 +401,9 @@ class ResourceNode(BaseNode):
                 with self.resource_lock:
                     return func(self, *args, **kwargs)
             else:
-                if self.status != Status.INIT:
-                    with self.resource_lock:
-                        return func(self, *args, **kwargs)
+                while self.status == Status.INIT:
+                    time.sleep(self.wait_time)
+
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
         return wrapper

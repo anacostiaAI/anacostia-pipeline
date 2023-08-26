@@ -41,13 +41,14 @@ logger = logging.getLogger(__name__)
 class PyTorchModelRegistryNode(ModelRegistryNode):
     def __init__(self, name: str, path: str) -> None:
         super().__init__(name, path, "pytorch")
-
-    def create_filename(self) -> str:
-        return super().create_filename("pt")
     
-    def save_model(self) -> None:
-        model_name = self.create_filename()
-        create_file(f"{self.model_registry_path}/{model_name}", "PyTorch model")
+    # later on, this will be replaced with a function that saves a PyTorch model
+    # the content argument will have a type hint of torch.nn.Module
+    def save_model(self, content) -> None:
+
+        # why didn't self.create_filename() cause a deadlock when we used a regular lock?
+        model_name = self.create_filename("pt")
+        create_file(f"{self.model_registry_path}/{model_name}", content)
         self.log(f"saved model {model_name} to registry {self.model_registry_path}")
 
 
@@ -73,12 +74,8 @@ class NodeTests(unittest.TestCase):
         model_registry_node = PyTorchModelRegistryNode(name=f"{self._testMethodName}", path=self.path)
         self.start_node(model_registry_node)
         
-        # wait for node to finish setup
-        time.sleep(0.1)
-        
         for _ in range(5):
-            model_registry_node.save_model()
-            time.sleep(0.1)
+            model_registry_node.save_model("PyTorch model")
 
         time.sleep(0.1)
         model_registry_node.event.set()
