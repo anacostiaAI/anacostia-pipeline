@@ -407,3 +407,17 @@ class ResourceNode(BaseNode):
                 with self.resource_lock:
                     return func(self, *args, **kwargs)
         return wrapper
+
+    def wait_successors(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            for _ in range(self.num_successors):
+                self.event.wait()
+            
+            result = func(self, *args, **kwargs)
+            
+            if self.event.is_set():
+                self.event.clear()
+            
+            return result
+        return wrapper
