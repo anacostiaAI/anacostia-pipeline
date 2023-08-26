@@ -3,7 +3,7 @@ from __future__ import annotations
 from threading import Thread, Lock, Semaphore, Barrier, Event
 from queue import Queue, Empty
 from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
-from functools import reduce
+from functools import reduce, wraps
 import time
 from logging import Logger
 from datetime import datetime
@@ -401,3 +401,16 @@ class ResourceNode(BaseNode):
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = Lock()
         self.event = Event()
+
+    def lock_decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # make sure setup is finished before allowing access to resource
+            if func.__name__ == "setup":
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
+            else:
+                if self.status != Status.INIT:
+                    with self.resource_lock:
+                        return func(self, *args, **kwargs)
+        return wrapper

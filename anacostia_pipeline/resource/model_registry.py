@@ -7,6 +7,7 @@ from functools import wraps
 
 sys.path.append("../../anacostia_pipeline")
 from engine.node import ResourceNode
+from engine.constants import Status
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -18,23 +19,9 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.model_registry_json_path = os.path.join(self.model_registry_path, "model_registry.json")
         self.framework = framework
         self.observer = Observer()
-        self.setup_finished = False
         super().__init__(name, "model_registry")
 
-    def lock_decorator(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            # make sure setup is finished before allowing access to resource
-            if func.__name__ == "setup":
-                with self.resource_lock:
-                    return func(self, *args, **kwargs)
-            else:
-                if self.setup_finished is True:
-                    with self.resource_lock:
-                        return func(self, *args, **kwargs)
-        return wrapper
-
-    @lock_decorator
+    @ResourceNode.lock_decorator
     def setup(self) -> None:
         if os.path.exists(self.model_registry_path) is False:
             os.makedirs(self.model_registry_path, exist_ok=True)
@@ -67,9 +54,8 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.observer.schedule(event_handler=self, path=self.model_registry_path, recursive=True)
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
-        self.setup_finished = True
 
-    @lock_decorator
+    @ResourceNode.lock_decorator
     def on_modified(self, event):
         if not event.is_directory:
             with open(self.model_registry_json_path, 'r') as json_file:
@@ -119,32 +105,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         num_files = len(os.listdir(self.model_registry_path))
         return f"model_{num_files}.{file_extension}"
 
-    """
-    def load_old_model(self, path: str) -> None:
-        raise NotImplementedError
-    
-    def load_new_model(self, path: str) -> None:
-        raise NotImplementedError
-
-    def load_new_models(self) -> None:
-        for model_path in self.new_models_paths():
-            yield self.load_new_model(model_path)
-    
-    def load_old_models(self) -> None:
-        for i, model_path in enumerate(self.old_models_paths()):
-            if i < self.num_old_models:
-                yield self.load_old_model(model_path)
-
-    def old_models_paths(self) -> None:
-        models = os.listdir(self.old_models_path)
-        return models
-
-    def new_models_paths(self) -> None:
-        models = os.listdir(self.new_models_path)
-        return models
-    """
-
-    @lock_decorator 
+    @ResourceNode.lock_decorator 
     def save_model(self) -> None:
         raise NotImplementedError
 
@@ -178,3 +139,28 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.observer.stop()
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
+
+    """
+    def load_old_model(self, path: str) -> None:
+        raise NotImplementedError
+    
+    def load_new_model(self, path: str) -> None:
+        raise NotImplementedError
+
+    def load_new_models(self) -> None:
+        for model_path in self.new_models_paths():
+            yield self.load_new_model(model_path)
+    
+    def load_old_models(self) -> None:
+        for i, model_path in enumerate(self.old_models_paths()):
+            if i < self.num_old_models:
+                yield self.load_old_model(model_path)
+
+    def old_models_paths(self) -> None:
+        models = os.listdir(self.old_models_path)
+        return models
+
+    def new_models_paths(self) -> None:
+        models = os.listdir(self.new_models_path)
+        return models
+    """
