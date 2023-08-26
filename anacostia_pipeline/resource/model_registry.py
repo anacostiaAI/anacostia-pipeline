@@ -110,30 +110,24 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
     def save_model(self) -> None:
         raise NotImplementedError
 
+    @ResourceNode.wait_successors
+    @ResourceNode.lock_decorator
     def update_state(self):
-        # create another decorator to call event.wait() multiple times
-        for _ in range(self.num_successors):
-            self.event.wait()
+        with open(self.model_registry_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
 
-        with self.resource_lock:
-            with open(self.model_registry_json_path, 'r') as json_file:
-                json_data = json.load(json_file)
-
-            for file_entry in json_data["files"]:
-                if file_entry["state"] == "current":
-                    self.log(f'current -> old: {file_entry["filepath"]}')
-                    file_entry["state"] = "old"
-            
-            for file_entry in json_data["files"]:
-                if file_entry["state"] == "new":
-                    self.log(f'new -> current: {file_entry["filepath"]}')
-                    file_entry["state"] = "current"
-
-            with open(self.model_registry_json_path, 'w') as json_file:
-                json.dump(json_data, json_file, indent=4)
+        for file_entry in json_data["files"]:
+            if file_entry["state"] == "current":
+                self.log(f'current -> old: {file_entry["filepath"]}')
+                file_entry["state"] = "old"
         
-        if self.event.is_set():
-            self.event.clear()
+        for file_entry in json_data["files"]:
+            if file_entry["state"] == "new":
+                self.log(f'new -> current: {file_entry["filepath"]}')
+                file_entry["state"] = "current"
+
+        with open(self.model_registry_json_path, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
     
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")

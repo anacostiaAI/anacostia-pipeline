@@ -81,6 +81,30 @@ class NodeTests(unittest.TestCase):
         model_registry_node.event.set()
         self.tearDown_node(model_registry_node)
 
+    def test_many_iterations(self):
+        model_registry_node = PyTorchModelRegistryNode(name=f"{self._testMethodName}", path=self.path)
+        self.start_node(model_registry_node)
+
+        for _ in range(5):
+            model_registry_node.save_model("PyTorch model")
+
+        time.sleep(0.1)
+        model_registry_node.event.set()
+        model_registry_node.log(f"second iteration")
+
+        for _ in range(5):
+            model_registry_node.save_model("PyTorch model")
+        
+        time.sleep(0.1)
+        model_registry_node.event.set()
+        model_registry_node.log(f"third iteration")
+
+        for _ in range(5):
+            model_registry_node.save_model("PyTorch model")
+        
+        time.sleep(0.1)
+        model_registry_node.event.set()
+        self.tearDown_node(model_registry_node)
 
 if __name__ == "__main__":
     unittest.main()
