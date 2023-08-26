@@ -180,12 +180,6 @@ class BaseNode(Thread):
 
     def set_logger(self, logger: Logger) -> None:
         self.logger = logger
-    
-    def get_status(self) -> Status:
-        return self.status
-    
-    def set_status(self, status: Status) -> None:
-        self.status = status
 
     def log(self, message: str) -> None:
         if self.logger is not None:
@@ -267,16 +261,13 @@ class BaseNode(Thread):
 
     @property
     def status(self):
-        self._status_lock.acquire()
-        s = self._status
-        self._status_lock.release()
-        return s
+        with self._status_lock:
+            return self._status
 
     @status.setter
     def status(self, value: Status):
-        self._status_lock.acquire()
-        self._status = value
-        self._status_lock.release()
+        with self._status_lock:
+            self._status = value
 
     def pause(self):
         self.status = Status.PAUSED
@@ -405,7 +396,7 @@ class ResourceNode(BaseNode):
     def lock_decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            # make sure setup is finished before allowing access to resource
+            # make sure setup is finished before allowing other nodes to access the resource
             if func.__name__ == "setup":
                 with self.resource_lock:
                     return func(self, *args, **kwargs)
