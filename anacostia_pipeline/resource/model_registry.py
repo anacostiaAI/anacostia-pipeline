@@ -43,7 +43,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
                             json_file_entry["created_at"] = str(datetime.now())
                             json_entry["files"].append(json_file_entry)
                     except Exception as e:
-                        self.log(f"Error loading feature vector file: {e}")
+                        self.log(f"Error loading model file: {e}")
                         continue
 
                 json.dump(json_entry, json_file, indent=4)

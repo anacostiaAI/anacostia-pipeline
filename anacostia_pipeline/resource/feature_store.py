@@ -30,7 +30,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
     
     @ResourceNode.lock_decorator
     def setup(self) -> None:
-        if os.path.exists(self.feature_store_json_path) is False:
+        if os.path.exists(self.feature_store_path) is False:
             os.makedirs(self.feature_store_path, exist_ok=True)
 
         if os.path.exists(self.feature_store_json_path) is False:

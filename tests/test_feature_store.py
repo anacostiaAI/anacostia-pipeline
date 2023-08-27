@@ -41,7 +41,6 @@ class NodeTests(unittest.TestCase):
         super().__init__(methodName)
     
     def setUp(self) -> None:
-        self.feature_store_dirs = os.listdir(feature_store_tests_path)
         self.path = f"{feature_store_tests_path}/{self._testMethodName}"
         os.makedirs(self.path)
 
