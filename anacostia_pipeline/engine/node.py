@@ -10,7 +10,11 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from .constants import Status, ASTOperation
+if __name__ == "__main__":
+    from constants import Status, ASTOperation
+else:
+    from engine.constants import Status, ASTOperation
+
 
 class SignalAST:
     '''
@@ -25,11 +29,6 @@ class SignalAST:
         '''
         Evaluate the AST based on the existance of signal and success (if it does exist) for the given node's received signals
         '''
-        # If there are no parameters then False
-        # i.e. null/invalid operation
-        if len(self.parameters) == 0:
-            return False
-
         evaluated_params = list()
         for param in self.parameters:
             if isinstance(param, SignalAST):
@@ -104,29 +103,28 @@ class BaseNode(Thread):
         name: str, 
         signal_type: str = "DEFAULT_SIGNAL",
         listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
-        retrigger: bool = True,
-        auto_trigger: bool = False,
+        auto_trigger: bool = True,
 
     ) -> None:
         '''
         :param name: a name given to the node
         :param signal_type: ???
         :param listen_to: The list of nodes or boolean expression of nodes (SignalAST) that this node requires signals of to trigger. Items in the list will be boolean AND'd together
-        :param retrigger: if False then the node will requires a call to reset_trigger() before being able to trigger again    
-        :param auto_trigger: if True, then node will skip signal check
+        :param auto_trigger: If False, then the node requires another object to trigger 
         '''
 
         super().__init__()
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
-        self.retrigger = retrigger
         self.auto_trigger = auto_trigger
+        if self.auto_trigger:
+            self.triggered = True
+        else:
+            self.triggered = False
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
         self._status = Status.OFF
-
-        self.triggered = False
 
         self.dependent_nodes = set()
         
@@ -153,9 +151,9 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
         
-        self.wait_time = 0.5
-        self.throttle = .100
+        self.wait_time = 0.1      # Proposal: lower this to 0.1 or 0.5
         self.logger = None
+
         self.num_successors = 0
     
     @staticmethod
@@ -277,26 +275,11 @@ class BaseNode(Thread):
 
     def trigger(self) -> None:
         self.triggered = True
-        try:
-            ret = self.execute()
-            
-            if ret:
-                self.on_success()        
-                self.post_execution()
-                self.send_signals(Status.SUCCESS)
-            else:
-                self.on_failure()
-                self.post_execution()
-                self.send_signals(Status.FAILURE)
-        except Exception as e:
-            self.on_failure(e)
-            self.post_execution()
-            self.send_signals(Status.FAILURE)
-            
 
     def reset_trigger(self):
         # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        self.triggered = False
+        if self.auto_trigger == False:
+            self.triggered = False
 
     @property
     def status(self):
@@ -308,13 +291,11 @@ class BaseNode(Thread):
         with self._status_lock:
             self._status = value
 
-    
     def pause(self):
         self.status = Status.PAUSED
 
     def resume(self):
-        if self.status == Status.PAUSED:
-            self.status = Status.RUNNING
+        self.status = Status.RUNNING
 
     def stop(self):
         self.status = Status.STOPPING
@@ -342,37 +323,48 @@ class BaseNode(Thread):
         self.status = Status.RUNNING
 
         while True:
+            if self.status == Status.RUNNING:               
 
-            if self.status == Status.RUNNING:
-                
-                # Don't run the rest if the node has already been triggered
-                # and retrigger is false
-                if self.triggered and not self.retrigger:
-                    continue
+                # TODO conditional on auto-trigger
+                if self.triggered:
 
-                # If pre-check fails, then just wait and try again
-                if not self.pre_check():
-                    self.status = Status.WAITING
-                    continue
+                    # If pre-check fails, then just wait and try again
+                    if not self.pre_check():
+                        self.status = Status.WAITING
+                        continue
 
-                # if auto_trigger is off, then check for signals
-                if not self.auto_trigger:
                     # If not all signals received / boolean statement of signals is false
                     # wait and try again
                     if not self.check_signals():
                         self.status = Status.WAITING
                         continue
-                
-                # Precheck is good and the signals we want are good
-                self.pre_execution()
 
-                # Run the action function
-                self.trigger()
+                    # Precheck is good and the signals we want are good
+                    self.pre_execution()
+                    
+                    # Run the action function
+                    try:
+                        # the following line seems unecessary because self.trigger=True 
+                        # regardless if auto-trigger=True or not (i.e., we're using manual trigger)
+                        # self.triggered = True
+                        ret = self.execute()
+                        if ret:
+                            self.on_success()
+                            self.post_execution()
+                            self.send_signals(Status.SUCCESS)
+                        else:
+                            self.on_failure()
+                            self.post_execution()
+                            self.send_signals(Status.FAILURE)
+                    except Exception as e:
+                        self.on_failure(e)
+                        self.post_execution()
+                        self.send_signals(Status.FAILURE)
 
-                self.update_state()
-                self.reset_trigger()    
-                # this line is causing the node to pause after every execution
-                # self.status = Status.COMPLETED
+                    self.update_state()
+                    self.reset_trigger()    
+                    # this line is causing the node to pause after every execution
+                    # self.status = Status.COMPLETED
             
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action
@@ -381,14 +373,9 @@ class BaseNode(Thread):
             elif self.status == Status.WAITING:
                 # Sleep and then start running again
                 time.sleep(self.wait_time)
-
-                # atomically check if the status has been externally changed off of WAITING
-                with self._status_lock:
-                    if self._status == Status.WAITING:
-                        self._status = Status.RUNNING
+                self.status = Status.RUNNING
 
             elif self.status == Status.STOPPING:
-                # TODO lock status lock? disable state change here. force into closing
                 # TODO release locks
                 # TODO release resources
                 # TODO maybe annouce to other nodes we have stopped?
@@ -398,7 +385,7 @@ class BaseNode(Thread):
             if self.status == Status.EXITED:
                 break
 
-            time.sleep(self.throttle)
+            time.sleep(self.wait_time)
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''
