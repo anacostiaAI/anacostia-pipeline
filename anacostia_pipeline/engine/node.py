@@ -155,6 +155,20 @@ class BaseNode(Thread):
         self.logger = None
 
         self.num_successors = 0
+    
+    @staticmethod
+    def pausable(func):
+        '''
+        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
+        '''
+        def wrapper(self, *args, **kwargs):
+            ret = func(self, *args, **kwargs)
+
+            while self.status == Status.PAUSED:
+                time.sleep(self.wait_time)
+
+            return ret
+        return wrapper
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -196,11 +210,13 @@ class BaseNode(Thread):
         # therefore, it is best to put set up logic here that is not dependent on other nodes.
         pass
 
+    @pausable
     def pre_check(self) -> bool:
         # should be used for continuously checking if the node is ready to start
         # i.e., checking if database connections, API connections, etc. are ready 
         return True
 
+    @pausable
     def check_signals(self) -> bool:
         '''
         Verify all received signal statuses match the condition for this node to execute
@@ -214,28 +230,34 @@ class BaseNode(Thread):
         # Check if the signals match the execute condition
         return self.signal_ast.evaluate(self)
 
+    @pausable
     def pre_execution(self) -> None:
         # override to enable node to do something before execution; 
         # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
         pass
 
+    @pausable
     def execute(self, *args, **kwargs) -> bool:
         # the logic for a particular stage in the MLOps pipeline
         pass
 
+    @pausable
     def post_execution(self) -> None:
         pass
-
+    
+    @pausable
     def on_success(self) -> None:
         # override to enable node to do something after execution in event of success of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
+    @pausable
     def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
     
+    @pausable
     def send_signals(self, status:Status):
         msg = Message(
             sender = self.name,
@@ -340,10 +362,10 @@ class BaseNode(Thread):
                         self.send_signals(Status.FAILURE)
 
                     self.update_state()
-
-                    # Commented out until other parts of the project are built out
-                    self.reset_trigger()
-
+                    self.reset_trigger()    
+                    # this line is causing the node to pause after every execution
+                    # self.status = Status.COMPLETED
+            
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action
                 time.sleep(self.wait_time)
@@ -363,7 +385,7 @@ class BaseNode(Thread):
             if self.status == Status.EXITED:
                 break
 
-            time.sleep(.1)
+            time.sleep(self.wait_time)
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''

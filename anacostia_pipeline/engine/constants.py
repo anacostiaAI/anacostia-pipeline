@@ -13,7 +13,8 @@ class Status(Enum):
     PAUSING = 8,
     PAUSED = 9
     STOPPING = 10
-    INIT = 11
+    INIT = 11,
+    COMPLETED = 12
 
     def __repr__(self) -> str:
         status_words = {
@@ -27,7 +28,9 @@ class Status(Enum):
             Status.OFF: "OFF",
             Status.PAUSING: "PAUSING",
             Status.PAUSED: "PAUSED",
-            Status.STOPPING: "STOPPING"
+            Status.STOPPING: "STOPPING",
+            Status.INIT: "INITIALIZING",
+            Status.COMPLETED: "COMPLETED"
         }
         return status_words[self]
     
