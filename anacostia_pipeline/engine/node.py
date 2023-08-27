@@ -25,6 +25,11 @@ class SignalAST:
         '''
         Evaluate the AST based on the existance of signal and success (if it does exist) for the given node's received signals
         '''
+        # If there are no parameters then False
+        # i.e. null/invalid operation
+        if len(self.parameters) == 0:
+            return False
+
         evaluated_params = list()
         for param in self.parameters:
             if isinstance(param, SignalAST):
@@ -99,24 +104,23 @@ class BaseNode(Thread):
         name: str, 
         signal_type: str = "DEFAULT_SIGNAL",
         listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
-        auto_trigger: bool = True,
+        retrigger: bool = True,
+        auto_trigger: bool = False,
 
     ) -> None:
         '''
         :param name: a name given to the node
         :param signal_type: ???
         :param listen_to: The list of nodes or boolean expression of nodes (SignalAST) that this node requires signals of to trigger. Items in the list will be boolean AND'd together
-        :param auto_trigger: If False, then the node requires another object to trigger 
+        :param retrigger: if False then the node will requires a call to reset_trigger() before being able to trigger again    
+        :param auto_trigger: if True, then node will skip signal check
         '''
 
         super().__init__()
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
+        self.retrigger = retrigger
         self.auto_trigger = auto_trigger
-        if self.auto_trigger:
-            self.triggered = True
-        else:
-            self.triggered = False
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
@@ -152,6 +156,22 @@ class BaseNode(Thread):
         self.wait_time = 3
         self.throttle = .100
         self.logger = None
+
+    @staticmethod
+    def pausable(func):
+        '''
+        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
+        '''
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            ret = func(*args, **kwargs)
+
+            while self.status == Status.PAUSED:
+                time.sleep(self.wait_time)
+
+            return ret
+        return wrapper
+
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -199,13 +219,13 @@ class BaseNode(Thread):
         # therefore, it is best to put set up logic here that is not dependent on other nodes.
         pass
 
-    @self.pausable
+    @pausable
     def pre_check(self) -> bool:
         # should be used for continuously checking if the node is ready to start
         # i.e., checking if database connections, API connections, etc. are ready 
         return True
 
-    @self.pausable
+    @pausable
     def check_signals(self) -> bool:
         '''
         Verify all received signal statuses match the condition for this node to execute
@@ -219,34 +239,34 @@ class BaseNode(Thread):
         # Check if the signals match the execute condition
         return self.signal_ast.evaluate(self)
 
-    @self.pausable
+    @pausable
     def pre_execution(self) -> None:
         # override to enable node to do something before execution; 
         # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
         pass
 
-    @self.pausable
+    @pausable
     def execute(self, *args, **kwargs) -> bool:
         # the logic for a particular stage in the MLOps pipeline
         pass
 
-    @self.pausable
+    @pausable
     def post_execution(self) -> None:
         pass
 
-    @self.pausable
+    @pausable
     def on_success(self) -> None:
         # override to enable node to do something after execution in event of success of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
-    @self.pausable
+    @pausable
     def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
     
-    @self.pausable
+    @pausable
     def send_signals(self, status:Status):
         msg = Message(
             sender = self.name,
@@ -264,11 +284,26 @@ class BaseNode(Thread):
 
     def trigger(self) -> None:
         self.triggered = True
+        try:
+            ret = self.execute()
+            
+            if ret:
+                self.on_success()        
+                self.post_execution()
+                self.send_signals(Status.SUCCESS)
+            else:
+                self.on_failure()
+                self.post_execution()
+                self.send_signals(Status.FAILURE)
+        except Exception as e:
+            self.on_failure(e)
+            self.post_execution()
+            self.send_signals(Status.FAILURE)
+            
 
     def reset_trigger(self):
         # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        if self.auto_trigger == False:
-            self.triggered = False
+        self.triggered = False
 
     @property
     def status(self):
@@ -283,19 +318,7 @@ class BaseNode(Thread):
         self._status = value
         self._status_lock.release()
 
-    def pausable(self, func):
-        '''
-        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
-        '''
-        def wrapper(*args, **kwargs):
-            ret = func(*args, **kwargs)
-
-            while self.status == Status.PAUSED:
-                time.sleep(self.wait_time)
-
-            return ret
-        return wrapper
-
+    
     def pause(self):
         self.status = Status.PAUSED
 
@@ -330,7 +353,8 @@ class BaseNode(Thread):
             if self.status == Status.RUNNING:
                 
                 # Don't run the rest if the node has already been triggered
-                if self.triggered:
+                # and retrigger is false
+                if self.triggered and not self.retrigger:
                     continue
 
                 # If pre-check fails, then just wait and try again
@@ -338,36 +362,20 @@ class BaseNode(Thread):
                     self.status = Status.WAITING
                     continue
 
-                # If not all signals received / boolean statement of signals is false
-                # wait and try again
-                if not self.check_signals():
-                    self.status = Status.WAITING
-                    continue
+                # if auto_trigger is off, then check for signals
+                if not self.auto_trigger:
+                    # If not all signals received / boolean statement of signals is false
+                    # wait and try again
+                    if not self.check_signals():
+                        self.status = Status.WAITING
+                        continue
                 
+
                 # Precheck is good and the signals we want are good
                 self.pre_execution()
 
                 # Run the action function
-                try:
-                    self.triggered = True
-                    ret = self.execute()
-                    
-                    if ret:
-                        self.on_success()        
-                        self.post_execution()
-                        self.send_signals(Status.SUCCESS)
-                    else:
-                        self.on_failure()
-                        self.post_execution()
-                        self.send_signals(Status.FAILURE)
-                except Exception as e:
-                    self.on_failure(e)
-                    self.post_execution()
-                    self.send_signals(Status.FAILURE)
-                    #todo go to errored? conditional on user set var
-
-                    # Commented out until other parts of the project are built out
-                    self.reset_trigger()
+                self.trigger()
 
                 self.status == Status.COMPLETED
 
@@ -378,7 +386,11 @@ class BaseNode(Thread):
             elif self.status == Status.WAITING:
                 # Sleep and then start running again
                 time.sleep(self.wait_time)
-                self.status = Status.RUNNING
+
+                # atomically check if the status has been externally changed off of WAITING
+                with self._status_lock:
+                    if self._status == Status.WAITING:
+                        self._status = Status.RUNNING
 
             elif self.status == Status.STOPPING:
                 # TODO lock status lock? disable state change here. force into closing

@@ -10,6 +10,7 @@ setup(
     install_requires=[
         "networkx==3.1",
         "watchdog==3.0.0",
+        "numpy",
         "pydantic",
         "rich"
     ],

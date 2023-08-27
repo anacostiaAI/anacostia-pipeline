@@ -131,33 +131,34 @@ r'''    _                                     _    _          ____   _          
 
     def terminate_nodes(self) -> None:
         for node in self.nodes:
+            self.console.print(f"Stopping {node.name}")
             node.stop()
         
         for node in self.nodes:
             node.join()
 
-    def start(self) -> None:
+    def start(self, cli=False) -> None:
         self.motd()
         self.console.print("Starting Pipeline!")
         self.launch_nodes()
         self.console.print("All Nodes Launched")
-        # IPython.embed()
-        while True:
+        if cli:
             try:
-                cmd_string = self.console.input("> ")
-                cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
-                # self.console.print(cmd)
+                while True:        
+                    cmd_string = self.console.input("> ")
+                    cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
+                    # self.console.print(cmd)
 
-                match cmd[0]:
-                    case "help":
-                        self.help_cmd()
-                    case "version":
-                        version = pkg_resources.get_distribution("anacostia-pipeline").version
-                        self.console.print(f"Version {version}")
-                    case "pipe":
-                        self.pipe_cmds()
-                    case "node":
-                        self.node_cmds()
+                    match cmd[0]:
+                        case "help":
+                            self.help_cmd()
+                        case "version":
+                            version = pkg_resources.get_distribution("anacostia-pipeline").version
+                            self.console.print(f"Version {version}")
+                        case "pipe":
+                            self.pipe_cmds()
+                        case "node":
+                            self.node_cmds()
 
             except KeyboardInterrupt:
                 self.console.print("Ctrl+C Detected")
@@ -175,7 +176,7 @@ r'''    _                                     _    _          ____   _          
                     if answer == 'hard':
                         self.console.print("Hard Shutdown")
                         self.terminate_nodes()
-                        break
+                        exit(1)
 
                     elif answer == 'soft':
                         print("Shutting down pipeline")
@@ -183,7 +184,7 @@ r'''    _                                     _    _          ____   _          
                         for node in reversed(self.nodes):
                             node.teardown()
                         print("Pipeline shutdown complete")
-                        break
+                        exit(0)
 
                     else:
                         print("Aborting shutdown, resuming pipeline")
@@ -194,6 +195,12 @@ r'''    _                                     _    _          ____   _          
                     print("Aborting shutdown, resuming pipeline")
                     for node in self.nodes:
                         node.resume()
+        else:
+            # Its up to the programmer to do something about the nodes
+            # from here on, otherwise the thread finishes and self would
+            # assumingly get garbage collected
+            pass
+        
                 
     def export_graph(self, file_path: str) -> None:
         if file_path.endswith(".json"):
