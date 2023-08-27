@@ -66,13 +66,17 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
 
     @ResourceNode.lock_decorator
     def get_num_feature_vectors(self, state: str) -> int:
-        if state not in ["current", "old", "new"]:
-            raise ValueError("state must be one of ['current', 'old', 'new']")
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
         
         with open(self.feature_store_json_path, 'r') as json_file:
             json_data = json.load(json_file)
-            total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == state])
-            return total_num_samples
+            if state == "all":
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"]])
+                return total_num_samples
+            else:
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == state])
+                return total_num_samples
 
     @ResourceNode.lock_decorator
     def get_feature_vectors(self, state: str) -> iter:

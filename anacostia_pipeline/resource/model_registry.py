@@ -1,23 +1,21 @@
 import sys
 import os
-import time
 import json
 from datetime import datetime
-from functools import wraps
 
 sys.path.append("../../anacostia_pipeline")
 from engine.node import ResourceNode
-from engine.constants import Status
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
 class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str, framework: str) -> None:
+    def __init__(self, name: str, path: str, framework: str, max_old_models: int = None) -> None:
         self.model_registry_path = os.path.join(os.path.abspath(path), "model_registry")
         self.model_registry_json_path = os.path.join(self.model_registry_path, "model_registry.json")
         self.framework = framework
+        self.max_old_models = max_old_models
         self.observer = Observer()
         super().__init__(name, "model_registry")
 
@@ -110,6 +108,28 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
     def save_model(self) -> None:
         raise NotImplementedError
 
+    @ResourceNode.lock_decorator
+    def get_models_paths(self, state: str) -> list[str]:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
+        
+        with open(self.model_registry_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+
+        current_models = []
+        for file_entry in json_data["files"]:
+            if state == "all":
+                current_models.append(file_entry["filepath"])
+            else:
+                if file_entry["state"] == state:
+                    current_models.append(file_entry["filepath"])
+
+        return current_models
+    
+    @ResourceNode.lock_decorator
+    def load_models(self) -> None:
+        raise NotImplementedError
+
     @ResourceNode.wait_successors
     @ResourceNode.lock_decorator
     def update_state(self):
@@ -139,9 +159,6 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
     def load_old_model(self, path: str) -> None:
         raise NotImplementedError
     
-    def load_new_model(self, path: str) -> None:
-        raise NotImplementedError
-
     def load_new_models(self) -> None:
         for model_path in self.new_models_paths():
             yield self.load_new_model(model_path)

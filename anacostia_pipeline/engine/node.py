@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Semaphore, Barrier, Event, RLock
-from queue import Queue, Empty
-from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
+from threading import Thread, Lock, Event, RLock
+from queue import Queue
+from typing import List, Dict, Optional, Set, Union
 from functools import reduce, wraps
 import time
 from logging import Logger
