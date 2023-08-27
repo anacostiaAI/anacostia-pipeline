@@ -49,10 +49,11 @@ class Pipeline:
         self.nodes = list(nx.topological_sort(self.graph))      # switched to list to preserve topological order of nodes
         for node in self.nodes:
             node.set_logger(logger)
-
+        
     def motd(self):
         msg = \
-r'''    _                                     _    _          ____   _               _  _              
+r'''
+    _                                     _    _          ____   _               _  _              
    / \    _ __    __ _   ___   ___   ___ | |_ (_)  __ _  |  _ \ (_) _ __    ___ | |(_) _ __    ___ 
   / _ \  | '_ \  / _` | / __| / _ \ / __|| __|| | / _` | | |_) || || '_ \  / _ \| || || '_ \  / _ \
  / ___ \ | | | || (_| || (__ | (_) |\__ \| |_ | || (_| | |  __/ | || |_) ||  __/| || || | | ||  __/
@@ -60,7 +61,7 @@ r'''    _                                     _    _          ____   _          
                                                                    |_|                             
 '''
         self.console.print(msg)
-        
+
     def help_cmd(self):
         repo_url = "TODO"
 
@@ -143,12 +144,22 @@ r'''    _                                     _    _          ____   _          
         self.launch_nodes()
         self.console.print("All Nodes Launched")
         if cli:
-            try:
-                while True:        
+            while True:
+                try:
                     cmd_string = self.console.input("> ")
                     cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
-                    # self.console.print(cmd)
+                    self.console.print(cmd)
 
+                    match cmd:
+                        case "help":
+                            self.help_cmd()
+                        case "version":
+                            version = pkg_resources.get_distribution("anacostia").version
+                            self.console.print(f"Version {version}")
+                        case "pipe":
+                            self.pipe_cmds()
+                        case "node":
+                            self.node_cmds()
                     match cmd[0]:
                         case "help":
                             self.help_cmd()
@@ -160,13 +171,23 @@ r'''    _                                     _    _          ____   _          
                         case "node":
                             self.node_cmds()
 
-            except KeyboardInterrupt:
-                self.console.print("Ctrl+C Detected")
-                self.pause_nodes()
-                answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
+                except KeyboardInterrupt:
+                    self.console.print("Ctrl+C Detected")
+                    self.pause_nodes()
+                    answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
 
-                if answer == 'y':
+                    if answer == 'y':
 
+                        answer = Prompt.ask(
+                            "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
+                            console=self.console, default='abort',
+                            choices=['hard', 'soft', 'abort']
+                        )
+                        
+                        if answer == 'hard':
+                            self.console.print("Hard Shutdown")
+                            self.terminate_nodes()
+                            break
                     answer = Prompt.ask(
                         "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
                         console=self.console, default='abort',
@@ -267,4 +288,4 @@ if __name__ == "__main__":
 
     dag = Pipeline([feature_store_node, model_registry_node, train_node])
     dag.export_graph("../../tests/testing_artifacts/graph.json")
-    dag.start()
+    dag.start(cli=True)

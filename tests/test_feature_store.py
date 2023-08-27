@@ -89,7 +89,8 @@ class NodeTests(unittest.TestCase):
                 self.assertTrue(np.array_equal(sample, np.array([1., 1., 1.])))
 
             if 75 <= row <= 90:
-                print(sample)
+                #print(sample)
+                pass
 
         time.sleep(0.1)
         feature_store_node.event.set()

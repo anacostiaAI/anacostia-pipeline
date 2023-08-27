@@ -157,22 +157,20 @@ class BaseNode(Thread):
         self.throttle = .100
         self.logger = None
         self.num_successors = 0
-
+    
     @staticmethod
     def pausable(func):
         '''
         A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
         '''
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            ret = func(*args, **kwargs)
+        def wrapper(self, *args, **kwargs):
+            ret = func(self, *args, **kwargs)
 
             while self.status == Status.PAUSED:
                 time.sleep(self.wait_time)
 
             return ret
         return wrapper
-
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -248,7 +246,7 @@ class BaseNode(Thread):
     @pausable
     def post_execution(self) -> None:
         pass
-
+    
     @pausable
     def on_success(self) -> None:
         # override to enable node to do something after execution in event of success of action_function; 
@@ -371,9 +369,12 @@ class BaseNode(Thread):
                 # Run the action function
                 self.trigger()
 
-                self.status == Status.COMPLETED
-
-            elif self.status == Status.PAUSED or self.status == Status.COMPLETED:
+                self.update_state()
+                self.reset_trigger()    
+                # this line is causing the node to pause after every execution
+                # self.status = Status.COMPLETED
+            
+            elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action
                 time.sleep(self.wait_time)
 
@@ -401,6 +402,18 @@ class BaseNode(Thread):
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''
+    def __init__(
+        self, 
+        name: str, 
+        listen_to: BaseNode | SignalAST | List[BaseNode | SignalAST] = list(), 
+    ) -> None:
+        super().__init__(
+            name=name, 
+            signal_type="DEFAULT_SIGNAL", 
+            listen_to=listen_to, 
+            auto_trigger=True
+        )
+    
     def execute(self):
         return True
 
@@ -409,6 +422,18 @@ class TrueNode(BaseNode):
 
 class FalseNode(BaseNode):
     '''A Node that does nothing and always returns a failure'''
+    def __init__(
+        self, 
+        name: str, 
+        listen_to: BaseNode | SignalAST | List[BaseNode | SignalAST] = list(), 
+    ) -> None:
+        super().__init__(
+            name=name, 
+            signal_type="DEFAULT_SIGNAL", 
+            listen_to=listen_to, 
+            auto_trigger=False
+        )
+    
     def execute(self):
         return False
 
