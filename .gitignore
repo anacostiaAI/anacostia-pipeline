@@ -1,3 +1,7 @@
 __pycache__/
 virtualenv/
 tests/testing_artifacts/
+*.egg-info/
+.vscode/
+anacostia_pipeline/engine/subexample.py
+testing_artifacts/

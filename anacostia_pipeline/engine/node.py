@@ -1,86 +1,209 @@
-from multiprocessing import Queue, Lock, Value
-from typing import List, Any, Dict
+from __future__ import annotations
+
+from threading import Thread, Lock, Event, RLock
+from queue import Queue
+from typing import List, Dict, Optional, Set, Union
+from functools import reduce, wraps
 import time
-import networkx as nx
 from logging import Logger
-import uuid
-from uuid import UUID
+from datetime import datetime
 
-if __name__ == "__main__":
-    from constants import Status
-else:
-    from engine.constants import Status
+from pydantic import BaseModel
 
+from .constants import Status, ASTOperation
 
-G = nx.DiGraph()
+class SignalAST:
+    '''
+    This Class Represents the boolean expression of signals
+    required by a node class to trigger
+    '''
+    def __init__(self, operation:ASTOperation, parameters:List[Union[BaseNode, SignalAST]]):
+        self.operation = operation
+        self.parameters = parameters
+    
+    def evaluate(self, node:BaseNode) -> bool:
+        '''
+        Evaluate the AST based on the existance of signal and success (if it does exist) for the given node's received signals
+        '''
+        # If there are no parameters then False
+        # i.e. null/invalid operation
+        if len(self.parameters) == 0:
+            return False
 
+        evaluated_params = list()
+        for param in self.parameters:
+            if isinstance(param, SignalAST):
+                evaluated_params.append(param.evaluate(node))
+            else:
+                value = (param.name in node.received_signals) and (node.received_signals[param.name].status == Status.SUCCESS)
+                evaluated_params.append(value)
 
-class BaseNode:
+        if self.operation == ASTOperation.NOT:
+            assert len(evaluated_params) == 1
+            return not evaluated_params[0]
+        elif self.operation == ASTOperation.AND:
+            return all(evaluated_params)
+        elif self.operation == ASTOperation.OR:
+            return any(evaluated_params)
+        elif self.operation == ASTOperation.XOR:
+            return reduce(lambda x, y: x^x, evaluated_params)
+        else:
+            raise ValueError(f"Invalid Operation: {self.operation}")
 
+    def nodes(self) -> Set[BaseNode]:
+        '''
+        Retset a set of nodes that are in this AST and subtrees
+        '''
+        return set(self._nodes())
+
+    def _nodes(self):
+        '''
+        Recursive helper for `nodes()` to return all nodes included in the AST
+        '''
+        for param in self.parameters:
+            if isinstance(param, SignalAST):
+                for n in param._nodes():
+                    yield n
+            else:
+                yield param
+
+def Not(n: Union[SignalAST, BaseNode]):
+    return SignalAST(
+        operation = ASTOperation.NOT,
+        parameters = [n]
+    )
+
+def And(*args: Union[SignalAST, BaseNode]):
+    return SignalAST(
+        operation = ASTOperation.AND,
+        parameters = args
+    )
+
+def Or(*args: Union[SignalAST, BaseNode]):
+    return SignalAST(
+        operation = ASTOperation.OR,
+        parameters = args
+    )
+
+def XOr(*args: Union[SignalAST, BaseNode]):
+    return SignalAST(
+        operation = ASTOperation.XOR,
+        parameters = args
+    )
+
+class Message(BaseModel):
+    # TODO allow dynamic key-values
+    # https://docs.pydantic.dev/latest/usage/models/#dynamic-model-creation
+    sender: str
+    signal_type:str
+    timestamp: datetime
+    status: Optional[Status] = None
+
+class BaseNode(Thread):
     def __init__(self, 
         name: str, 
-        signal_type: str,
-        listen_to: List['BaseNode'] = [],
+        signal_type: str = "DEFAULT_SIGNAL",
+        listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
+        retrigger: bool = True,
         auto_trigger: bool = False,
+
     ) -> None:
+        '''
+        :param name: a name given to the node
+        :param signal_type: ???
+        :param listen_to: The list of nodes or boolean expression of nodes (SignalAST) that this node requires signals of to trigger. Items in the list will be boolean AND'd together
+        :param retrigger: if False then the node will requires a call to reset_trigger() before being able to trigger again    
+        :param auto_trigger: if True, then node will skip signal check
+        '''
 
+        super().__init__()
         self.name = name
-        self.signal_type = signal_type
-        self.children = listen_to
+        self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
+        self.retrigger = retrigger
         self.auto_trigger = auto_trigger
-
-        self.id = uuid.uuid4()
-        self.queue = Queue()
-        self.logger = None
-        self.resource_lock = Lock()
+        
+        # use self.status(). Property is Thread Safe 
+        self._status_lock = Lock()
+        self._status = Status.OFF
 
         self.triggered = False
-        self.signals_received = {child.get_name():Status.WAITING for child in self.children}
 
-        G.add_node(self)
+        self.dependent_nodes = set()
+        
+        if not isinstance(listen_to, list):
+            listen_to = [listen_to]
+        self.signal_ast = And(*listen_to)
+        for item in listen_to:
+            if isinstance(item, SignalAST):
+                self.dependent_nodes |= item.nodes()
+            else:
+                self.dependent_nodes |= {item}
 
-        for child in self.children:
-            G.add_edge(child, self, signal_type=self.signal_type)
-    
+        # Nodes to signal
+        self.next_nodes = list()
+
+        # set next_nodes for each dependent node with self
+        for node in self.dependent_nodes:
+            node.next_nodes.append(self)
+
+        # Queue of incoming signals from the dependent_nodes
+        self.incoming_signals = Queue()
+
+        # Store for signals after processing them (and in the future after acknowledging them too maybe?)
+        # Only keeps the most recent signal received
+        self.received_signals:Dict[str, Message] = dict()
+        
+        self.wait_time = 0.5
+        self.throttle = .100
+        self.logger = None
+        self.num_successors = 0
+
+    @staticmethod
+    def pausable(func):
+        '''
+        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
+        '''
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            ret = func(*args, **kwargs)
+
+            while self.status == Status.PAUSED:
+                time.sleep(self.wait_time)
+
+            return ret
+        return wrapper
+
+
     def __hash__(self) -> int:
-        return hash(self.id)
+        return hash(self.name)
 
     def __repr__(self) -> str:
-        return f"'Node(name: {self.name}, uuid: {str(self.get_uuid())})'"
-
-    def get_name(self) -> str:
-        return self.name
-
-    def get_queue(self) -> Queue:
-        return self.queue
-
-    def get_uuid(self) -> UUID:
-        return self.id
+        return f"'Node(name: {self.name}, status: {str(self.status)})'"
     
-    def get_resource_lock(self) -> Lock:
-        # listening nodes can call this node's get_resource_lock() method inside a context manager to access resources like so:
-        # model_loader = ModelLoadingNode()
-        # with model_loader.get_resource_lock():
-        #     do something with the resource
-        return self.resource_lock
-    
+    def __and__(self, other) -> SignalAST:
+        '''Overwrites the & bitwise operator'''
+        return And(self, other)
+
+    def __or__(self, other) -> SignalAST:
+        '''Overwrites the | bitwise operator'''
+        return Or(self, other)
+
+    def __xor__(self, other) -> SignalAST:
+        '''Overwrites the ^ bitwise operator'''
+        return XOr(self, other)
+
+    def __invert__(self) -> SignalAST:
+        '''Overwrites the ~ bitwise operator'''
+        return Not(self)
+
     def set_logger(self, logger: Logger) -> None:
-        # to be called by dag.py to set logger for all nodes
         self.logger = logger
-    
+
     def log(self, message: str) -> None:
         if self.logger is not None:
             self.logger.info(message)
         else:
             print(message)
-
-    def signal_message_template(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "signal_type": self.signal_type,
-            "timestamp": time.time(),
-            "status": None
-        }
 
     def setup(self) -> None:
         # override to specify actions needed to create node.
@@ -91,142 +214,206 @@ class BaseNode:
         # therefore, it is best to put set up logic here that is not dependent on other nodes.
         pass
 
-    def precheck(self) -> bool:
+    @pausable
+    def pre_check(self) -> bool:
         # should be used for continuously checking if the node is ready to start
         # i.e., checking if database connections, API connections, etc. are ready 
         return True
 
+    @pausable
+    def check_signals(self) -> bool:
+        '''
+        Verify all received signal statuses match the condition for this node to execute
+        '''
+        # Pull out the queued up incoming signals and register them
+        while not self.incoming_signals.empty():
+            sig = self.incoming_signals.get()
+            self.received_signals[sig.sender] = sig
+            # TODO For signaling over the network, this is where we'd send back an ACK
+
+        # Check if the signals match the execute condition
+        return self.signal_ast.evaluate(self)
+
+    @pausable
     def pre_execution(self) -> None:
         # override to enable node to do something before execution; 
         # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
         pass
 
-    def execute(self) -> None:
+    @pausable
+    def execute(self, *args, **kwargs) -> bool:
         # the logic for a particular stage in the MLOps pipeline
         pass
 
+    @pausable
+    def post_execution(self) -> None:
+        pass
+
+    @pausable
     def on_success(self) -> None:
         # override to enable node to do something after execution in event of success of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has finished training a new model
         pass
 
-    def on_failure(self) -> None:
+    @pausable
+    def on_failure(self, e: Exception = None) -> None:
         # override to enable node to do something after execution in event of failure of action_function; 
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
     
+    @pausable
+    def send_signals(self, status:Status):
+        msg = Message(
+            sender = self.name,
+            signal_type = self.signal_type,
+            timestamp = datetime.now(),
+            status = status
+        )
+
+        for n in self.next_nodes:
+            n.incoming_signals.put(msg)
+
     def teardown(self) -> None:
         # override to specify actions to be executed upon removal of node from dag or on pipeline shutdown
         pass
-    
+
     def trigger(self) -> None:
-        # method called by user to manually trigger node
-        if self.precheck() is True:
-            self.triggered = True
-
-    def __send_signal(self, status: Status) -> None:
-        self.log(f"Sending signal from node '{self.name}'")
-        signal = self.signal_message_template()
-        signal["status"] = status
-        self.queue.put(signal)
-    
-    def __execution(self) -> bool:
+        self.triggered = True
         try:
-            # in the case of resource nodes, the resource lock will always be acquired because the node is not listening to any other nodes
-            with self.resource_lock:
-                self.pre_execution()
-                self.execute()
-                self.on_success()
-            return True
-        
-        except Exception as e:
-            self.log(f"Node '{self.name}' execution failed: {e}")
-            self.on_failure()
-            return False
-
-    def __reset_trigger(self) -> None:
-        self.triggered = False
-        if len(self.children) > 0:
-            self.signals_received = {child.get_name():Status.WAITING for child in self.children}
-    
-    def poll_children(self) -> bool:
-        if len(self.children) == 0:
-            return True
-        else:
-            for child in self.children:
-                queue = child.get_queue()
-                signal = self.clear_queue(queue)
+            ret = self.execute()
             
-                if self.signals_received[child.get_name()] == Status.WAITING:
-                    self.signals_received[child.get_name()] = signal["status"]
-                    self.log(f"Received signal '{signal}' from node '{child.get_name()}'")
-            
-            if all(value == Status.SUCCESS for value in self.signals_received.values()) is True:
-                return True
-
-        return False
-
-    def clear_queue(self, queue: Queue) -> Dict[str, Any]:
-        # sleep for a short time to allow queue to be populated
-        # time.sleep(0.1)
-        # might want to consider making __clear_queue() a public method 
-        # because classes that override poll_children() might need to clear the queue
-        signal = queue.get()
-        while not queue.empty():
-            if signal["status"] != Status.SUCCESS:
-                queue.get()
+            if ret:
+                self.on_success()        
+                self.post_execution()
+                self.send_signals(Status.SUCCESS)
             else:
-                signal = queue.get()
-        return signal
+                self.on_failure()
+                self.post_execution()
+                self.send_signals(Status.FAILURE)
+        except Exception as e:
+            self.on_failure(e)
+            self.post_execution()
+            self.send_signals(Status.FAILURE)
+            
 
-    def __set_auto_trigger(self) -> None:
-        if self.auto_trigger is True:
-            if self.precheck() is True:
-                if self.poll_children() is True:
-                    self.triggered = True
+    def reset_trigger(self):
+        # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
+        self.triggered = False
 
-    def run(self, run_flag: Value) -> None:
+    @property
+    def status(self):
+        with self._status_lock:
+            return self._status
+
+    @status.setter
+    def status(self, value: Status):
+        with self._status_lock:
+            self._status = value
+
+    
+    def pause(self):
+        self.status = Status.PAUSED
+
+    def resume(self):
+        if self.status == Status.PAUSED:
+            self.status = Status.RUNNING
+
+    def stop(self):
+        self.status = Status.STOPPING
+
+    def force_stop(self):
+        # TODO
+        pass
+
+    def on_exit(self):
+        # TODO
+        pass
+
+    def update_state(self):
+        pass
+
+    def run(self) -> None:
+        self.status = Status.INIT
         try:
             self.setup()
         except Exception as e:
-            print(f"{str(self)} setup failed")
+            print(f"{str(self)} setup failed: {e}")
+            self.status = Status.ERROR
             return
 
+        self.status = Status.RUNNING
+
         while True:
-            try:
-                # if run_flag is 0, node is paused
-                if run_flag.value == 0:
-                    time.sleep(0.5)
 
-                # if run_flag is 1, node is running
-                elif run_flag.value == 1:
-                    self.__set_auto_trigger()
-
-                    if self.triggered is True:
-                        if self.__execution() is True:
-                            self.__reset_trigger()
-                            self.__send_signal(Status.SUCCESS)
-                        else:
-                            self.__reset_trigger()
-                            self.__send_signal(Status.FAILURE)
+            if self.status == Status.RUNNING:
                 
-                # if run_flag is 2, node is shutting down
-                elif run_flag.value == 2:
-                    print(f"ending {str(self)} child process")
-                    break
+                # Don't run the rest if the node has already been triggered
+                # and retrigger is false
+                if self.triggered and not self.retrigger:
+                    continue
 
-            except Exception as e:
-                self.log(f"Node '{self.name}' execution failed: {e}")
-            
-            except KeyboardInterrupt:
-                time.sleep(0.2)
+                # If pre-check fails, then just wait and try again
+                if not self.pre_check():
+                    self.status = Status.WAITING
+                    continue
 
+                # if auto_trigger is off, then check for signals
+                if not self.auto_trigger:
+                    # If not all signals received / boolean statement of signals is false
+                    # wait and try again
+                    if not self.check_signals():
+                        self.status = Status.WAITING
+                        continue
+                
+                # Precheck is good and the signals we want are good
+                self.pre_execution()
 
-class AndNode(BaseNode):
-    def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = [], auto_trigger: bool = False) -> None:
-        if len(listen_to) < 2:
-            raise ValueError("AND node must be listening to more than two nodes")
-        super().__init__("AND", "AND", listen_to, auto_trigger)
+                # Run the action function
+                self.trigger()
+
+                self.status == Status.COMPLETED
+
+            elif self.status == Status.PAUSED or self.status == Status.COMPLETED:
+                # Stay Indefinitely Paused until external action
+                time.sleep(self.wait_time)
+
+            elif self.status == Status.WAITING:
+                # Sleep and then start running again
+                time.sleep(self.wait_time)
+
+                # atomically check if the status has been externally changed off of WAITING
+                with self._status_lock:
+                    if self._status == Status.WAITING:
+                        self._status = Status.RUNNING
+
+            elif self.status == Status.STOPPING:
+                # TODO lock status lock? disable state change here. force into closing
+                # TODO release locks
+                # TODO release resources
+                # TODO maybe annouce to other nodes we have stopped?
+                self.on_exit()
+                self.status = Status.EXITED
+
+            if self.status == Status.EXITED:
+                break
+
+            time.sleep(self.throttle)
+
+class TrueNode(BaseNode):
+    '''A Node that does nothing and always returns a success'''
+    def execute(self):
+        return True
+
+    def setup(self):
+        time.sleep(2)
+
+class FalseNode(BaseNode):
+    '''A Node that does nothing and always returns a failure'''
+    def execute(self):
+        return False
+
+    def setup(self):
+        time.sleep(1)
 
 
 class ActionNode(BaseNode):
@@ -236,8 +423,35 @@ class ActionNode(BaseNode):
 
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
-        super().__init__(name, signal_type)
+        super().__init__(name, signal_type, auto_trigger=False)
+        self.resource_lock = RLock()
+        self.event = Event()
 
+    def lock_decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # make sure setup is finished before allowing other nodes to access the resource
+            if func.__name__ == "setup":
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
+            else:
+                while self.status == Status.INIT:
+                    time.sleep(self.wait_time)
 
-if __name__ == "__main__":
-    print("hello")
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
+        return wrapper
+
+    def wait_successors(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            for _ in range(self.num_successors):
+                self.event.wait()
+            
+            result = func(self, *args, **kwargs)
+            
+            if self.event.is_set():
+                self.event.clear()
+            
+            return result
+        return wrapper
