@@ -1,7 +1,9 @@
 import time
-
+import sys
 import unittest
 
+sys.path.append('..')
+sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.engine.node import TrueNode, FalseNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 

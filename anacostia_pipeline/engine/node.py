@@ -163,9 +163,8 @@ class BaseNode(Thread):
         '''
         A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
         '''
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            ret = func(*args, **kwargs)
+        def wrapper(self, *args, **kwargs):
+            ret = func(self, *args, **kwargs)
 
             while self.status == Status.PAUSED:
                 time.sleep(self.wait_time)
