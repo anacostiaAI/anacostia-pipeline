@@ -10,9 +10,16 @@ import networkx as nx
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
-from .node import BaseNode, ResourceNode, ActionNode
-from .constants import Status
+sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath('../anacostia_pipeline'))
+if __name__ == "__main__":
+    from node import BaseNode, ResourceNode, ActionNode
+    from constants import Status
+else:
+    from engine.node import BaseNode, ResourceNode, ActionNode
+    from engine.constants import Status
 
+# import IPython
 class InvalidNodeDependencyError(Exception):
     pass
 
@@ -107,21 +114,6 @@ r'''
     def node_cmds(self):
         pass
 
-    def graceful_shutdown(self):
-        with self.console.status("Shutting down pipeline"):    
-            for node in reversed(self.nodes):
-                node.stop()
-
-            for node in reversed(self.nodes):
-                node.join()
-            
-            for node in reversed(self.nodes):
-                node.teardown()
-
-        self.console.print("Pipeline shutdown complete")
-
-    # TODO move cli shell stuff to its own class
-    # i.e. dont pollute pipeline.py with shell parsing and shell commands
     def pause_nodes(self) -> None:
         # pausing node need to be done in reverse order so that the parent nodes are paused before the child nodes
         # this is because the parent nodes will continue to listen for signals from the child nodes, 
@@ -132,7 +124,6 @@ r'''
 
     def terminate_nodes(self) -> None:
         for node in self.nodes:
-            self.console.print(f"Stopping {node.name}")
             node.stop()
         
         for node in self.nodes:
@@ -160,16 +151,6 @@ r'''
                             self.pipe_cmds()
                         case "node":
                             self.node_cmds()
-                    match cmd[0]:
-                        case "help":
-                            self.help_cmd()
-                        case "version":
-                            version = pkg_resources.get_distribution("anacostia-pipeline").version
-                            self.console.print(f"Version {version}")
-                        case "pipe":
-                            self.pipe_cmds()
-                        case "node":
-                            self.node_cmds()
 
                 except KeyboardInterrupt:
                     self.console.print("Ctrl+C Detected")
@@ -188,41 +169,31 @@ r'''
                             self.console.print("Hard Shutdown")
                             self.terminate_nodes()
                             break
-                    answer = Prompt.ask(
-                        "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
-                        console=self.console, default='abort',
-                        choices=['hard', 'soft', 'abort']
-                    )
+
+                        elif answer == 'soft':
+                            print("Shutting down pipeline")
+                            self.terminate_nodes() 
+                            for node in reversed(self.nodes):
+                                node.teardown()
+                            print("Pipeline shutdown complete")
+                            break
+
+                        else:
+                            print("Aborting shutdown, resuming pipeline")
+                            for node in self.nodes:
+                                node.resume()
                     
-                    if answer == 'hard':
-                        self.console.print("Hard Shutdown")
-                        self.terminate_nodes()
-                        exit(1)
-
-                    elif answer == 'soft':
-                        print("Shutting down pipeline")
-                        self.terminate_nodes() 
-                        for node in reversed(self.nodes):
-                            node.teardown()
-                        print("Pipeline shutdown complete")
-                        exit(0)
-
                     else:
                         print("Aborting shutdown, resuming pipeline")
                         for node in self.nodes:
                             node.resume()
                 
-                else:
-                    print("Aborting shutdown, resuming pipeline")
-                    for node in self.nodes:
-                        node.resume()
         else:
             # Its up to the programmer to do something about the nodes
             # from here on, otherwise the thread finishes and self would
             # assumingly get garbage collected
             pass
-        
-                
+
     def export_graph(self, file_path: str) -> None:
         if file_path.endswith(".json"):
             graph = nx.to_dict_of_dicts(self.graph)
