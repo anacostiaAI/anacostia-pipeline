@@ -12,6 +12,7 @@ setup(
         "watchdog==3.0.0",
         "numpy",
         "pydantic",
-        "rich"
+        "rich",
+        "typer"
     ],
 )

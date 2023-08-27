@@ -3,14 +3,13 @@ import time
 import json
 import sys
 import os
-import pkg_resources
 from logging import Logger
 
 import networkx as nx
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
 
 from .node import BaseNode, ResourceNode, ActionNode
+from .shell import Shell
 from .constants import Status
 
 class InvalidNodeDependencyError(Exception):
@@ -34,6 +33,7 @@ class Pipeline:
     def __init__(self, nodes: Iterable[BaseNode], logger: Logger = None) -> None:
         self.console = Console()
         self.graph = nx.DiGraph()
+        self.running = False
         
         # Add nodes into graph 
         for n in nodes:
@@ -49,41 +49,7 @@ class Pipeline:
         self.nodes = list(nx.topological_sort(self.graph))      # switched to list to preserve topological order of nodes
         for node in self.nodes:
             node.set_logger(logger)
-
-    def motd(self):
-        msg = \
-r'''    _                                     _    _          ____   _               _  _              
-   / \    _ __    __ _   ___   ___   ___ | |_ (_)  __ _  |  _ \ (_) _ __    ___ | |(_) _ __    ___ 
-  / _ \  | '_ \  / _` | / __| / _ \ / __|| __|| | / _` | | |_) || || '_ \  / _ \| || || '_ \  / _ \
- / ___ \ | | | || (_| || (__ | (_) |\__ \| |_ | || (_| | |  __/ | || |_) ||  __/| || || | | ||  __/
-/_/   \_\|_| |_| \__,_| \___| \___/ |___/ \__||_| \__,_| |_|    |_|| .__/  \___||_||_||_| |_| \___|
-                                                                   |_|                             
-'''
-        self.console.print(msg)
         
-    def help_cmd(self):
-        repo_url = "TODO"
-
-        common_commands = {
-            "help": "Displays this help text",
-            "version": "Prints the anacostia-pipeline module version number",
-        }
-
-        management_commands = {
-            "pipe": "Manage the Pipeline",
-            "node": "Manage Individual Nodes",
-        }
-
-        help_text = "\nA Machine Learning DevOps Pipeline\n\n" + \
-                    "Common Commands:\n" + \
-                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in common_commands.items()) + "\n\n" + \
-                    "Management COmmands:\n" + \
-                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in management_commands.items()) + "\n\n" + \
-                    "Run \'COMMAND --help\' for more information on a command\n" + \
-                    f"For more information see {repo_url}\n"
-
-        self.console.print(help_text)
-
     def launch_nodes(self):
         '''
         Lanches all the registered nodes
@@ -99,12 +65,6 @@ r'''    _                                     _    _          ____   _          
                     if node not in running_nodes and node.status != Status.INIT:
                         self.console.log(f"Node {node.name} Started!")
                         running_nodes.add(node)
-
-    def pipe_cmds(self):
-        pass
-
-    def node_cmds(self):
-        pass
 
     def graceful_shutdown(self):
         with self.console.status("Shutting down pipeline"):    
@@ -137,70 +97,21 @@ r'''    _                                     _    _          ____   _          
         for node in self.nodes:
             node.join()
 
-    def start(self, cli=False) -> None:
-        self.motd()
+    def start(self, cli=False, keep_alive=False) -> None:
         self.console.print("Starting Pipeline!")
         self.launch_nodes()
         self.console.print("All Nodes Launched")
         if cli:
-            try:
-                while True:        
-                    cmd_string = self.console.input("> ")
-                    cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
-                    # self.console.print(cmd)
-
-                    match cmd[0]:
-                        case "help":
-                            self.help_cmd()
-                        case "version":
-                            version = pkg_resources.get_distribution("anacostia-pipeline").version
-                            self.console.print(f"Version {version}")
-                        case "pipe":
-                            self.pipe_cmds()
-                        case "node":
-                            self.node_cmds()
-
-            except KeyboardInterrupt:
-                self.console.print("Ctrl+C Detected")
-                self.pause_nodes()
-                answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
-
-                if answer == 'y':
-
-                    answer = Prompt.ask(
-                        "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
-                        console=self.console, default='abort',
-                        choices=['hard', 'soft', 'abort']
-                    )
-                    
-                    if answer == 'hard':
-                        self.console.print("Hard Shutdown")
-                        self.terminate_nodes()
-                        exit(1)
-
-                    elif answer == 'soft':
-                        print("Shutting down pipeline")
-                        self.terminate_nodes() 
-                        for node in reversed(self.nodes):
-                            node.teardown()
-                        print("Pipeline shutdown complete")
-                        exit(0)
-
-                    else:
-                        print("Aborting shutdown, resuming pipeline")
-                        for node in self.nodes:
-                            node.resume()
-                
-                else:
-                    print("Aborting shutdown, resuming pipeline")
-                    for node in self.nodes:
-                        node.resume()
+            s = Shell(self)
+            s.start()
         else:
+            while keep_alive and self.running:
+                time.sleep(1)
+
             # Its up to the programmer to do something about the nodes
             # from here on, otherwise the thread finishes and self would
             # assumingly get garbage collected
             pass
-        
                 
     def export_graph(self, file_path: str) -> None:
         if file_path.endswith(".json"):
