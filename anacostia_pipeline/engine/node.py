@@ -104,29 +104,24 @@ class BaseNode(Thread):
         name: str, 
         signal_type: str = "DEFAULT_SIGNAL",
         listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
-        retrigger: bool = True,
-        auto_trigger: bool = False,
-
+        auto_trigger: bool = True,
     ) -> None:
         '''
         :param name: a name given to the node
         :param signal_type: ???
         :param listen_to: The list of nodes or boolean expression of nodes (SignalAST) that this node requires signals of to trigger. Items in the list will be boolean AND'd together
-        :param retrigger: if False then the node will requires a call to reset_trigger() before being able to trigger again    
         :param auto_trigger: if True, then node will skip signal check
         '''
 
         super().__init__()
         self.name = name
         self.signal_type = signal_type # TODO what are the different signal types. Does a node need to track this?
-        self.retrigger = retrigger
         self.auto_trigger = auto_trigger
+        self.triggered = auto_trigger
         
         # use self.status(). Property is Thread Safe 
         self._status_lock = Lock()
         self._status = Status.OFF
-
-        self.triggered = False
 
         self.dependent_nodes = set()
         
@@ -171,7 +166,6 @@ class BaseNode(Thread):
 
             return ret
         return wrapper
-
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -278,26 +272,11 @@ class BaseNode(Thread):
 
     def trigger(self) -> None:
         self.triggered = True
-        try:
-            ret = self.execute()
-            
-            if ret:
-                self.on_success()        
-                self.post_execution()
-                self.send_signals(Status.SUCCESS)
-            else:
-                self.on_failure()
-                self.post_execution()
-                self.send_signals(Status.FAILURE)
-        except Exception as e:
-            self.on_failure(e)
-            self.post_execution()
-            self.send_signals(Status.FAILURE)
-            
 
     def reset_trigger(self):
         # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        self.triggered = False
+        if self.auto_trigger == False:
+            self.triggered = False
 
     @property
     def status(self):
@@ -343,34 +322,44 @@ class BaseNode(Thread):
         self.status = Status.RUNNING
 
         while True:
+            if self.status == Status.RUNNING:               
 
-            if self.status == Status.RUNNING:
-                
-                # Don't run the rest if the node has already been triggered
-                # and retrigger is false
-                if self.triggered and not self.retrigger:
-                    continue
+                # TODO conditional on auto-trigger
+                if self.triggered:
 
-                # If pre-check fails, then just wait and try again
-                if not self.pre_check():
-                    self.status = Status.WAITING
-                    continue
+                    # If pre-check fails, then just wait and try again
+                    if not self.pre_check():
+                        self.status = Status.WAITING
+                        continue
 
-                # if auto_trigger is off, then check for signals
-                if not self.auto_trigger:
                     # If not all signals received / boolean statement of signals is false
                     # wait and try again
                     if not self.check_signals():
                         self.status = Status.WAITING
                         continue
-                
-                # Precheck is good and the signals we want are good
-                self.pre_execution()
 
-                # Run the action function
-                self.trigger()
+                    # Precheck is good and the signals we want are good
+                    self.pre_execution()
+                    
+                    # Run the action function
+                    try:
+                        ret = self.execute()
+                        if ret:
+                            self.on_success()
+                            self.post_execution()
+                            self.send_signals(Status.SUCCESS)
+                        else:
+                            self.on_failure()
+                            self.post_execution()
+                            self.send_signals(Status.FAILURE)
+                    except Exception as e:
+                        self.on_failure(e)
+                        self.post_execution()
+                        self.send_signals(Status.FAILURE)
 
-                self.status == Status.COMPLETED
+                    self.update_state()
+                    self.reset_trigger()
+                    self.status == Status.COMPLETED
 
             elif self.status == Status.PAUSED or self.status == Status.COMPLETED:
                 # Stay Indefinitely Paused until external action

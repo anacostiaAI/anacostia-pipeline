@@ -12,11 +12,11 @@ class PipelineTest(unittest.TestCase):
         super().__init__(methodName)
 
     def test_triggering_pipeline(self):
-        n1 = TrueNode(name='n1', auto_trigger=True, retrigger=False)
-        n2 = FalseNode(name='n2', auto_trigger=True, retrigger=False)
-        n3 = TrueNode(name='n3', listen_to=n1 | n2, retrigger=False)
-        n4 = TrueNode(name="n4", listen_to=n3, retrigger=False)
-        n5 = FalseNode(name="n5", listen_to=n3 & n2, retrigger=False)
+        n1 = TrueNode(name='n1', auto_trigger=True)
+        n2 = FalseNode(name='n2', auto_trigger=True)
+        n3 = TrueNode(name='n3', listen_to=n1 | n2)
+        n4 = TrueNode(name="n4", listen_to=n3)
+        n5 = FalseNode(name="n5", listen_to=n3 & n2)
 
         p1 = Pipeline(nodes=[n1, n2, n3, n4, n5])
         p1.start()
@@ -32,11 +32,11 @@ class PipelineTest(unittest.TestCase):
         p1.terminate_nodes()
 
     def test_pause(self):
-        n1 = TrueNode(name='n1', auto_trigger=True, retrigger=False)
-        n2 = FalseNode(name='n2', auto_trigger=True, retrigger=False)
-        n3 = TrueNode(name='n3', listen_to=n1 | n2, retrigger=False)
-        n4 = TrueNode(name="n4", listen_to=n3, retrigger=False)
-        n5 = FalseNode(name="n5", listen_to=n3 & n2, retrigger=False)
+        n1 = TrueNode(name='n1', auto_trigger=True)
+        n2 = FalseNode(name='n2', auto_trigger=True)
+        n3 = TrueNode(name='n3', listen_to=n1 | n2)
+        n4 = TrueNode(name="n4", listen_to=n3)
+        n5 = FalseNode(name="n5", listen_to=n3 & n2)
 
         p1 = Pipeline(nodes=[n1, n2, n3, n4, n5])
         p1.start()
