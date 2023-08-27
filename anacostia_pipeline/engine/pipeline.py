@@ -57,8 +57,40 @@ class Pipeline:
         for node in self.nodes:
             node.set_logger(logger)
         
+    def motd(self):
+        msg = \
+r'''
+    _                                     _    _          ____   _               _  _              
+   / \    _ __    __ _   ___   ___   ___ | |_ (_)  __ _  |  _ \ (_) _ __    ___ | |(_) _ __    ___ 
+  / _ \  | '_ \  / _` | / __| / _ \ / __|| __|| | / _` | | |_) || || '_ \  / _ \| || || '_ \  / _ \
+ / ___ \ | | | || (_| || (__ | (_) |\__ \| |_ | || (_| | |  __/ | || |_) ||  __/| || || | | ||  __/
+/_/   \_\|_| |_| \__,_| \___| \___/ |___/ \__||_| \__,_| |_|    |_|| .__/  \___||_||_||_| |_| \___|
+                                                                   |_|                             
+'''
+        self.console.print(msg)
+
     def help_cmd(self):
-        pass
+        repo_url = "TODO"
+
+        common_commands = {
+            "help": "Displays this help text",
+            "version": "Prints the anacostia-pipeline module version number",
+        }
+
+        management_commands = {
+            "pipe": "Manage the Pipeline",
+            "node": "Manage Individual Nodes",
+        }
+
+        help_text = "\nA Machine Learning DevOps Pipeline\n\n" + \
+                    "Common Commands:\n" + \
+                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in common_commands.items()) + "\n\n" + \
+                    "Management COmmands:\n" + \
+                    "\n".join(f" {cmd}\t{txt}" for cmd, txt in management_commands.items()) + "\n\n" + \
+                    "Run \'COMMAND --help\' for more information on a command\n" + \
+                    f"For more information see {repo_url}\n"
+
+        self.console.print(help_text)
 
     def launch_nodes(self):
         '''
@@ -97,63 +129,71 @@ class Pipeline:
         for node in self.nodes:
             node.join()
 
-    def start(self) -> None:
+    def start(self, cli=False) -> None:
+        self.motd()
+        self.console.print("Starting Pipeline!")
         self.launch_nodes()
         self.console.print("All Nodes Launched")
-        # IPython.embed()
-        while True:
-            try:
-                cmd_string = self.console.input("> ")
-                cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
-                self.console.print(cmd)
+        if cli:
+            while True:
+                try:
+                    cmd_string = self.console.input("> ")
+                    cmd = [c for c in cmd_string.strip().split() if len(c.strip()) > 0]
+                    self.console.print(cmd)
 
-                match cmd:
-                    case "help":
-                        self.help_text()
-                    case "version":
-                        version = pkg_resources.get_distribution("anacostia").version
-                        self.console.print(f"Version {version}")
-                    case "pipe":
-                        self.pipe_cmds()
-                    case "node":
-                        self.node_cmds()
+                    match cmd:
+                        case "help":
+                            self.help_cmd()
+                        case "version":
+                            version = pkg_resources.get_distribution("anacostia").version
+                            self.console.print(f"Version {version}")
+                        case "pipe":
+                            self.pipe_cmds()
+                        case "node":
+                            self.node_cmds()
 
-            except KeyboardInterrupt:
-                self.console.print("Ctrl+C Detected")
-                self.pause_nodes()
-                answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
+                except KeyboardInterrupt:
+                    self.console.print("Ctrl+C Detected")
+                    self.pause_nodes()
+                    answer = Prompt.ask("Are you sure you want to shutdown the pipeline?", console=self.console, default='n')
 
-                if answer == 'y':
+                    if answer == 'y':
 
-                    answer = Prompt.ask(
-                        "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
-                        console=self.console, default='abort',
-                        choices=['hard', 'soft', 'abort']
-                    )
+                        answer = Prompt.ask(
+                            "Do you want to do a hard shutdown, soft shutdown, or abort the shutdown?", 
+                            console=self.console, default='abort',
+                            choices=['hard', 'soft', 'abort']
+                        )
+                        
+                        if answer == 'hard':
+                            self.console.print("Hard Shutdown")
+                            self.terminate_nodes()
+                            break
+
+                        elif answer == 'soft':
+                            print("Shutting down pipeline")
+                            self.terminate_nodes() 
+                            for node in reversed(self.nodes):
+                                node.teardown()
+                            print("Pipeline shutdown complete")
+                            break
+
+                        else:
+                            print("Aborting shutdown, resuming pipeline")
+                            for node in self.nodes:
+                                node.resume()
                     
-                    if answer == 'hard':
-                        self.console.print("Hard Shutdown")
-                        self.terminate_nodes()
-                        break
-
-                    elif answer == 'soft':
-                        print("Shutting down pipeline")
-                        self.terminate_nodes() 
-                        for node in reversed(self.nodes):
-                            node.teardown()
-                        print("Pipeline shutdown complete")
-                        break
-
                     else:
                         print("Aborting shutdown, resuming pipeline")
                         for node in self.nodes:
                             node.resume()
                 
-                else:
-                    print("Aborting shutdown, resuming pipeline")
-                    for node in self.nodes:
-                        node.resume()
-                
+        else:
+            # Its up to the programmer to do something about the nodes
+            # from here on, otherwise the thread finishes and self would
+            # assumingly get garbage collected
+            pass
+
     def export_graph(self, file_path: str) -> None:
         if file_path.endswith(".json"):
             graph = nx.to_dict_of_dicts(self.graph)
@@ -219,4 +259,4 @@ if __name__ == "__main__":
 
     dag = Pipeline([feature_store_node, model_registry_node, train_node])
     dag.export_graph("../../tests/testing_artifacts/graph.json")
-    dag.start()
+    dag.start(cli=True)
