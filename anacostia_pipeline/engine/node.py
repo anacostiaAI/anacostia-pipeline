@@ -389,6 +389,18 @@ class BaseNode(Thread):
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''
+    def __init__(
+        self, 
+        name: str, 
+        listen_to: BaseNode | SignalAST | List[BaseNode | SignalAST] = list(), 
+    ) -> None:
+        super().__init__(
+            name=name, 
+            signal_type="DEFAULT_SIGNAL", 
+            listen_to=listen_to, 
+            auto_trigger=True
+        )
+    
     def execute(self):
         return True
 
@@ -397,6 +409,18 @@ class TrueNode(BaseNode):
 
 class FalseNode(BaseNode):
     '''A Node that does nothing and always returns a failure'''
+    def __init__(
+        self, 
+        name: str, 
+        listen_to: BaseNode | SignalAST | List[BaseNode | SignalAST] = list(), 
+    ) -> None:
+        super().__init__(
+            name=name, 
+            signal_type="DEFAULT_SIGNAL", 
+            listen_to=listen_to, 
+            auto_trigger=False
+        )
+    
     def execute(self):
         return False
 
