@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Semaphore
-from queue import Queue, Empty
-from typing import List, Any, Dict, Optional, Tuple, Callable, Set, Union
-from functools import reduce
+from threading import Thread, Lock, Event, RLock
+from queue import Queue
+from typing import List, Dict, Optional, Set, Union
+from functools import reduce, wraps
 import time
 from logging import Logger
 from datetime import datetime
@@ -153,9 +153,10 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
         
-        self.wait_time = 3
+        self.wait_time = 0.5
         self.throttle = .100
         self.logger = None
+        self.num_successors = 0
 
     @staticmethod
     def pausable(func):
@@ -197,12 +198,6 @@ class BaseNode(Thread):
 
     def set_logger(self, logger: Logger) -> None:
         self.logger = logger
-    
-    def get_status(self) -> Status:
-        return self.status
-    
-    def set_status(self, status: Status) -> None:
-        self.status = status
 
     def log(self, message: str) -> None:
         if self.logger is not None:
@@ -307,16 +302,13 @@ class BaseNode(Thread):
 
     @property
     def status(self):
-        self._status_lock.acquire()
-        s = self._status
-        self._status_lock.release()
-        return s
+        with self._status_lock:
+            return self._status
 
     @status.setter
     def status(self, value: Status):
-        self._status_lock.acquire()
-        self._status = value
-        self._status_lock.release()
+        with self._status_lock:
+            self._status = value
 
     
     def pause(self):
@@ -335,6 +327,9 @@ class BaseNode(Thread):
 
     def on_exit(self):
         # TODO
+        pass
+
+    def update_state(self):
         pass
 
     def run(self) -> None:
@@ -370,7 +365,6 @@ class BaseNode(Thread):
                         self.status = Status.WAITING
                         continue
                 
-
                 # Precheck is good and the signals we want are good
                 self.pre_execution()
 
@@ -430,21 +424,34 @@ class ActionNode(BaseNode):
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
-        self.resource_lock = Lock()
-        self.current_resource_semaphore = Semaphore(value=1)
-        
-        # TODO: implement resource semaphore
-        # resource semaphore is used to track the number of nodes still using the resource's current state
-        # semaphore value is set based on the number of nodes listening to the resource
-        # once a node is done using the resource's current state, it releases the semaphore;
-        # when the semaphore value reaches 0, the resource's state can be updated as follows:
-        # 1. acquire the resource lock
-        # 2. update the resource's state (current state -> old state, new state -> current state)
-        # 3. release the resource lock
-        # Note: the resource semaphore should be acquired before the resource lock is acquired
-        # Note: the resource semaphore should be released after the resource lock is released
-        # Note: make sure to signal the next node first before releasing the resource semaphore 
-        # (if the resource semaphore goes down to zero before the next node triggers, 
-        # then the ResourceNode might update the resource state prior to the signalled node can access the current state of the resource;
-        # thus, since we don't want the next node to start using the resource's new state before it is updated, 
-        # we need to signal the next node first before releasing the resource semaphore)
+        self.resource_lock = RLock()
+        self.event = Event()
+
+    def lock_decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # make sure setup is finished before allowing other nodes to access the resource
+            if func.__name__ == "setup":
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
+            else:
+                while self.status == Status.INIT:
+                    time.sleep(self.wait_time)
+
+                with self.resource_lock:
+                    return func(self, *args, **kwargs)
+        return wrapper
+
+    def wait_successors(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            for _ in range(self.num_successors):
+                self.event.wait()
+            
+            result = func(self, *args, **kwargs)
+            
+            if self.event.is_set():
+                self.event.clear()
+            
+            return result
+        return wrapper
