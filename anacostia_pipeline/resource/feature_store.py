@@ -88,16 +88,15 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
 
         for path in feature_vectors_paths:
-            with self.resource_lock:
-                try:
-                    array = np.load(path)
-                    self.log(f"extracting current data from {path}")
-                    for row in array:
-                        yield row
+            try:
+                array = np.load(path)
+                self.log(f"extracting current data from {path}")
+                for row in array:
+                    yield row
 
-                except Exception as e:
-                    self.log(f"Error loading feature vector file: {e}")
-                    continue
+            except Exception as e:
+                self.log(f"Error loading feature vector file: {e}")
+                continue
 
     @ResourceNode.lock_decorator 
     def on_modified(self, event):
