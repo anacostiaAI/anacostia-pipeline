@@ -151,7 +151,7 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals:Dict[str, Message] = dict()
         
-        self.wait_time = 0.1      # Proposal: lower this to 0.1 or 0.5
+        self.wait_time = 0.1 
         self.logger = None
 
         self.num_successors = 0
@@ -305,7 +305,11 @@ class BaseNode(Thread):
         pass
 
     def on_exit(self):
-        # TODO
+        """
+        on_exit is called when the node is being stopped.
+        implement this method to do things like release locks, 
+        release resources, anouncing to other nodes that this node has stopped, etc.
+        """
         pass
 
     def update_state(self):
@@ -325,7 +329,14 @@ class BaseNode(Thread):
         while True:
             if self.status == Status.RUNNING:               
 
-                # TODO conditional on auto-trigger
+                """
+                # proposal: move pre_check to before trigger to run regardless of auto_trigger
+                # If pre-check fails, then just wait and try again
+                if not self.pre_check():
+                    self.status = Status.WAITING
+                    continue
+                """
+
                 if self.triggered:
 
                     # If pre-check fails, then just wait and try again
@@ -376,9 +387,6 @@ class BaseNode(Thread):
                 self.status = Status.RUNNING
 
             elif self.status == Status.STOPPING:
-                # TODO release locks
-                # TODO release resources
-                # TODO maybe annouce to other nodes we have stopped?
                 self.on_exit()
                 self.status = Status.EXITED
 

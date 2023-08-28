@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from typing import List
 from datetime import datetime
 
 sys.path.append("../../anacostia_pipeline")
@@ -11,12 +12,7 @@ from watchdog.events import FileSystemEventHandler
 
 
 class DataStoreNode(ResourceNode, FileSystemEventHandler):
-    def __init__(
-        self, 
-        name: str, 
-        path: str,
-        max_old_samples: int = None
-    ) -> None:
+    def __init__(self, name: str, path: str, max_old_samples: int = None) -> None:
         self.max_old_samples = max_old_samples
         self.data_store_path = path
         self.data_store_json_path = os.path.join(self.data_store_path, "data_store.json")
@@ -77,6 +73,21 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
 
             # make sure signal is created before triggering
             self.trigger()
+
+    @ResourceNode.lock_decorator
+    def create_filename(self, file_extension: str = None) -> str:
+        num_files = len(os.listdir(self.data_store_path))
+        return f"model_{num_files}.{file_extension}"
+    
+    @ResourceNode.lock_decorator
+    def get_data_paths(self, state: str) -> List[str]:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
+        
+        with open(self.data_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+        
+        return [entry["filepath"] for entry in json_data["files"] if entry["state"] == state]
 
     @ResourceNode.wait_successors
     @ResourceNode.lock_decorator
