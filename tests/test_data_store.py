@@ -115,71 +115,59 @@ class NodeTests(unittest.TestCase):
         data_store_node = FileStoreNode(name=f"{self._testMethodName}", path=self.path)
         self.start_node(data_store_node)
 
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
         for i in range(5):
             data_store_node.save_data_sample(content=f"test {i+1}")
-            time.sleep(0.1)
+
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
         data_store_node.event.set()
-        """
-        while data_store_node.event.is_set() is True:
-            print(f"{self._testMethodName} waiting for node to update state")
-            time.sleep(0.1)
-        """
         data_store_node.log(f"first iteration")
 
-        #self.assertEqual(5, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
+
+        for i in range(4):
+            data_store_node.save_data_sample(content=f"test {i+1}")
+
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
         data_store_node.event.set()
-        """
-        while data_store_node.event.is_set() is True:
-            print(f"{self._testMethodName} waiting for node to update state")
-            time.sleep(0.1)
-        """
         data_store_node.log(f"second iteration")
 
-        for i in range(3):
-            data_store_node.save_data_sample(content=f"test {i+1}")
-            time.sleep(0.1)
-
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        """
-        while data_store_node.event.is_set() is True:
-            print(f"{self._testMethodName} waiting for node to update state")
-            time.sleep(0.1)
-        """
-        data_store_node.log(f"third iteration")
-
-        #self.assertEqual(3, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
 
         for i in range(3):
             data_store_node.save_data_sample(content=f"test {i+1}")
-            time.sleep(0.1)
+
+        self.assertEqual(3, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
 
         data_store_node.event.set()
-        """
-        while data_store_node.event.is_set() is True:
-            print(f"{self._testMethodName} waiting for node to update state")
-            time.sleep(0.1)
-        """
         data_store_node.log(f"fourth iteration")
 
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(3, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(3, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(9, len(list(data_store_node.load_data_samples("old"))))
 
         data_store_node.event.set()
+        data_store_node.log(f"fifth iteration")
+
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(12, len(list(data_store_node.load_data_samples("old"))))
+
         self.tearDown_node(data_store_node)
 
 

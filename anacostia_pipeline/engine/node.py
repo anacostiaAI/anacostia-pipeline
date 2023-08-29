@@ -452,14 +452,18 @@ class ResourceNode(BaseNode):
         def wrapper(self, *args, **kwargs):
             # make sure setup is finished before allowing other nodes to access the resource
             if func.__name__ == "setup":
-                with self.resource_lock:
-                    return func(self, *args, **kwargs)
+                # keep trying to acquire lock until setup is finished
+                while True:
+                    with self.resource_lock:
+                        return func(self, *args, **kwargs)
             else:
                 while self.status == Status.INIT:
                     time.sleep(self.wait_time)
 
-                with self.resource_lock:
-                    return func(self, *args, **kwargs)
+                # keep trying to acquire lock until function is finished
+                while True:
+                    with self.resource_lock:
+                        return func(self, *args, **kwargs)
         return wrapper
 
     def wait_successors(func):
@@ -475,3 +479,8 @@ class ResourceNode(BaseNode):
             
             return result
         return wrapper
+    
+    def log(self, message: str) -> None:
+        # adding a delay to make sure the node has time to access the logger
+        time.sleep(0.1)
+        return super().log(message)
