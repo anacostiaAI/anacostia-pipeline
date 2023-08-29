@@ -149,12 +149,13 @@ class BaseNode(Thread):
 
         # Store for signals after processing them (and in the future after acknowledging them too maybe?)
         # Only keeps the most recent signal received
-        self.received_signals:Dict[str, Message] = dict()
+        self.received_signals: Dict[str, Message] = dict()
         
         self.wait_time = 0.1 
         self.logger = None
 
         self.num_successors = 0
+        self.event = Event()
     
     @staticmethod
     def pausable(func):
@@ -170,6 +171,20 @@ class BaseNode(Thread):
             return ret
         return wrapper
 
+    def wait_successors(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            for _ in range(self.num_successors):
+                self.event.wait()
+            
+            result = func(self, *args, **kwargs)
+            
+            if self.event.is_set():
+                self.event.clear()
+            
+            return result
+        return wrapper
+    
     def __hash__(self) -> int:
         return hash(self.name)
 
@@ -448,7 +463,6 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = RLock()
-        self.event = Event()
 
     def lock_decorator(func):
         @wraps(func)
@@ -469,20 +483,28 @@ class ResourceNode(BaseNode):
                         return func(self, *args, **kwargs)
         return wrapper
 
-    def wait_successors(func):
+    def signal_successors(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            for _ in range(self.num_successors):
-                self.event.wait()
-            
             result = func(self, *args, **kwargs)
-            
-            if self.event.is_set():
-                self.event.clear()
-            
+
+            for successor in self.next_nodes:
+                successor.event.set()
+
             return result
         return wrapper
-    
+
+    def signal_predecessors(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+
+            for predecessor in self.dependent_nodes:
+                predecessor.event.set()
+
+            return result
+        return wrapper
+
     def log(self, message: str) -> None:
         # adding a delay to make sure the node has time to access the logger
         time.sleep(0.1)
