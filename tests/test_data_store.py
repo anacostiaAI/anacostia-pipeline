@@ -26,6 +26,7 @@ if os.path.exists(data_store_tests_path) is True:
 os.makedirs(data_store_tests_path)
 os.chmod(data_store_tests_path, 0o777)
 
+# Create a logger
 log_path = f"{data_store_tests_path}/data_store.log"
 logging.basicConfig(
     level=logging.INFO,
@@ -34,8 +35,6 @@ logging.basicConfig(
     filename=log_path,
     filemode='w'
 )
-
-# Create a logger
 logger = logging.getLogger(__name__)
 
 
@@ -70,22 +69,13 @@ class NodeTests(unittest.TestCase):
         data_store_node.stop()
         data_store_node.join()
     
-    def test_empty_setup(self):
-        data_store_node = FileStoreNode(name=f"{self._testMethodName}", path=self.path)
-        self.start_node(data_store_node)
-
-        for i in range(10):
-            data_store_node.save_data_sample(content=f"test {i+1}")
-
-        time.sleep(0.1)
-        data_store_node.event.set()
-        self.tearDown_node(data_store_node)
-
     def test_nonempty_setup(self):
         # putting files into the feature_store folder before starting
         os.makedirs(f"{self.path}", exist_ok=True)
+        logger.info(f"created folder {self.path}")
         for i in range(5):
             create_file(f"{self.path}/data_{i+1}.txt", f"test {i+1}")
+            logger.info(f"created file {self.path}/data_{i+1}.txt")
         
         data_store_node = FileStoreNode(name=f"{self._testMethodName}", path=self.path)
         self.start_node(data_store_node)
@@ -94,21 +84,41 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
-        #time.sleep(0.1)
-        data_store_node.event.set()
-        
-        while data_store_node.event.is_set() is True:
-            # there is a strange bug where the event is cleared before the node is done updating state
-            # so we wait until the node is done updating state before continuing
-            # in rare cases, this will cause the test to hang here because the node is not updating state
-            print(f"{self._testMethodName} waiting for node to update state")
-            time.sleep(0.1)
+        for i in range(4):
+            data_store_node.save_data_sample(content=f"test {i+1}")
 
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
+
+        data_store_node.event.set()
+        data_store_node.log(f"initial iteration")
+        
         self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
+
+        for i in range(3):
+            data_store_node.save_data_sample(content=f"test {i+1}")
+
+        self.assertEqual(3, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
 
         data_store_node.event.set()
+        data_store_node.log(f"first iteration")
+        
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(3, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(9, len(list(data_store_node.load_data_samples("old"))))
+
+        data_store_node.event.set()
+        data_store_node.log(f"second iteration")
+        
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(12, len(list(data_store_node.load_data_samples("old"))))
+
         self.tearDown_node(data_store_node)
 
     def test_many_iterations(self):

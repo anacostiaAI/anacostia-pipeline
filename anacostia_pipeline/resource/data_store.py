@@ -22,6 +22,8 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
     
     @ResourceNode.lock_decorator
     def setup(self) -> None:
+        self.log(f"Setting up node '{self.name}'")
+
         if os.path.exists(self.data_store_path) is False:
             os.makedirs(self.data_store_path, exist_ok=True)
         
@@ -41,10 +43,11 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
                         json_file_entry["state"] = "current"
                         json_file_entry["created_at"] = str(datetime.now())
                         json_entry["files"].append(json_file_entry)
+                        self.log(f"Data store is not empty at initialization, adding to data_store.json: {filepath}")
 
                 json.dump(json_entry, json_file, indent=4)
+                self.log(f"Created data_store.json file at {self.data_store_json_path}")
 
-        self.log(f"Setting up node '{self.name}'")
         self.observer.schedule(event_handler=self, path=self.data_store_path, recursive=True)
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
