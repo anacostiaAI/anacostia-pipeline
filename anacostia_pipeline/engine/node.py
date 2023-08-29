@@ -283,13 +283,16 @@ class BaseNode(Thread):
 
     @property
     def status(self):
-        with self._status_lock:
-            return self._status
+        while True:
+            with self._status_lock:
+                return self._status
 
     @status.setter
     def status(self, value: Status):
-        with self._status_lock:
-            self._status = value
+        while True:
+            with self._status_lock:
+                self._status = value
+                break
 
     def pause(self):
         self.status = Status.PAUSED
@@ -452,7 +455,8 @@ class ResourceNode(BaseNode):
         def wrapper(self, *args, **kwargs):
             # make sure setup is finished before allowing other nodes to access the resource
             if func.__name__ == "setup":
-                # keep trying to acquire lock until setup is finished
+                # keep trying to acquire lock until function is finished
+                # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
                 while True:
                     with self.resource_lock:
                         return func(self, *args, **kwargs)
@@ -460,7 +464,6 @@ class ResourceNode(BaseNode):
                 while self.status == Status.INIT:
                     time.sleep(self.wait_time)
 
-                # keep trying to acquire lock until function is finished
                 while True:
                     with self.resource_lock:
                         return func(self, *args, **kwargs)
