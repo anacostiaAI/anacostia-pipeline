@@ -468,19 +468,32 @@ class ResourceNode(BaseNode):
         return wrapper
     
     def ref_count_decorator(func):
+        # best practice: use the ref_count_decorator on all functions that are accessible from outside the class
+        # note: there could be a situation where one function acquires the reference lock and another function acquires the resource lock
+        # but both functions need to acquire both the reference lock and the resource lock;
+        # in this case, both are waiting for the other lock to be released, resulting in a deadlock
+        # however, this situation is unlikely to occur in practice (if at all) because thus far, 
+        # all functions that need to acquire both locks are decorated with the ref_count_decorator and THEN the lock_decorator.
+        # thus, all functions that need to acquire both locks must acquire the reference lock first, preventing a deadlock.
+        # i am not sure if there will ever be a situation where a function needs to acquire the resource lock first and then the reference lock;
+        # but if there is such a situation, then the user will have to adjust their code to allow for the reference lock to be acquired first.
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             while True:
                 with self.reference_lock:
                     self.reference_count += 1
+                    break
                     
-                    result = func(self, *args, **kwargs)
+            result = func(self, *args, **kwargs)
 
+            while True:
+                with self.reference_lock:
                     self.reference_count -= 1
                     if self.reference_count == 0:
                         self.event.set()
+                    break
 
-                    return result
+            return result
         return wrapper
     
     def lock_decorator(func):
