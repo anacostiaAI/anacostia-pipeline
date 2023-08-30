@@ -52,7 +52,7 @@ class FileStoreNode(DataStoreNode):
             return file.read()
 
 
-class NodeTests(unittest.TestCase):
+class DataStoreTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
 
@@ -91,34 +91,13 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
-        data_store_node.event.set()
-        data_store_node.log(f"initial iteration")
-        
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
-
         for i in range(3):
             data_store_node.save_data_sample(content=f"test {i+1}")
-
-        self.assertEqual(3, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
+        
+        self.assertEqual(2, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        data_store_node.log(f"first iteration")
         
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(3, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(9, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        data_store_node.log(f"second iteration")
-        
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(12, len(list(data_store_node.load_data_samples("old"))))
-
         self.tearDown_node(data_store_node)
 
     def test_many_iterations(self):
@@ -129,54 +108,33 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
-        for i in range(5):
+        for i in range(6):
             data_store_node.save_data_sample(content=f"test {i+1}")
 
-        self.assertEqual(5, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        data_store_node.log(f"first iteration")
-
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(1, len(list(data_store_node.load_data_samples("new"))))
         self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
-        for i in range(4):
+        for i in range(6):
             data_store_node.save_data_sample(content=f"test {i+1}")
 
-        self.assertEqual(4, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(2, len(list(data_store_node.load_data_samples("new"))))
         self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        data_store_node.log(f"second iteration")
-
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
         self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
 
-        for i in range(3):
+        for i in range(6):
             data_store_node.save_data_sample(content=f"test {i+1}")
 
         self.assertEqual(3, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(4, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(5, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(10, len(list(data_store_node.load_data_samples("old"))))
 
-        data_store_node.event.set()
-        data_store_node.log(f"fourth iteration")
+        for i in range(8):
+            data_store_node.save_data_sample(content=f"test {i+1}")
 
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(3, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(9, len(list(data_store_node.load_data_samples("old"))))
-
-        data_store_node.event.set()
-        data_store_node.log(f"fifth iteration")
-
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        self.assertEqual(12, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(1, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(5, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(20, len(list(data_store_node.load_data_samples("old"))))
 
         self.tearDown_node(data_store_node)
 

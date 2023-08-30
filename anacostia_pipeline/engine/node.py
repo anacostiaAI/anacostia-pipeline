@@ -155,7 +155,7 @@ class BaseNode(Thread):
         self.logger = None
 
         self.num_successors = 0
-        self.event = Event()
+        self.num_predecessors = 0
     
     @staticmethod
     def pausable(func):
@@ -171,20 +171,6 @@ class BaseNode(Thread):
             return ret
         return wrapper
 
-    def wait_successors(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            for _ in range(self.num_successors):
-                self.event.wait()
-            
-            result = func(self, *args, **kwargs)
-            
-            if self.event.is_set():
-                self.event.clear()
-            
-            return result
-        return wrapper
-    
     def __hash__(self) -> int:
         return hash(self.name)
 
@@ -254,7 +240,7 @@ class BaseNode(Thread):
     @pausable
     def execute(self, *args, **kwargs) -> bool:
         # the logic for a particular stage in the MLOps pipeline
-        pass
+        return True
 
     @pausable
     def post_execution(self) -> None:
@@ -281,6 +267,7 @@ class BaseNode(Thread):
             status = status
         )
 
+        #self.log(f"Sending signal {msg} to {self.next_nodes}")
         for n in self.next_nodes:
             n.incoming_signals.put(msg)
 
@@ -463,7 +450,39 @@ class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
         super().__init__(name, signal_type, auto_trigger=False)
         self.resource_lock = RLock()
+        self.event = Event()
+        self.reference_lock = RLock()
+        self.reference_count = 0
 
+    def await_references(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            self.event.wait()
+            
+            result = func(self, *args, **kwargs)
+            
+            if self.event.is_set():
+                self.event.clear()
+            
+            return result
+        return wrapper
+    
+    def ref_count_decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            while True:
+                with self.reference_lock:
+                    self.reference_count += 1
+                    
+                    result = func(self, *args, **kwargs)
+
+                    self.reference_count -= 1
+                    if self.reference_count == 0:
+                        self.event.set()
+
+                    return result
+        return wrapper
+    
     def lock_decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
