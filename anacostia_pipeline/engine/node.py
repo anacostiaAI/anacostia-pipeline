@@ -482,18 +482,14 @@ class ResourceNode(BaseNode):
             while True:
                 with self.reference_lock:
                     self.reference_count += 1
-                    break
                     
-            result = func(self, *args, **kwargs)
+                    result = func(self, *args, **kwargs)
 
-            while True:
-                with self.reference_lock:
                     self.reference_count -= 1
                     if self.reference_count == 0:
                         self.event.set()
-                    break
 
-            return result
+                    return result
         return wrapper
     
     def lock_decorator(func):
