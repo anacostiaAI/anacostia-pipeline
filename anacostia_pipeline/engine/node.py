@@ -223,14 +223,23 @@ class BaseNode(Thread):
         '''
         Verify all received signal statuses match the condition for this node to execute
         '''
-        # Pull out the queued up incoming signals and register them
-        while not self.incoming_signals.empty():
-            sig = self.incoming_signals.get()
-            self.received_signals[sig.sender] = sig
-            # TODO For signaling over the network, this is where we'd send back an ACK
 
-        # Check if the signals match the execute condition
-        return self.signal_ast.evaluate(self)
+        # If not all signals received / boolean statement of signals is false wait and try again
+        if len(self.dependent_nodes) > 0:
+            if self.incoming_signals.empty():
+                return False
+
+            # Pull out the queued up incoming signals and register them
+            while not self.incoming_signals.empty():
+                sig = self.incoming_signals.get()
+                self.received_signals[sig.sender] = sig
+                # TODO For signaling over the network, this is where we'd send back an ACK
+
+            # Check if the signals match the execute condition
+            return self.signal_ast.evaluate(self)
+        
+        # If there are no dependent nodes, then we can just return True
+        return True
 
     @pausable
     def send_signals(self, status:Status):
@@ -349,7 +358,6 @@ class BaseNode(Thread):
                     # If not all signals received / boolean statement of signals is false
                     # wait and try again
                     if not self.check_signals():
-                        self.log(f"Node '{self.name}' waiting for signals")
                         self.status = Status.WAITING
                         continue
 
@@ -439,27 +447,6 @@ class ActionNode(BaseNode):
     def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = []) -> None:
         super().__init__(name, signal_type, listen_to, auto_trigger=True)
 
-    @BaseNode.pausable
-    def check_signals(self) -> bool:
-        '''
-        Verify all received signal statuses match the condition for this node to execute
-        '''
-
-        # so ideally, the node will only execute if it has received signals from all of its dependent nodes.
-        # however, in the original BaseNode.check_signals() implementation, the node will fire True if the queue is empty 
-        # because we have to account for ResourceNodes, which do not have any dependent nodes.
-        if self.incoming_signals.empty():
-            return False
-
-        # Pull out the queued up incoming signals and register them
-        while not self.incoming_signals.empty():
-            self.log(f"Node '{self.name}' received signal, queue size: {self.incoming_signals.qsize()}")
-            sig = self.incoming_signals.get()
-            self.received_signals[sig.sender] = sig
-            # TODO For signaling over the network, this is where we'd send back an ACK
-
-        # Check if the signals match the execute condition
-        return self.signal_ast.evaluate(self)
 
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
