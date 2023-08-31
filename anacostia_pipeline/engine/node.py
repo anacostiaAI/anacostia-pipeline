@@ -104,7 +104,6 @@ class BaseNode(Thread):
         signal_type: str = "DEFAULT_SIGNAL",
         listen_to: Union[Union[BaseNode, SignalAST], List[Union[BaseNode, SignalAST]]] = list(),
         auto_trigger: bool = True,
-
     ) -> None:
         '''
         :param name: a name given to the node
@@ -224,8 +223,9 @@ class BaseNode(Thread):
         Verify all received signal statuses match the condition for this node to execute
         '''
 
-        # If not all signals received / boolean statement of signals is false wait and try again
         if len(self.dependent_nodes) > 0:
+            # if there are dependent nodes, then we need to check if we have received signals from them
+            # if we have not received signals from them, then we need to wait and try again
             if self.incoming_signals.empty():
                 return False
 
@@ -516,28 +516,6 @@ class ResourceNode(BaseNode):
                 while True:
                     with self.resource_lock:
                         return func(self, *args, **kwargs)
-        return wrapper
-
-    def signal_successors(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            result = func(self, *args, **kwargs)
-
-            for successor in self.successors:
-                successor.event.set()
-
-            return result
-        return wrapper
-
-    def signal_predecessors(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            result = func(self, *args, **kwargs)
-
-            for predecessor in self.dependent_nodes:
-                predecessor.event.set()
-
-            return result
         return wrapper
 
     def log(self, message: str) -> None:
