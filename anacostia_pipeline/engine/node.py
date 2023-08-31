@@ -490,8 +490,9 @@ class ResourceNode(BaseNode):
             while True:
                 with self.reference_lock:
                     self.reference_count += 1
-                    result = func(self, *args, **kwargs)
                     break
+
+            result = func(self, *args, **kwargs)
 
             while True:
                 with self.resource_lock:
