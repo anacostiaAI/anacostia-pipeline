@@ -138,11 +138,11 @@ class BaseNode(Thread):
                 self.dependent_nodes |= {item}
 
         # Nodes to signal
-        self.next_nodes = list()
+        self.successors = list()
 
-        # set next_nodes for each dependent node with self
+        # set successors for each dependent node with self
         for node in self.dependent_nodes:
-            node.next_nodes.append(self)
+            node.successors.append(self)
             node.num_successors += 1
 
         # Queue of incoming signals from the dependent_nodes
@@ -233,6 +233,18 @@ class BaseNode(Thread):
         return self.signal_ast.evaluate(self)
 
     @pausable
+    def send_signals(self, status:Status):
+        msg = Message(
+            sender = self.name,
+            signal_type = self.signal_type,
+            timestamp = datetime.now(),
+            status = status
+        )
+
+        for n in self.successors:
+            n.incoming_signals.put(msg)
+
+    @pausable
     def pre_execution(self) -> None:
         # override to enable node to do something before execution; 
         # e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
@@ -259,18 +271,6 @@ class BaseNode(Thread):
         # e.g., send an email to the data science team to let everyone know the pipeline has failed to train a new model
         pass
     
-    @pausable
-    def send_signals(self, status:Status):
-        msg = Message(
-            sender = self.name,
-            signal_type = self.signal_type,
-            timestamp = datetime.now(),
-            status = status
-        )
-
-        for n in self.next_nodes:
-            n.incoming_signals.put(msg)
-
     def teardown(self) -> None:
         # override to specify actions to be executed upon removal of node from dag or on pipeline shutdown
         pass
@@ -349,6 +349,7 @@ class BaseNode(Thread):
                     # If not all signals received / boolean statement of signals is false
                     # wait and try again
                     if not self.check_signals():
+                        self.log(f"Node '{self.name}' waiting for signals")
                         self.status = Status.WAITING
                         continue
 
@@ -438,6 +439,27 @@ class ActionNode(BaseNode):
     def __init__(self, name: str, signal_type: str, listen_to: List[BaseNode] = []) -> None:
         super().__init__(name, signal_type, listen_to, auto_trigger=True)
 
+    @BaseNode.pausable
+    def check_signals(self) -> bool:
+        '''
+        Verify all received signal statuses match the condition for this node to execute
+        '''
+
+        # so ideally, the node will only execute if it has received signals from all of its dependent nodes.
+        # however, in the original BaseNode.check_signals() implementation, the node will fire True if the queue is empty 
+        # because we have to account for ResourceNodes, which do not have any dependent nodes.
+        if self.incoming_signals.empty():
+            return False
+
+        # Pull out the queued up incoming signals and register them
+        while not self.incoming_signals.empty():
+            self.log(f"Node '{self.name}' received signal, queue size: {self.incoming_signals.qsize()}")
+            sig = self.incoming_signals.get()
+            self.received_signals[sig.sender] = sig
+            # TODO For signaling over the network, this is where we'd send back an ACK
+
+        # Check if the signals match the execute condition
+        return self.signal_ast.evaluate(self)
 
 class ResourceNode(BaseNode):
     def __init__(self, name: str, signal_type: str) -> None:
@@ -514,7 +536,7 @@ class ResourceNode(BaseNode):
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
 
-            for successor in self.next_nodes:
+            for successor in self.successors:
                 successor.event.set()
 
             return result
