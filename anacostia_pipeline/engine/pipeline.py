@@ -115,10 +115,10 @@ r'''
         pass
 
     def pause_nodes(self) -> None:
-        # pausing node need to be done in reverse order so that the parent nodes are paused before the child nodes
-        # this is because the parent nodes will continue to listen for signals from the child nodes, 
-        # and if the child nodes are paused first, then the parent nodes will never receive the signals,
-        # and the parent nodes will never be paused
+        # pausing node need to be done in reverse order so that the successor nodes are paused before the predecessor nodes
+        # this is because the successor nodes will continue to listen for signals from the predecessor nodes, 
+        # and if the predecessor nodes are paused first, then the sucessor nodes will never receive the signals,
+        # thus, the successor nodes will never be paused
         for node in reversed(self.nodes):
             node.pause()
 
@@ -205,16 +205,19 @@ r'''
         else:
             raise ValueError("file_path must end with .json")
 
+"""
 class FeatureStoreWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
         super().__init__(name, "feature_store")
 
-    def execute(self) -> None:
-        print("checking feature store")
-        time.sleep(2)
-        print("FeatureStoreWatchNode triggered")
-        return True
-    
+    @ActionNode.wait_successors
+    def update_state(self):
+        print("feature store updating state")
+        time.sleep(1)
+        print("feature store state updated")
+        self.trigger()
+        self.send_signals(Status.SUCCESS)
+
     def teardown(self) -> None:
         print("tearing down feature store")
         time.sleep(1)
@@ -225,11 +228,13 @@ class ModelRegistryWatchNode(ActionNode):
     def __init__(self, name: str) -> None:
         super().__init__(name, "model_registry")
 
-    def execute(self) -> None:
-        print("checking model registry")
+    @ActionNode.wait_successors
+    def update_state(self):
+        print("model registry updating state")
         time.sleep(1)
-        print("ModelRegistryWatchNode triggered")
-        return True
+        print("model registry state updated")
+        self.trigger()
+        self.send_signals(Status.SUCCESS)
 
     def teardown(self) -> None:
         print("tearing down model registry")
@@ -238,14 +243,20 @@ class ModelRegistryWatchNode(ActionNode):
 
 
 class TrainNode(ActionNode):
-    def __init__(self, name: str, listen_to: List[BaseNode] = ...) -> None:
-        super().__init__(name, "train", listen_to)
+    def __init__(self, name: str, model_registry: ModelRegistryWatchNode, feature_store: FeatureStoreWatchNode) -> None:
+        super().__init__(name, "train", listen_to=[model_registry, feature_store])
+        self.model_registry = model_registry
+        self.feature_store = feature_store
     
     def execute(self) -> None:
         print("train_model triggered")
         time.sleep(3)
         print("train_model finished")
     
+    def update_state(self):
+        self.model_registry.event.set()
+        self.feature_store.event.set()
+
     def teardown(self) -> None:
         print("tearing down training node")
         time.sleep(1)
@@ -254,9 +265,13 @@ class TrainNode(ActionNode):
 
 if __name__ == "__main__":
     feature_store_node = FeatureStoreWatchNode("feature store")
+    feature_store_node.num_successors = 1
     model_registry_node = ModelRegistryWatchNode("model registry")
-    train_node = TrainNode("train_model", listen_to=[feature_store_node, model_registry_node])
+    model_registry_node.num_successors = 1
+    train_node = TrainNode("train_model", model_registry_node, feature_store_node)
+    train_node.num_predecessors = 2
 
     dag = Pipeline([feature_store_node, model_registry_node, train_node])
     dag.export_graph("../../tests/testing_artifacts/graph.json")
     dag.start(cli=True)
+"""
