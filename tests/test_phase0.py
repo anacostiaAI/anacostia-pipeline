@@ -58,6 +58,7 @@ class FileStoreNode(DataStoreNode):
         else:
             return False
 
+
 class ETLNode(ActionNode):
     def __init__(self, name: str, data_store: DataStoreNode) -> None:
         super().__init__(name, "ETL", listen_to=[data_store])

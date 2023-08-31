@@ -268,7 +268,6 @@ class BaseNode(Thread):
             status = status
         )
 
-        #self.log(f"Sending signal {msg} to {self.next_nodes}")
         for n in self.next_nodes:
             n.incoming_signals.put(msg)
 
@@ -358,9 +357,6 @@ class BaseNode(Thread):
                     
                     # Run the action function
                     try:
-                        # the following line seems unecessary because self.trigger=True 
-                        # regardless if auto-trigger=True or not (i.e., we're using manual trigger)
-                        # self.triggered = True
                         ret = self.execute()
                         if ret:
                             self.on_success()
@@ -474,14 +470,9 @@ class ResourceNode(BaseNode):
         # thus, all functions that need to acquire both locks must acquire the reference lock first, preventing a deadlock.
         # i am not sure if there will ever be a situation where a function needs to acquire the resource lock first and then the reference lock;
         # but if there is such a situation, then the user will have to adjust their code to allow for the reference lock to be acquired first.
+
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            # make sure reference lock and resource lock are both acquired
-            # assumption: anytime a function needs to acquire the reference lock, it also needs to acquire the resource lock.
-            # i.e., there is no situation where a function needs to acquire the reference lock but not the resource lock.
-            # i.e., ref_count_decorator is always used in conjunction with lock_decorator.
-            # in this implementation, the reference lock is acquired first, then the resource lock; 
-            # but then the thread can wait to decrement the reference count.
             while True:
                 with self.reference_lock:
                     self.reference_count += 1
