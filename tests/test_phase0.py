@@ -1,11 +1,10 @@
-from typing import Any, List
+from typing import Any
 import unittest
 import logging
 import sys
 import os
 import shutil
 import random
-from threading import Thread
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -52,6 +51,12 @@ class FileStoreNode(DataStoreNode):
         with open(filepath, "r") as file:
             return file.read()
 
+    def trigger_condition(self) -> bool:
+        num_new_files = self.get_num_data_samples("new")
+        if num_new_files >= 5:
+            return True
+        else:
+            return False
 
 class ETLNode(ActionNode):
     def __init__(self, name: str, data_store: DataStoreNode) -> None:
@@ -64,22 +69,17 @@ class ETLNode(ActionNode):
         self.log(f"Node '{self.name}' setup complete")
 
     def execute(self) -> None:
-        self.log("ETL triggered")
-        for i, sample in enumerate(self.data_store.load_data_samples("current")):
-            self.log(f"processing data sample {i}")
-        time.sleep(0.1)
-        self.log("ETL finished")
+        self.log(f"Node '{self.name}' triggered")
+
+        for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
+            self.log(f"processing data sample {path}")
+
+        self.log(f"Node '{self.name}' finished")
         return True
 
-    def update_state(self):
-        self.log("updating state")
-        self.data_store.event.set()
-        self.log("state updated")
-        self.trigger()
-        self.send_signals(Status.SUCCESS)
-
     def on_exit(self):
-        self.log("ETL node exited")
+        self.log(f"Node '{self.name}' exited")
+
 
 class ETLTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
@@ -89,60 +89,37 @@ class ETLTests(unittest.TestCase):
         self.path = f"{systems_tests_path}/{self._testMethodName}"
         os.makedirs(self.path)
     
-    def start_nodes(self, data_store_node: FileStoreNode, etl_node: ETLNode) -> None:
-        data_store_node.set_logger(logger)
-        etl_node.set_logger(logger)
-
-        # we must set the number of successors and predecessors manually because we are not using a pipeline
-        # etl_node.num_predecessors is set to 1 because the data store node is a predecessor
-        # data_store_node.num_successors is set to 1 because the etl node is a successor
-        # the number of predecessors and successors must be set once the DAG is constructed, not when the node is initialized
-        data_store_node.num_successors = 1
-        etl_node.num_predecessors = 1
-        self.pipeline = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
-
-    def tearDown_nodes(self, data_store_node: FileStoreNode, etl_node: ETLNode) -> None:
-        #etl_node.stop()
-        #data_store_node.stop()
-        #etl_node.join()
-        #data_store_node.join()
-        self.pipeline.terminate_nodes()
-    
-    def test_initial_setup(self):
-        data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.path)
-        etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node)
-        self.start_nodes(data_store_node, etl_node)
-
-        time.sleep(1)
-        self.assertEqual(1, etl_node.num_predecessors)
-        self.assertEqual(0, etl_node.num_successors)
-        self.assertEqual(0, data_store_node.num_predecessors)
-        self.assertEqual(1, data_store_node.num_successors)
-        time.sleep(1)
-
-        self.tearDown_nodes(data_store_node, etl_node)
-
     def test_empty_setup(self):
         data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.path)
         etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node)
-        #self.start_nodes(data_store_node, etl_node)
-        pipeline = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
-        pipeline.start()
+        pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
+        pipeline_phase0.start()
+
+        self.assertEqual(0, data_store_node.num_predecessors)
+        self.assertEqual(1, data_store_node.num_successors)
         
-        for i in range(5):
+        time.sleep(3)
+
+        for i in range(8):
             data_store_node.save_data_sample(content=f"test {i+1}")
         
-        pipeline.terminate_nodes()
-        #self.tearDown_nodes(data_store_node, etl_node)
+        time.sleep(3)
+
+        for i in range(6):
+            data_store_node.save_data_sample(content=f"test {i+1}")
+        
+        pipeline_phase0.terminate_nodes()
+
 
 if __name__ == "__main__":
-    #unittest.main()
+    unittest.main()
 
+    """
     path = f"{systems_tests_path}/test_empty_setup"
     data_store_node = FileStoreNode(name="data store", path=path)
     etl_node = ETLNode(name="ETL", data_store=data_store_node)
-    data_store_node.num_successors = 1
-    etl_node.num_predecessors = 1
+    #data_store_node.num_successors = 1
+    #etl_node.num_predecessors = 1
 
     pipeline = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
     #pipeline = Pipeline(nodes=[data_store_node], logger=logger)
@@ -155,3 +132,4 @@ if __name__ == "__main__":
     print("terminating nodes")
     
     pipeline.terminate_nodes()
+    """

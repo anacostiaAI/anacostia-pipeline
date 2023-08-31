@@ -20,7 +20,7 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer = Observer()
         super().__init__(name, "data_store")
     
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
 
@@ -52,7 +52,7 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
             with open(self.data_store_json_path, 'r') as json_file:
@@ -69,9 +69,7 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
                     json_entry["created_at"] = str(datetime.now())
                     json_data["files"].append(json_entry)
 
-                    # this block of code is known as the trigger condition
-                    num_new_files = len([entry for entry in json_data["files"] if entry["state"] == "new"])
-                    if num_new_files >= 5:
+                    if self.trigger_condition() is True:
                         self.trigger()
 
             except Exception as e:
@@ -80,24 +78,29 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
             with open(self.data_store_json_path, 'w') as json_file:
                 json.dump(json_data, json_file, indent=4)
 
-    @ResourceNode.ref_count_decorator
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def create_filename(self, file_extension: str = None) -> str:
         num_files = len(os.listdir(self.data_store_path))
         return f"data_{num_files}.{file_extension}"
 
-    @ResourceNode.ref_count_decorator
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def save_data_sample(self) -> None:
         raise NotImplementedError
 
-    @ResourceNode.ref_count_decorator
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def load_data_sample(self, filepath: str) -> Any:
         raise NotImplementedError
 
-    @ResourceNode.ref_count_decorator
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def trigger_condition(self) -> bool:
+        raise NotImplementedError
+    
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def load_data_samples(self, state: str) -> iter:
         if state not in ["current", "old", "new", "all"]:
             raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
@@ -109,8 +112,33 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
         for filepath in filepaths:
             yield self.load_data_sample(filepath)
 
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def load_data_paths(self, state: str) -> iter:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
+        
+        with open(self.data_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            filepaths = [entry["filepath"] for entry in json_data["files"] if entry["state"] == state]
+        
+        for filepath in filepaths:
+            yield filepath
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def get_num_data_samples(self, state: str) -> int:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
+        
+        with open(self.data_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            filepaths = [entry["filepath"] for entry in json_data["files"] if entry["state"] == state]
+        
+        return len(filepaths)
+
     @ResourceNode.await_references
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def execute(self):
         self.log(f"Updating state of node '{self.name}'")
         with open(self.data_store_json_path, 'r') as json_file:

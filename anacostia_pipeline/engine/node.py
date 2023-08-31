@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from threading import Thread, Lock, Event, RLock
+from threading import Thread, Lock, Event, RLock, get_native_id
 from queue import Queue
 from typing import List, Dict, Optional, Set, Union
 from functools import reduce, wraps
@@ -143,6 +143,7 @@ class BaseNode(Thread):
         # set next_nodes for each dependent node with self
         for node in self.dependent_nodes:
             node.next_nodes.append(self)
+            node.num_successors += 1
 
         # Queue of incoming signals from the dependent_nodes
         self.incoming_signals = Queue()
@@ -317,9 +318,6 @@ class BaseNode(Thread):
         """
         pass
 
-    def update_state(self):
-        pass
-
     def run(self) -> None:
         self.status = Status.INIT
         try:
@@ -377,7 +375,6 @@ class BaseNode(Thread):
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
 
-                    self.update_state()
                     self.reset_trigger()    
                     # this line is causing the node to pause after every execution
                     # self.status = Status.COMPLETED
@@ -467,7 +464,7 @@ class ResourceNode(BaseNode):
             return result
         return wrapper
     
-    def ref_count_decorator(func):
+    def exeternally_accessible(func):
         # best practice: use the ref_count_decorator on all functions that are accessible from outside the class
         # note: there could be a situation where one function acquires the reference lock and another function acquires the resource lock
         # but both functions need to acquire both the reference lock and the resource lock;
@@ -479,8 +476,6 @@ class ResourceNode(BaseNode):
         # but if there is such a situation, then the user will have to adjust their code to allow for the reference lock to be acquired first.
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            result = None
-
             # make sure reference lock and resource lock are both acquired
             # assumption: anytime a function needs to acquire the reference lock, it also needs to acquire the resource lock.
             # i.e., there is no situation where a function needs to acquire the reference lock but not the resource lock.
@@ -495,7 +490,7 @@ class ResourceNode(BaseNode):
             result = func(self, *args, **kwargs)
 
             while True:
-                with self.resource_lock:
+                with self.reference_lock:
                     self.reference_count -= 1
                     if self.reference_count == 0:
                         self.event.set()
@@ -504,7 +499,7 @@ class ResourceNode(BaseNode):
             return result
         return wrapper
     
-    def lock_decorator(func):
+    def resource_accessor(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             # make sure setup is finished before allowing other nodes to access the resource
