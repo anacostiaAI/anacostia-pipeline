@@ -71,9 +71,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                 json_data = json.load(json_file)
 
             try:
-                # change of direction: use the on_modified method to monitor the change of the feature store json file
-                # once we see enough feature vectors, we can trigger the next node
-
                 logged_files = [entry["filepath"] for entry in json_data["files"]]
                 if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
                     array = np.load(os.path.join(self.feature_store_path, event.src_path))
@@ -119,8 +116,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def get_feature_vectors(self, state: str) -> iter:
-        if state not in ["current", "old", "new"]:
-            raise ValueError("state must be one of ['current', 'old', 'new']")
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']") 
         
         with open(self.feature_store_json_path, 'r') as json_file:
             json_data = json.load(json_file)
@@ -136,6 +133,19 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             except Exception as e:
                 self.log(f"Error loading feature vector file: {e}")
                 continue
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def get_feature_vectors_filepaths(self, state: str) -> iter:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']") 
+
+        with open(self.feature_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
+
+        for path in feature_vectors_paths:
+            yield path
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
@@ -166,12 +176,12 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
 
         for file_entry in json_data["files"]:
             if file_entry["state"] == "current":
-                self.log(f'current -> old: {file_entry["filepath"]}')
+                self.log(f'current -> old ({file_entry["num_samples"]} samples): {file_entry["filepath"]}')
                 file_entry["state"] = "old"
         
         for file_entry in json_data["files"]:
             if file_entry["state"] == "new":
-                self.log(f'new -> current: {file_entry["filepath"]}')
+                self.log(f'new -> current ({file_entry["num_samples"]} samples): {file_entry["filepath"]}')
                 file_entry["state"] = "current"
 
         with open(self.feature_store_json_path, 'w') as json_file:
