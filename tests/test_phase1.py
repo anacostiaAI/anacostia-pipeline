@@ -9,6 +9,7 @@ import random
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resource.data_store import DataStoreNode
+from anacostia_pipeline.resource.feature_store import FeatureStoreNode
 from anacostia_pipeline.engine.node import ActionNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 
@@ -60,9 +61,11 @@ class FileStoreNode(DataStoreNode):
 
 
 class ETLNode(ActionNode):
+    #def __init__(self, name: str, data_store: DataStoreNode, feature_store: FeatureStoreNode) -> None:
     def __init__(self, name: str, data_store: DataStoreNode) -> None:
         super().__init__(name, "ETL", listen_to=[data_store])
         self.data_store = data_store
+        #self.feature_store = feature_store
     
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
@@ -91,7 +94,10 @@ class ETLTests(unittest.TestCase):
         os.makedirs(self.path)
     
     def test_empty_setup(self):
+        #feature_store_node = FileStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
         data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.path)
+        #etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
+        #pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
         etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node)
         pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
         pipeline_phase0.start()

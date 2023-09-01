@@ -28,7 +28,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer = Observer()
         super().__init__(name, "feature_store")
     
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def setup(self) -> None:
         if os.path.exists(self.feature_store_path) is False:
             os.makedirs(self.feature_store_path, exist_ok=True)
@@ -64,41 +64,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
-    @ResourceNode.lock_decorator
-    def get_num_feature_vectors(self, state: str) -> int:
-        if state not in ["current", "old", "new", "all"]:
-            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
-        
-        with open(self.feature_store_json_path, 'r') as json_file:
-            json_data = json.load(json_file)
-            if state == "all":
-                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"]])
-                return total_num_samples
-            else:
-                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == state])
-                return total_num_samples
-
-    @ResourceNode.lock_decorator
-    def get_feature_vectors(self, state: str) -> iter:
-        if state not in ["current", "old", "new"]:
-            raise ValueError("state must be one of ['current', 'old', 'new']")
-        
-        with open(self.feature_store_json_path, 'r') as json_file:
-            json_data = json.load(json_file)
-            feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
-
-        for path in feature_vectors_paths:
-            try:
-                array = np.load(path)
-                self.log(f"extracting current data from {path}")
-                for row in array:
-                    yield row
-
-            except Exception as e:
-                self.log(f"Error loading feature vector file: {e}")
-                continue
-
-    @ResourceNode.lock_decorator 
+    @ResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
             with open(self.feature_store_json_path, 'r') as json_file:
@@ -120,7 +86,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                     json_entry["created_at"] = str(datetime.now())
                     json_data["files"].append(json_entry)
 
-                    self.log(f"New feature vectors detected: {event.event_type} {event.src_path}")
+                    if self.trigger_condition() is True:
+                        self.trigger()
 
             except Exception as e:
                 self.log(f"Error processing {event.src_path}: {e}")
@@ -128,10 +95,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
             with open(self.feature_store_json_path, 'w') as json_file:
                 json.dump(json_data, json_file, indent=4)
 
-            # make sure signal is created before triggering
-            self.trigger()
-
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def create_filename(self) -> str:
         """
         Default implementaion to create a filename for the new feature vector file.
@@ -140,7 +105,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         num_files = len(os.listdir(self.feature_store_path))
         return f"features_{num_files}.npy"
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def save_feature_vector(self, feature_vector: np.ndarray) -> None:
         try:
             new_file_path = os.path.join(self.feature_store_path, self.create_filename())
@@ -150,9 +116,51 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         except Exception as e:
             self.log(f"Error saving feature vector: {e}")
 
-    @ResourceNode.wait_successors
-    @ResourceNode.lock_decorator
-    def update_state(self):
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def get_feature_vectors(self, state: str) -> iter:
+        if state not in ["current", "old", "new"]:
+            raise ValueError("state must be one of ['current', 'old', 'new']")
+        
+        with open(self.feature_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            feature_vectors_paths = [file_entry["filepath"] for file_entry in json_data["files"] if file_entry["state"] == state]
+
+        for path in feature_vectors_paths:
+            try:
+                array = np.load(path)
+                self.log(f"extracting current data from {path}")
+                for row in array:
+                    yield row
+
+            except Exception as e:
+                self.log(f"Error loading feature vector file: {e}")
+                continue
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def trigger_condition(self) -> bool:
+        # in the default implementation, we trigger the next node as soon as we see a new feature vectors file.
+        return True
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def get_num_feature_vectors(self, state: str) -> int:
+        if state not in ["current", "old", "new", "all"]:
+            raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
+        
+        with open(self.feature_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            if state == "all":
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"]])
+                return total_num_samples
+            else:
+                total_num_samples = sum([file_entry["num_samples"] for file_entry in json_data["files"] if file_entry["state"] == state])
+                return total_num_samples
+
+    @ResourceNode.await_references
+    @ResourceNode.resource_accessor
+    def execute(self):
         with open(self.feature_store_json_path, 'r') as json_file:
             json_data = json.load(json_file)
 
@@ -169,6 +177,8 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         with open(self.feature_store_json_path, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
     
+        return True
+
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
