@@ -27,6 +27,10 @@ class MetadataStoreNode(ResourceNode):
         self.engine = create_engine(path)
         Base.metadata.create_all(engine)
 
+        # TODO add as parameters and set here once they are defined
+        self.train_node = None
+        self.model_eval = None
+
         self.model_reg = model_reg
         self.feat_store = feat_store
         self.data_store = data_store
@@ -44,4 +48,24 @@ class MetadataStoreNode(ResourceNode):
                 data_path=self.data_store.data_store_path
             ))
         s.commit()
+
+
+    def execute(self):
+        if not self.train_node:
+            return False
+
+        # TODO update once a training node is defined
+        epoch = self.train_node.epoch 
+        
+        if not self.model_eval:
+            return False
+
+        # TODO update once a model_eval node is defined
+        train_acc = self.model_eval.train_acc
+        valid_acc = self.model_eval.valid_acc
+        test_acc = self.model_eval.test_acc
+
+        self.insert_metadata(train_acc, valid_acc, test_acc, epoch)
+        return True
+
 
