@@ -23,8 +23,12 @@ class MetadataTable(Base):
 
 
 class MetadataStoreNode(ResourceNode):
-    def __init__(self, path:str, model_reg:ModelRegistryNode, feat_store:FeatureStoreNode, data_store:DataStoreNode):
+    '''A ResourceNode responsible for saving training and model evaluation data into a persistant store'''
+    
+    def __init__(self, model_reg:ModelRegistryNode, feat_store:FeatureStoreNode, data_store:DataStoreNode, path:str="sqlite:///default_metadata.db"):
         self.engine = create_engine(path)
+
+        # Automatically create the table if it doesn't exist
         Base.metadata.create_all(engine)
 
         # TODO add as parameters and set here once they are defined
@@ -37,6 +41,13 @@ class MetadataStoreNode(ResourceNode):
 
     @ResourceNode.lock_decorator
     def insert_metadata(self, train_acc:float=0, valid_acc:float=0, test_acc:float=0, epoch:int=0):
+        '''
+        Inserts a row into the metadata table
+        :param train_acc: Training Accuracy
+        :param valid_acc: Validation Accuracy
+        :param test_acc: Testing Accuracy
+        :param epoch: Number of Epochs that Training had (I Think?)
+        '''
         with Session(engine) as s:
             s.add(MetadataTable(
                 train_acc=train_acc,
@@ -51,6 +62,9 @@ class MetadataStoreNode(ResourceNode):
 
 
     def execute(self):
+        '''
+        Returns True if an insertion into the database was successful
+        '''
         if not self.train_node:
             return False
 
