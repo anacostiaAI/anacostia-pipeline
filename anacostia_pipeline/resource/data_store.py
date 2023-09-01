@@ -97,7 +97,8 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def trigger_condition(self) -> bool:
-        raise NotImplementedError
+        # in the default implementation, we trigger the next node as soon as we see a new data file.
+        return True
     
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor

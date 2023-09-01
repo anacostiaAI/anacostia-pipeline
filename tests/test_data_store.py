@@ -113,12 +113,11 @@ class DataStoreTests(unittest.TestCase):
         data_store_node = FileStoreNode(name=f"{self._testMethodName}", path=self.path)
         self.start_node(data_store_node)
 
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
-        #self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("new"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("current"))))
+        self.assertEqual(0, len(list(data_store_node.load_data_samples("old"))))
 
         time.sleep(0.5)
-
         for i in range(6):
             data_store_node.save_data_sample(content=f"test {i+1}")
 
