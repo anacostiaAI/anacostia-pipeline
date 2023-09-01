@@ -10,10 +10,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-if __name__ == "__main__":
-    from constants import Status, ASTOperation
-else:
-    from engine.constants import Status, ASTOperation
+from anacostia_pipeline.engine.constants import Status, ASTOperation
 
 
 class SignalAST:

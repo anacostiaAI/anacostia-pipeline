@@ -1,0 +1,47 @@
+from anacostia_pipeline.engine.node import ResourceNode
+from anacostia_pipeline.resource.model_registry import ModelRegistryNode
+from anacostia_pipeline.resource.feature_store import FeatureStoreNode
+from anacostia_pipeline.resource.data_store import DataStoreNode
+
+from sqlalchemy import create_engine, Integer, String, Float
+from sqlalchemy.orm import DeclarativeBase, mapped_column, Session
+
+class Base(DeclarativeBase):
+    pass
+
+class MetadataTable(Base):
+    __tablename__ = "metadata"
+
+    id = mapped_column(Integer, primary_key=True)
+    train_acc = mapped_column(Float)
+    valid_acc = mapped_column(Float)
+    test_acc = mapped_column(Float)
+    epoch = mapped_column(Integer)
+    model_path = mapped_column(String)
+    features_path = mapped_column(String)
+    data_path = mapped_column(String)
+
+
+class MetadataStoreNode(ResourceNode):
+    def __init__(self, path:str, model_reg:ModelRegistryNode, feat_store:FeatureStoreNode, data_store:DataStoreNode):
+        self.engine = create_engine(path)
+        Base.metadata.create_all(engine)
+
+        self.model_reg = model_reg
+        self.feat_store = feat_store
+        self.data_store = data_store
+
+    @ResourceNode.lock_decorator
+    def insert_metadata(self, train_acc:float=0, valid_acc:float=0, test_acc:float=0, epoch:int=0):
+        with Session(engine) as s:
+            s.add(MetadataTable(
+                train_acc=train_acc,
+                valid_acc=valid_acc,
+                test_acc=test_acc,
+                epoch=epoch,
+                model_path=self.model_registry_path,
+                features_path=self.feat_store.feature_store_path,
+                data_path=self.data_store.data_store_path
+            ))
+        s.commit()
+
