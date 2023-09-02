@@ -55,14 +55,11 @@ How to install the pipeline:
 ```
 python3 -m venv venv
 source venv/bin/activate
-
 ```
 2. pip install requiresments.txt
 ```pip install -r requirements.txt```
 
 3. Update the requirements.txt if neccessary
-
-
 
 # Example Usage
 
