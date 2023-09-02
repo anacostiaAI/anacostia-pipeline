@@ -69,23 +69,18 @@ Check Python version inside virtual environment:
 For example:
 ```(venv) Python 3.8.2```
 2. Deactivate the virtual environment:
-
 ```(venv) deactivate```
 3. Check system Python version:
-
 ```python --version```
+
 This may be older than your virtual environment version.
 Check Python 3 version:
-
 ```python3 --version```
 5. Create a new virtual environment with Python 3:
-
 ```python3 -m venv venv```
 6. Activate the new virtual environment:
-
 ```source venv/bin/activate```
 7. Confirm Python version is updated:
-
 ```(venv) python --version```
 
 # Example Usage
