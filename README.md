@@ -57,14 +57,15 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 2. pip install requiresments.txt
+   
 ```pip install -r requirements.txt```
 
-3. Update the requirements.txt if neccessary
+4. Update the requirements.txt if neccessary
 
 
 Other notes:
 If you already have a Python virtual environment set up, follow these steps:
-Check Python version inside virtual environment:
+1. Check Python version inside virtual environment:
 ```(venv) python --version```
 For example:
 ```(venv) Python 3.8.2```
@@ -74,7 +75,7 @@ For example:
 ```python --version```
 
 This may be older than your virtual environment version.
-Check Python 3 version:
+4. Check Python 3 version:
 ```python3 --version```
 5. Create a new virtual environment with Python 3:
 ```python3 -m venv venv```
