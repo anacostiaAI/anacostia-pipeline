@@ -18,10 +18,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         max_old_vectors: int = None, 
     ) -> None:
 
-        # max_old_vectors may be used to limit the number of feature vectors
-        # stored in the feature store. If None, then there is no limit.
-        # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
-        # TODO: implement deletion of old feature vectors
         self.max_old_vectors = max_old_vectors
         self.feature_store_path = os.path.join(os.path.abspath(path), "feature_store")
         self.feature_store_json_path = os.path.join(self.feature_store_path, "feature_store.json")
@@ -58,6 +54,7 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
                         continue
 
                 json.dump(json_entry, json_file, indent=4)
+                self.log(f"Created feature_store.json file at {self.feature_store_json_path}")
 
         self.log(f"Setting up node '{self.name}'")
         self.observer.schedule(event_handler=self, path=self.feature_store_path, recursive=True)
@@ -187,6 +184,10 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         with open(self.feature_store_json_path, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
     
+        # max_old_vectors may be used to limit the number of feature vectors
+        # stored in the feature store. If None, then there is no limit.
+        # If the number of feature vectors exceeds the limit, then the oldest feature vectors will be deleted.
+        # TODO: implement deletion of old feature vectors. implement the removal of old vectors in this method when state is updated.
         return True
 
     def on_exit(self) -> None:
@@ -194,3 +195,4 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer.stop()
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
+        self.log(f"Node '{self.name}' exited")

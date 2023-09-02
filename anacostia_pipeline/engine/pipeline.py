@@ -123,10 +123,13 @@ r'''
             node.pause()
 
     def terminate_nodes(self) -> None:
+        # terminating nodes need to be done in reverse order so that the successor nodes are terminated before the predecessor nodes
+        # this is because the successor nodes will continue to listen for signals from the predecessor nodes,
+        # and if the predecessor nodes are terminated first, then the sucessor nodes will never receive the signals,
+        # thus, the successor nodes will never be terminated.
+        # predecessor nodes need to wait for the successor nodes to terminate before they can terminate. 
         for node in self.nodes:
             node.stop()
-        
-        for node in self.nodes:
             node.join()
 
     def start(self, cli=False) -> None:

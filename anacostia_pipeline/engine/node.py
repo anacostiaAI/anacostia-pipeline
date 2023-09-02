@@ -381,8 +381,6 @@ class BaseNode(Thread):
                         self.send_signals(Status.FAILURE)
 
                     self.reset_trigger()    
-                    # this line is causing the node to pause after every execution
-                    # self.status = Status.COMPLETED
             
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action

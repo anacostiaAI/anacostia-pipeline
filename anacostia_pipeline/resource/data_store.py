@@ -165,3 +165,4 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
         self.observer.stop()
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
+        self.log(f"Node '{self.name}' exited")

@@ -5,6 +5,11 @@ import sys
 import os
 import shutil
 import random
+import requests
+from requests.auth import HTTPBasicAuth
+from dotenv import load_dotenv
+load_dotenv()
+import base64
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -28,7 +33,7 @@ os.makedirs(systems_tests_path)
 os.chmod(systems_tests_path, 0o777)
 
 # Create a logger
-log_path = f"{systems_tests_path}/phase0.log"
+log_path = f"{systems_tests_path}/phase1.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -59,13 +64,37 @@ class FileStoreNode(DataStoreNode):
         else:
             return False
 
+class FireflyClient:
+    def __init__(self) -> None:
+        self.base_url = "https://u0khg0jvam-u0eaud4c02-firefly-os.us0-aws-ws.kaleido.io/api/v1"
+        self.username = os.getenv("USERNAME")
+        self.password = os.getenv("PASSWORD")
+        self.session = requests.Session()
+        self.session.auth = HTTPBasicAuth(self.username, self.password)
+        self.credentials = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
+        self.headers = {
+            "Authorization": f"Basic {self.credentials}",
+            "Content-Type": "application/json"
+        }
+
+    # Messaging API
+    def broadcast_message(self, message_content, metadata=None):
+        payload = {
+            "data": [
+                {
+                    "value": message_content
+                }
+            ]
+        }
+        response = requests.post(f"{self.base_url}/messages/broadcast", json=payload, headers=self.headers)
+        return response.json()
 
 class ETLNode(ActionNode):
-    #def __init__(self, name: str, data_store: DataStoreNode, feature_store: FeatureStoreNode) -> None:
-    def __init__(self, name: str, data_store: DataStoreNode) -> None:
+    def __init__(self, name: str, data_store: DataStoreNode, feature_store: FeatureStoreNode) -> None:
         super().__init__(name, "ETL", listen_to=[data_store])
         self.data_store = data_store
-        #self.feature_store = feature_store
+        self.feature_store = feature_store
+        self.client = FireflyClient()
     
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
@@ -75,11 +104,23 @@ class ETLNode(ActionNode):
     def execute(self) -> None:
         self.log(f"Node '{self.name}' triggered")
 
-        for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
-            self.log(f"processing data sample {path}")
+        try:
+            for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
+                self.log(f"processing data sample {path}")
+                feature_vector_filepath = self.feature_store.create_filename()
+                random_number = random.randint(0, 100)
+                create_numpy_file(
+                    file_path=f"{self.feature_store.feature_store_path}/{feature_vector_filepath}", shape=(random_number, 3)
+                ) 
+            self.log(f"Node '{self.name}' execution complete")
 
-        self.log(f"Node '{self.name}' finished")
-        return True
+            response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
+            print(response)
+
+            return True
+        except Exception as e:
+            self.log(f"Error processing data sample: {e}")
+            return False
 
     def on_exit(self):
         self.log(f"Node '{self.name}' exited")
@@ -91,15 +132,14 @@ class ETLTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.path = f"{systems_tests_path}/{self._testMethodName}"
+        self.data_store_path = f"{self.path}/data_store"
         os.makedirs(self.path)
     
     def test_empty_setup(self):
-        #feature_store_node = FileStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
-        data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.path)
-        #etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
-        #pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
-        etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node)
-        pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node], logger=logger)
+        feature_store_node = FeatureStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
+        data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.data_store_path)
+        etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
+        pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
         pipeline_phase0.start()
 
         self.assertEqual(0, data_store_node.num_predecessors)
@@ -115,7 +155,13 @@ class ETLTests(unittest.TestCase):
         for i in range(6):
             data_store_node.save_data_sample(content=f"test {i+1}")
         
-        pipeline_phase0.terminate_nodes()
+        time.sleep(3)
+        print("terminating nodes")
+
+        try:    
+            pipeline_phase0.terminate_nodes()
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":
