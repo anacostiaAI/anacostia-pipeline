@@ -61,6 +61,33 @@ source venv/bin/activate
 
 3. Update the requirements.txt if neccessary
 
+
+Other notes:
+If you already have a Python virtual environment set up, follow these steps:
+Check Python version inside virtual environment:
+```(venv) python --version```
+For example:
+```(venv) Python 3.8.2```
+2. Deactivate the virtual environment:
+
+```(venv) deactivate```
+3. Check system Python version:
+
+```python --version```
+This may be older than your virtual environment version.
+Check Python 3 version:
+
+```python3 --version```
+5. Create a new virtual environment with Python 3:
+
+```python3 -m venv venv```
+6. Activate the new virtual environment:
+
+```source venv/bin/activate```
+7. Confirm Python version is updated:
+
+```(venv) python --version```
+
 # Example Usage
 
 ```python
