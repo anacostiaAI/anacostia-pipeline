@@ -25,10 +25,10 @@ Before installing Python, update Homebrew's package index with:
 ```brew update```
 4. Search for Latest Python
 Now search Brew for the latest available Python version:
-
 ```brew search python```
 Make note of the latest 3.x release.
-5. Install Latest Python
+
+6. Install Latest Python
 Use brew to install the latest Python version:
 
 ```brew install python@3.11```
