@@ -94,6 +94,30 @@ This may be older than your virtual environment version.
 7. Confirm Python version is updated:
 ```(venv) python --version```
 
+Understanding the repo:
+1. Engine folder - has two important files 1. node.py - which contains all teh base classes for the action node and the resource nodes, other nodes inherit the base node logic. This is where all the synctionaization primitives are defined. 2. pipeline.py is our way of intereacting with the dag, that will have commands for staring, terminating, shutting down, pausing the node and pipelines, The ability to export the graph.json file is here as well. 
+constants.py defines the different statuses we have in the pipeline for the nodes.
+2. Resource Folder: Defines the basic anacostia resources that users have right off the bat. It has 3 files:
+ 2.1 data_store.py refines where the user would input their data files in order to be consumed by the pipeline. Ex: if user has folder of images, it would take that folder and start keeping track of the state for that folder via data_store.json
+2.2 feature_store.py - default anocostia datastore, this file converts features into a numpy array and saves the numpy array as a .npy file and keeps track of the state.
+2.3 model_registry - where models are going to be kept. Keeps state of models i.e current, old, and new(this is applicatable to anacostia resources)
+3. Tests folder - where all the tests for pipeline and nodes reside
+The most uptodate is tests_phase1.py which includes all teh tests for the phase 1 configuration which is the ETL pipeline.
+tests_data_store.py includes all the tests for the data store
+tests_feature_store includes all the tests for the feature store
+tests_model_registry include all tests for model registry - this is currently not up to date
+tests_utils. includes all functionaliteis for creating the tests
+tests_node and test_basic includes all tests for nodes which might not be used anymore. We might get rid of these.
+
+4. setup.py - the main folder that is used to turn ana into a python package that we can put on PyPI - python package index. Allows you to `pip install anacostia`
+
+
+Future work:
+1. Take the tests from phase1 and create the suite of tests for phase 2, which is a full retraining pipeline without model evaluation.
+2. We will create a metadata store node using a database (Most likely Mongo)
+3. We will upgrade phase 2 tests to include model evaluation (now you can have full retraining pipeline)
+
+
 # Example Usage
 
 ```python
