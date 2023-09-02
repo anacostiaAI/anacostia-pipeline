@@ -6,3 +6,4 @@ tests/testing_artifacts/
 anacostia_pipeline/engine/subexample.py
 testing_artifacts/
 .env
+venv
