@@ -21,8 +21,6 @@ pyparsing==3.0.9
 python-dateutil==2.8.2
 python-dotenv==1.0.0
 pytz==2023.3
-requests==2.31.0
-rich==13.5.2
 scipy==1.11.1
 six==1.16.0
 SQLAlchemy==2.0.20

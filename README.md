@@ -62,6 +62,16 @@ source venv/bin/activate
 
 4. Update the requirements.txt if neccessary
 
+5. Once you have all requirements installed, let's try to run one of the tests:
+Go into the tests folder and run test_phase1.py:
+```python3 test_phase1.py```
+
+6. Create a .env file inside the tests folder:
+Insert these credentials and set them:
+# .env
+USERNAME=
+PASSWORD=
+
 
 Other notes:
 If you already have a Python virtual environment set up, follow these steps:
