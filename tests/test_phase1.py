@@ -78,11 +78,11 @@ class FireflyClient:
         }
 
     # Messaging API
-    def broadcast_message(self, message_content, metadata=None):
+    def broadcast_message(self, message, metadata=None):
         payload = {
             "data": [
                 {
-                    "value": message_content
+                    "value": message
                 }
             ]
         }
@@ -101,8 +101,11 @@ class ETLNode(ActionNode):
         time.sleep(4)
         self.log(f"Node '{self.name}' setup complete")
 
+        response = self.client.broadcast_message(f"Node '{self.name}' setup complete")
+
     def execute(self) -> None:
         self.log(f"Node '{self.name}' triggered")
+        response = self.client.broadcast_message(f"Node '{self.name}' triggered")
 
         try:
             for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
@@ -113,6 +116,8 @@ class ETLNode(ActionNode):
                     file_path=f"{self.feature_store.feature_store_path}/{feature_vector_filepath}", shape=(random_number, 3)
                 ) 
             self.log(f"Node '{self.name}' execution complete")
+            response = self.client.broadcast_message(f"Node '{self.name}' execution complete")
+            
 
             response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
             print(response)
@@ -120,10 +125,13 @@ class ETLNode(ActionNode):
             return True
         except Exception as e:
             self.log(f"Error processing data sample: {e}")
+            response = self.client.broadcast_message(f"Error processing data sample: {e}")
+            
             return False
 
     def on_exit(self):
         self.log(f"Node '{self.name}' exited")
+        response = self.client.broadcast_message(f"Node '{self.name}' exited")
 
 
 class ETLTests(unittest.TestCase):
