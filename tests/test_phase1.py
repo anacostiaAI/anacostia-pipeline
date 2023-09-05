@@ -95,6 +95,9 @@ class ETLNode(ActionNode):
         self.data_store = data_store
         self.feature_store = feature_store
         self.client = FireflyClient()
+
+        # we don't need to use a lock to write to self.waiting because we are only writing to it in the thread that runs this node
+        self.waiting = False
     
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
@@ -117,21 +120,23 @@ class ETLNode(ActionNode):
                 ) 
             self.log(f"Node '{self.name}' execution complete")
             response = self.client.broadcast_message(f"Node '{self.name}' execution complete")
-            
 
             response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
             print(response)
 
             return True
+
         except Exception as e:
-            self.log(f"Error processing data sample: {e}")
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            self.log(f"Error processing data sample: {e}, exc_type: {exc_type}, fname: {fname}, exc_tb.tb_lineno: {exc_tb.tb_lineno}")
             response = self.client.broadcast_message(f"Error processing data sample: {e}")
-            
             return False
 
     def on_exit(self):
         self.log(f"Node '{self.name}' exited")
-        response = self.client.broadcast_message(f"Node '{self.name}' exited")
+        print(f"Node '{self.name}' exited")
+        #response = self.client.broadcast_message(f"Node '{self.name}' exited")
 
 
 class ETLTests(unittest.TestCase):
@@ -164,12 +169,15 @@ class ETLTests(unittest.TestCase):
             data_store_node.save_data_sample(content=f"test {i+1}")
         
         time.sleep(3)
-        print("terminating nodes")
+        #print("terminating nodes")
 
+        pipeline_phase0.terminate_nodes()
+        """
         try:    
             pipeline_phase0.terminate_nodes()
         except Exception as e:
             print(e)
+        """
 
 
 if __name__ == "__main__":

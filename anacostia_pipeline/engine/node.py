@@ -151,7 +151,6 @@ class BaseNode(Thread):
         # Only keeps the most recent signal received
         self.received_signals: Dict[str, Message] = dict()
         
-        self.wait_time = 0.1 
         self.logger = None
 
         self.num_successors = 0
@@ -163,11 +162,10 @@ class BaseNode(Thread):
         A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
         '''
         def wrapper(self, *args, **kwargs):
-            ret = func(self, *args, **kwargs)
-
             while self.status == Status.PAUSED:
-                time.sleep(self.wait_time)
+                time.sleep(0.1)
 
+            ret = func(self, *args, **kwargs)
             return ret
         return wrapper
 
@@ -227,6 +225,7 @@ class BaseNode(Thread):
             # if there are dependent nodes, then we need to check if we have received signals from them
             # if we have not received signals from them, then we need to wait and try again
             if self.incoming_signals.empty():
+                #print(f"{self.name} incoming signals queue is empty")
                 return False
 
             # Pull out the queued up incoming signals and register them
@@ -236,7 +235,8 @@ class BaseNode(Thread):
                 # TODO For signaling over the network, this is where we'd send back an ACK
 
             # Check if the signals match the execute condition
-            return self.signal_ast.evaluate(self)
+            signals_eval = self.signal_ast.evaluate(self)
+            return signals_eval
         
         # If there are no dependent nodes, then we can just return True
         return True
@@ -340,26 +340,21 @@ class BaseNode(Thread):
         while True:
             if self.status == Status.RUNNING:               
 
-                """
-                # proposal: move pre_check to before trigger to run regardless of auto_trigger
                 # If pre-check fails, then just wait and try again
-                if not self.pre_check():
-                    self.status = Status.WAITING
+                # consider checking status before executing each function called in this loop
+                # consider making pre_check() a pauseable function
+                if self.pre_check() is False:
+                    self.waiting = True
                     continue
-                """
+                self.waiting = False
 
                 if self.triggered:
-
-                    # If pre-check fails, then just wait and try again
-                    if not self.pre_check():
-                        self.status = Status.WAITING
+                    # If not all signals received / boolean statement of signals is false, wait and try again
+                    # consider making check_signals() a pauseable function
+                    if self.check_signals() is False:
+                        self.waiting = True
                         continue
-
-                    # If not all signals received / boolean statement of signals is false
-                    # wait and try again
-                    if not self.check_signals():
-                        self.status = Status.WAITING
-                        continue
+                    self.waiting = False
 
                     # Precheck is good and the signals we want are good
                     self.pre_execution()
@@ -384,12 +379,7 @@ class BaseNode(Thread):
             
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action
-                time.sleep(self.wait_time)
-
-            elif self.status == Status.WAITING:
-                # Sleep and then start running again
-                time.sleep(self.wait_time)
-                self.status = Status.RUNNING
+                time.sleep(0.1)
 
             elif self.status == Status.STOPPING:
                 self.on_exit()
@@ -398,7 +388,7 @@ class BaseNode(Thread):
             if self.status == Status.EXITED:
                 break
 
-            time.sleep(self.wait_time)
+            time.sleep(0.1)
 
 class TrueNode(BaseNode):
     '''A Node that does nothing and always returns a success'''
@@ -509,7 +499,7 @@ class ResourceNode(BaseNode):
                         return func(self, *args, **kwargs)
             else:
                 while self.status == Status.INIT:
-                    time.sleep(self.wait_time)
+                    time.sleep(0.1)
 
                 while True:
                     with self.resource_lock:

@@ -98,8 +98,9 @@ r'''
         '''
         running_nodes = set()
         with self.console.status("Initializing Nodes...") as status:
-            for node in self.nodes:
+            for node in reversed(self.nodes):
                 # Note: since node is a subclass of Thread, calling start() will run the run() method
+                self.console.log(f"Starting Node {node.name}")
                 node.start()
             
             while len(running_nodes) != len(self.nodes):
@@ -128,9 +129,41 @@ r'''
         # and if the predecessor nodes are terminated first, then the sucessor nodes will never receive the signals,
         # thus, the successor nodes will never be terminated.
         # predecessor nodes need to wait for the successor nodes to terminate before they can terminate. 
-        for node in self.nodes:
-            node.stop()
-            node.join()
+
+        nodes_order = self.nodes
+        print(f"Terminating Nodes in this order: {nodes_order}")
+        for node in nodes_order:
+            if node.name == "ETL test_empty_setup":
+                print(type(node))
+                print(isinstance(node, BaseNode))
+
+                node.stop()
+                print("ETL test_empty_setup stopped")
+
+                node.join()
+                print("ETL test_empty_setup joined")
+
+        action_nodes = [node for node in nodes_order if isinstance(node, ActionNode)]
+        print(action_nodes)
+        for action_node in action_nodes:
+            print(f"Terminating {action_node.name}")
+            action_node.stop()
+
+            while node.is_alive():
+                continue
+
+            action_node.join()
+
+        resource_nodes = [node for node in nodes_order if isinstance(node, ResourceNode)]
+        print(resource_nodes)
+        for resource_node in resource_nodes:
+            print(f"Terminating {resource_node.name}")
+            resource_node.stop()
+
+            while resource_node.is_alive():
+                continue
+
+            resource_node.join()
 
     def start(self, cli=False) -> None:
         self.motd()
