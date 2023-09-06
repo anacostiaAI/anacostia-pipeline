@@ -210,7 +210,7 @@ class BaseNode(Thread):
         pass
 
     @pausable
-    def pre_check(self) -> bool:
+    def pre_trigger(self) -> bool:
         # should be used for continuously checking if the node is ready to start
         # i.e., checking if database connections, API connections, etc. are ready 
         return True
@@ -342,8 +342,8 @@ class BaseNode(Thread):
 
                 # If pre-check fails, then just wait and try again
                 # consider checking status before executing each function called in this loop
-                # consider making pre_check() a pauseable function
-                if self.pre_check() is False:
+                # consider making pre_trigger() a pauseable function
+                if self.pre_trigger() is False:
                     self.waiting = True
                     continue
                 self.waiting = False
@@ -468,6 +468,12 @@ class ResourceNode(BaseNode):
         # i am not sure if there will ever be a situation where a function needs to acquire the resource lock first and then the reference lock;
         # but if there is such a situation, then the user will have to adjust their code to allow for the reference lock to be acquired first.
 
+        # possible race condition: if the same thread acquires the reference lock, increments the reference count, 
+        # and then releases the reference lock but reacquires the reference lock before other threads 
+        # (that also call externally accessible methods) have the chance to acquire the lock.
+        # in this case, the event will be set prematurely and the other threads will not be able to access the same state as the thread 
+        # that originally acquired the reference lock and set the event.
+        # possible fix for this race condition: implement a check to see if all successor nodes have acquired the reference lock.
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             while True:
