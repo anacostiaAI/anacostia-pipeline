@@ -94,21 +94,17 @@ class ETLNode(ActionNode):
         super().__init__(name, "ETL", listen_to=[data_store])
         self.data_store = data_store
         self.feature_store = feature_store
-        self.client = FireflyClient()
-
-        # we don't need to use a lock to write to self.waiting because we are only writing to it in the thread that runs this node
-        self.waiting = False
+        #self.client = FireflyClient()
     
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
         time.sleep(4)
         self.log(f"Node '{self.name}' setup complete")
-
-        response = self.client.broadcast_message(f"Node '{self.name}' setup complete")
+        #response = self.client.broadcast_message(f"Node '{self.name}' setup complete")
 
     def execute(self) -> None:
         self.log(f"Node '{self.name}' triggered")
-        response = self.client.broadcast_message(f"Node '{self.name}' triggered")
+        #response = self.client.broadcast_message(f"Node '{self.name}' triggered")
 
         try:
             for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
@@ -119,23 +115,20 @@ class ETLNode(ActionNode):
                     file_path=f"{self.feature_store.feature_store_path}/{feature_vector_filepath}", shape=(random_number, 3)
                 ) 
             self.log(f"Node '{self.name}' execution complete")
-            response = self.client.broadcast_message(f"Node '{self.name}' execution complete")
-
-            response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
-            print(response)
-
+            #response = self.client.broadcast_message(f"Node '{self.name}' execution complete")
+            #response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
+            #print(response)
             return True
 
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             self.log(f"Error processing data sample: {e}, exc_type: {exc_type}, fname: {fname}, exc_tb.tb_lineno: {exc_tb.tb_lineno}")
-            response = self.client.broadcast_message(f"Error processing data sample: {e}")
+            #response = self.client.broadcast_message(f"Error processing data sample: {e}")
             return False
 
     def on_exit(self):
         self.log(f"Node '{self.name}' exited")
-        print(f"Node '{self.name}' exited")
         #response = self.client.broadcast_message(f"Node '{self.name}' exited")
 
 
@@ -172,12 +165,6 @@ class ETLTests(unittest.TestCase):
         #print("terminating nodes")
 
         pipeline_phase0.terminate_nodes()
-        """
-        try:    
-            pipeline_phase0.terminate_nodes()
-        except Exception as e:
-            print(e)
-        """
 
 
 if __name__ == "__main__":

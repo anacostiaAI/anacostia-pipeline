@@ -155,6 +155,9 @@ class BaseNode(Thread):
 
         self.num_successors = 0
         self.num_predecessors = 0
+
+        # we don't need to use a lock to write to self.waiting because we are only writing to it in the thread that runs this node
+        self.waiting = False
     
     @staticmethod
     def pausable(func):

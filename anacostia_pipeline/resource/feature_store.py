@@ -194,10 +194,6 @@ class FeatureStoreNode(ResourceNode, FileSystemEventHandler):
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
-
-        while self.observer.is_alive():
-            time.sleep(0.1)
-
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
         self.log(f"Node '{self.name}' exited")
