@@ -145,8 +145,8 @@ class ETLTests(unittest.TestCase):
         feature_store_node = FeatureStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
         data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.data_store_path)
         etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
-        pipeline_phase0 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
-        pipeline_phase0.start()
+        pipeline_phase1 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
+        pipeline_phase1.start()
 
         self.assertEqual(0, data_store_node.num_predecessors)
         self.assertEqual(1, data_store_node.num_successors)
@@ -164,7 +164,7 @@ class ETLTests(unittest.TestCase):
         time.sleep(3)
         #print("terminating nodes")
 
-        pipeline_phase0.terminate_nodes()
+        pipeline_phase1.terminate_nodes()
 
 
 if __name__ == "__main__":

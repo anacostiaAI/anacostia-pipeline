@@ -19,7 +19,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.observer = Observer()
         super().__init__(name, "model_registry")
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def setup(self) -> None:
         if os.path.exists(self.model_registry_path) is False:
             os.makedirs(self.model_registry_path, exist_ok=True)
@@ -53,7 +53,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
             with open(self.model_registry_json_path, 'r') as json_file:
@@ -71,6 +71,9 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
                     json_entry["created_at"] = str(datetime.now())
                     json_data["files"].append(json_entry)
 
+                    if self.trigger_condition() is True:
+                        self.trigger()
+
             except Exception as e:
                 self.log(f"Error processing {event.src_path}: {e}")
             
@@ -80,7 +83,14 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
             # make sure signal is created before triggering
             self.trigger()
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def trigger_condition(self) -> bool:
+        # in the default implementation, we trigger the next node as soon as we see a new model in the registry.
+        return True
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def create_filename(self, file_extension: str = None) -> str:
         """
         Default implementaion to create a filename for the new feature vector file.
@@ -104,11 +114,13 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         num_files = len(os.listdir(self.model_registry_path))
         return f"model_{num_files}.{file_extension}"
 
-    @ResourceNode.lock_decorator 
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor 
     def save_model(self) -> None:
         raise NotImplementedError
 
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def get_models_paths(self, state: str) -> list[str]:
         if state not in ["current", "old", "new", "all"]:
             raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
@@ -126,12 +138,13 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
 
         return current_models
     
-    @ResourceNode.lock_decorator
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
     def load_models(self) -> None:
         raise NotImplementedError
 
-    @ResourceNode.wait_successors
-    @ResourceNode.lock_decorator
+    @ResourceNode.await_references
+    @ResourceNode.resource_accessor
     def update_state(self):
         with open(self.model_registry_json_path, 'r') as json_file:
             json_data = json.load(json_file)
