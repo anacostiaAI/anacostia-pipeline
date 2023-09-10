@@ -3,6 +3,8 @@ import os
 import sys
 from threading import Thread
 import numpy as np
+import random
+from typing import Tuple
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -104,10 +106,72 @@ def create_array(shape: tuple = (10, 3)):
     return array
 
 
+def extract_npz(input_path: str, output_dir: str):
+    if os.path.exists(output_dir) is False:
+        os.makedirs(output_dir)
+
+    # Load the .npz file
+    data = np.load(input_path)
+
+    # Get the names of the arrays
+    array_names = data.files
+
+    # Loop through the arrays
+    for name in array_names:
+
+        # Get the array
+        array = data[name]
+
+        # Construct output .npy filename
+        output_file = name + '.npy'
+
+        # Save the array as .npy file
+        np.save(os.path.join(output_dir, output_file), array)
+
+
+def split_numpy_file(
+    filepath: str, 
+    output_dir: str, 
+    index_splits: Tuple[int] = None,
+    time_delay: int = None
+):
+    if os.path.exists(output_dir) is False:
+        os.makedirs(output_dir)
+
+    array = np.load(filepath)
+    num_samples = array.shape[0]
+    splits = [split for split in index_splits]
+    splits = splits + [num_samples]
+
+    start = 0
+    for index in splits:
+        end = index 
+        
+        # create subarray
+        chunk = array[start:end]
+
+        # create path for saving subarray
+        num_files = len(os.listdir(output_dir))
+        filename = filepath.split("/")[-1]
+        filename = filename.split(".")
+        filename = f"{filename[0]}_{num_files}.npy"
+        path = os.path.join(output_dir, filename)
+
+        # saving the subarray
+        np.save(path, chunk)
+        print(f"saved chunk {(start, end)} in path {path}")
+
+        # reset for next iteration
+        start = end + 1
+        if time_delay is not None:
+            time.sleep(time_delay)
+        
+
 if __name__ == '__main__':
-    array = np.zeros((10, 3))
-
-    for i in range(array.shape[0]):
-        array[i, :] = i
-
-    print(array)
+    #extract_npz("./testing_artifacts/retinamnist.npz", "./testing_artifacts/data_store")
+    split_numpy_file(
+        filepath="./testing_artifacts/data_store/test_images.npy", 
+        output_dir="./testing_artifacts/data_store/test_splits", 
+        index_splits=(100, 200, 300),
+        time_delay=0.5
+    )

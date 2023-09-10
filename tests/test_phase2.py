@@ -71,7 +71,7 @@ class RetinaMNISTTestDataStoreNode(DataStoreNode):
         return index
 
 
-class ETLTests(unittest.TestCase):
+class RetrainingTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
         super().__init__(methodName)
 
