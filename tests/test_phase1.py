@@ -25,7 +25,7 @@ from test_utils import *
 seed_value = 42
 random.seed(seed_value)
 
-systems_tests_path = "./testing_artifacts/system_tests"
+systems_tests_path = "./testing_artifacts/phase1_system_tests"
 if os.path.exists(systems_tests_path) is True:
     shutil.rmtree(systems_tests_path)
 
@@ -100,17 +100,20 @@ class ETLNode(ActionNode):
         self.log(f"Setting up node '{self.name}'")
         time.sleep(4)
         self.log(f"Node '{self.name}' setup complete")
+        """
         try:
             response = self.client.broadcast_message(f"Node '{self.name}' setup complete")
         except Exception as e:
             self.log("cannot broadcast message to Kaleido client during setup")
+        """
 
     def execute(self) -> None:
         self.log(f"Node '{self.name}' triggered")
         #response = self.client.broadcast_message(f"Node '{self.name}' triggered")
 
         try:
-            for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
+            #for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
+            for path in self.data_store.load_data_paths("current"):
                 self.log(f"processing data sample {path}")
                 feature_vector_filepath = self.feature_store.create_filename()
                 random_number = random.randint(0, 100)
@@ -147,6 +150,7 @@ class ETLTests(unittest.TestCase):
         os.makedirs(self.path)
     
     def test_empty_setup(self):
+        # feature store node creates the feature folder in self.path
         feature_store_node = FeatureStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
         data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.data_store_path)
         etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
@@ -167,10 +171,33 @@ class ETLTests(unittest.TestCase):
             data_store_node.save_data_sample(content=f"test {i+1}")
         
         time.sleep(3)
-        #print("terminating nodes")
 
         pipeline_phase1.terminate_nodes()
 
+    def test_nonempty_setup(self):
+        os.makedirs(f"{self.data_store_path}", exist_ok=True)
+        logger.info(f"created folder {self.data_store_path}")
+        for i in range(8):
+            create_file(f"{self.data_store_path}/data_{i+1}.txt", f"test {i+1}")
+            logger.info(f"created file {self.data_store_path}/data_{i+1}.txt")
+        
+        time.sleep(3)
+
+        # feature store node creates the feature folder in self.path
+        feature_store_node = FeatureStoreNode(name=f"feature store {self._testMethodName}", path=self.path)
+        data_store_node = FileStoreNode(name=f"data store {self._testMethodName}", path=self.data_store_path)
+        etl_node = ETLNode(name=f"ETL {self._testMethodName}", data_store=data_store_node, feature_store=feature_store_node)
+        pipeline_phase1 = Pipeline(nodes=[data_store_node, etl_node, feature_store_node], logger=logger)
+        pipeline_phase1.start()
+        
+        time.sleep(6)
+
+        for i in range(6):
+            data_store_node.save_data_sample(content=f"test {i+1}")
+        
+        time.sleep(6)
+
+        pipeline_phase1.terminate_nodes()
 
 if __name__ == "__main__":
     unittest.main()
