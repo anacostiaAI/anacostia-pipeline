@@ -49,12 +49,6 @@ class PathMNISTDataStoreNode(DataStoreNode):
         self.path_mnist = PathMNIST(split=split, root=data_path)
         super().__init__(name, self.test_dir, init_state="old", max_old_samples=None)
 
-    def save_data_sample(self) -> None:
-        pass
-
-    def load_data_sample(self, filepath: str) -> Any:
-        pass
-
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def __getitem__(self, index):

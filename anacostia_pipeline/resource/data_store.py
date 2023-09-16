@@ -33,13 +33,38 @@ class FileStoreNode(ResourceNode, FileSystemEventHandler):
     @ResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
+
+        if os.path.exists(self.file_store_json_path) is False:
+            with open(self.file_store_json_path, "w") as json_file:
+                json_entry = {
+                    "node": self.name,
+                    "resource path": self.filepath,
+                    "node initialization time:": self.init_time,
+                    "entries": []
+                }
+
+                for index, _ in enumerate(self.load_resource()):
+                    json_file_entry = {}
+                    json_file_entry["index"] = index
+                    json_file_entry["state"] = self.init_state
+                    json_file_entry["created_at"] = self.init_time
+                    json_entry["entries"].append(json_file_entry)
+
+                json.dump(json_entry, json_file, indent=4)
+                self.log(f"Created data_store.json file at {self.file_store_json_path}")
+
         self.observer.schedule(event_handler=self, path=self.filepath, recursive=False)
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
     @ResourceNode.resource_accessor
     def on_modified(self, event):
-        return super().on_modified(event)
+        if not event.is_directory:
+            with open(self.file_store_json_path, 'r') as json_file:
+                json_data = json.load(json_file)
+    
+    def load_resource(self) -> iter:
+        return None
 
 
 class DataStoreNode(ResourceNode, FileSystemEventHandler):
@@ -136,12 +161,12 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def save_data_sample(self) -> None:
-        raise NotImplementedError
+        pass
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def load_data_sample(self, filepath: str) -> Any:
-        raise NotImplementedError
+        pass
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
