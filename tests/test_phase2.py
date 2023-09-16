@@ -40,25 +40,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class RetinaMNISTTestDataStoreNode(DataStoreNode):
-    def __init__(self, name: str, path: str, max_old_samples: int = None) -> None:
-        super().__init__(name, path, max_old_samples)
-
+class PathMNISTDataStoreNode(DataStoreNode):
+    def __init__(self, name: str, split: str, path: str, data_path: str) -> None:
         self.test_dir = os.path.join(path, "test")
         if os.path.exists(self.test_dir) is False:
             os.makedirs(self.test_dir)
         
-        self.path_mnist = RetinaMNIST(split="test", root="./testing_artifacts")
+        self.path_mnist = PathMNIST(split=split, root=data_path)
+        super().__init__(name, self.test_dir, init_state="old", max_old_samples=None)
 
-    def setup(self) -> None:
-        # download the test split
-        try:
-            self.path_mnist.download()
-        except Exception as e:
-            self.log(f"Error: {e}")
-
-        super().setup()
-    
     def save_data_sample(self) -> None:
         pass
 
@@ -68,7 +58,7 @@ class RetinaMNISTTestDataStoreNode(DataStoreNode):
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
     def __getitem__(self, index):
-        return index
+        return self.path_mnist.__getitem__(index)
 
 
 class RetrainingTests(unittest.TestCase):
@@ -77,17 +67,18 @@ class RetrainingTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.path = f"{systems_tests_path}/{self._testMethodName}"
+        self.data_path = "./testing_artifacts"
         self.data_store_path = f"{self.path}/data_store"
         os.makedirs(self.path)
     
     def test_initial_setup(self):
-        test_store = RetinaMNISTTestDataStoreNode(name="RetinaMNIST test store", path=self.path)
+        test_store = PathMNISTDataStoreNode(name="PathMNIST test store", split="test", path=self.path, data_path=self.data_path)
         pipeline_phase2 = Pipeline(nodes=[test_store], logger=logger)
         pipeline_phase2.start()
 
         time.sleep(5)
-        for i, item in enumerate(test_store):
-            print(i, item)
+        for i, (img, label) in enumerate(test_store):
+            print(i, img, label)
             if i == 5:
                 break
         time.sleep(5)
