@@ -501,6 +501,8 @@ class ResourceNode(BaseNode):
         def wrapper(self, *args, **kwargs):
             # make sure setup is finished before allowing other nodes to access the resource
             # Note: this means any function decorated with the resource_accessor cannot be called inside the setup method
+            # edit this decorator to allow the setup function to call upon its own method decorated with the resource_accessor.
+            # consider moving the check (check to make sure the setup function has finished running) up to the exeternally_accessible decorator
             if func.__name__ == "setup":
                 # keep trying to acquire lock until function is finished
                 # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)

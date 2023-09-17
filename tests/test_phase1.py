@@ -115,11 +115,11 @@ class ETLNode(ActionNode):
             #for path, sample in zip(self.data_store.load_data_paths("current"), self.data_store.load_data_samples("current")):
             for path in self.data_store.load_data_paths("current"):
                 self.log(f"processing data sample {path}")
-                feature_vector_filepath = self.feature_store.create_filename()
-                random_number = random.randint(0, 100)
-                create_numpy_file(
-                    file_path=f"{self.feature_store.feature_store_path}/{feature_vector_filepath}", shape=(random_number, 3)
-                ) 
+                #feature_vector_filepath = self.feature_store.create_filename()
+                #random_number = random.randint(0, 100)
+                #array = create_array(shape=(random_number, 3))
+                #self.feature_store.save_feature_vector(array)
+                #self.log(f"saved feature vector {feature_vector_filepath}, shape = {str(array.shape)}")
             self.log(f"Node '{self.name}' execution complete")
             #response = self.client.broadcast_message(f"Node '{self.name}' execution complete")
             #response = self.client.broadcast_message("ETL complete", metadata={"node": self.name})
@@ -171,6 +171,14 @@ class ETLTests(unittest.TestCase):
             data_store_node.save_data_sample(content=f"test {i+1}")
         
         time.sleep(3)
+
+        for i in range(4):
+            data_store_node.save_data_sample(content=f"test {i+1}")
+            #filename = data_store_node.create_filename("txt")
+            #create_file(f"{self.data_store_path}/{filename}", f"test {i+1}")
+            #logger.info(f"created file {self.data_store_path}/{filename}.txt")
+        
+        time.sleep(15)
 
         pipeline_phase1.terminate_nodes()
 

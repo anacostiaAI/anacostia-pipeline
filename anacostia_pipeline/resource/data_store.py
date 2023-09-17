@@ -13,22 +13,72 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
-class FileStoreNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, filepath: str, init_state: str = "current", max_old_samples: int = None) -> None:
-        self.file_store_json_path = os.path.join(filepath, "data_store.json")
+class BaseDataStoreNode(ResourceNode, FileSystemEventHandler):
+    def __init__(
+        self, 
+        name: str, 
+        resource_path: str, 
+        json_path: str, 
+        state: str, 
+        init_state: str = "current", 
+        max_old_samples: int = None
+    ) -> None:
+
+        self.resource_path = resource_path
+        self.json_path = json_path
         self.max_old_samples = max_old_samples
         self.observer = Observer()
-        
-        if os.path.exists(filepath) is not True:
-            raise Exception(f"file '{filepath}' does not exist.")
-        self.filepath = filepath
-        
-        if init_state not in ["current", "old"]:
-            raise ValueError(f"init_state argument of DataStoreNode must be either 'current' or 'old', not '{init_state}'.")
+
+        assert state in ["current", "old", "new", "all"], f"state must be either 'current', 'old', 'new', or 'all'; not '{state}'."
+        self.state = state
+
+        assert init_state in ["current", "old"], f"init_state argument must be either 'current' or 'old', not '{init_state}'."
         self.init_state = init_state
         self.init_time = str(datetime.now())
-        
+        """
+        if os.path.exists(self.json_path) is False:
+            with open(self.json_path, "w") as json_file:
+                json_entry = {
+                    "node": name,
+                    "resource path": self.resource_path,
+                    "node initialization time:": self.init_time,
+                }
+                json.dump(json_entry, json_file, indent=4)
+                self.log(f"Created tracking file {self.json_path} for node {name}")
+        """
         super().__init__(name, "data_store")
+    
+    @ResourceNode.resource_accessor
+    def setup(self):
+        raise NotImplementedError
+
+    @ResourceNode.resource_accessor
+    def on_modified(self, event):
+        raise NotImplementedError
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def __getitem__(self):
+        raise NotImplementedError
+
+    @ResourceNode.exeternally_accessible
+    @ResourceNode.resource_accessor
+    def __len__(self):
+        raise NotImplementedError
+    
+
+class FileStoreNode(BaseDataStoreNode):
+    def __init__(self, name: str, filepath: str, state: str, split: str, init_state: str = "current", max_old_samples: int = None) -> None:
+        self.file_store_json_path = os.path.join(filepath, "data_store.json")
+        self.split = split
+        super().__init__(
+            name=name, 
+            resource_path=filepath, 
+            json_path=self.file_store_json_path, 
+            state=state, 
+            init_state=init_state, 
+            max_old_samples=max_old_samples
+        )
 
     @ResourceNode.resource_accessor
     def setup(self) -> None:
@@ -36,24 +86,24 @@ class FileStoreNode(ResourceNode, FileSystemEventHandler):
 
         if os.path.exists(self.file_store_json_path) is False:
             with open(self.file_store_json_path, "w") as json_file:
-                json_entry = {
+                json_data = {
                     "node": self.name,
-                    "resource path": self.filepath,
+                    "resource path": self.resource_path,
                     "node initialization time:": self.init_time,
-                    "entries": []
+                    "samples": []
                 }
 
                 for index, _ in enumerate(self.load_resource()):
-                    json_file_entry = {}
-                    json_file_entry["index"] = index
-                    json_file_entry["state"] = self.init_state
-                    json_file_entry["created_at"] = self.init_time
-                    json_entry["entries"].append(json_file_entry)
+                    sample_entry = {}
+                    sample_entry["index"] = index
+                    sample_entry["state"] = self.init_state
+                    sample_entry["created_at"] = self.init_time
+                    json_data["samples"].append(sample_entry)
 
-                json.dump(json_entry, json_file, indent=4)
+                json.dump(json_data, json_file, indent=4)
                 self.log(f"Created data_store.json file at {self.file_store_json_path}")
 
-        self.observer.schedule(event_handler=self, path=self.filepath, recursive=False)
+        self.observer.schedule(event_handler=self, path=self.resource_path, recursive=False)
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
@@ -74,8 +124,7 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
         self.data_store_json_path = os.path.join(self.data_store_path, "data_store.json")
         self.observer = Observer()
         
-        if init_state not in ["current", "old"]:
-            raise ValueError(f"init_state argument of DataStoreNode must be either 'current' or 'old', not '{init_state}'.")
+        assert init_state in ["current", "old"], f"init_state argument must be either 'current' or 'old', not '{init_state}'."
         self.init_state = init_state
         self.init_time = str(datetime.now())
         
@@ -133,8 +182,6 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
                 json_data = json.load(json_file)
             
             try:
-                # change of direction: use the on_modified method to monitor the change of the model_registry.json file
-                # once we see a new model, we can trigger the next node
                 logged_files = [entry["filepath"] for entry in json_data["files"]]
                 if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
                     json_entry = {}
