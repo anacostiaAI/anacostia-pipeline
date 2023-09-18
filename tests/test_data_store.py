@@ -5,12 +5,10 @@ import sys
 import os
 import shutil
 import random
-from threading import Thread
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resource.data_store import DataStoreNode
-from anacostia_pipeline.engine.constants import Status
 
 from test_utils import *
 
