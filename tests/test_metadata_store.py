@@ -59,6 +59,30 @@ class MetadataStoreTests(unittest.TestCase):
 
         pipeline.terminate_nodes()
 
+    def test_nonempty_setup(self):
+        metadata_store = MetadataStoreNode(
+            name="metadata_store", 
+            metadata_store_path=self.path,
+            init_state="current",
+            init_data=[
+                {"acc": 0.1, "auc": 0.2},
+                {"acc": 0.3, "auc": 0.4},
+                {"acc": 0.5, "auc": 0.6},
+                {"acc": 0.7, "auc": 0.8},
+                {"acc": 0.9, "auc": 1.0},
+            ] 
+        )
+        pipeline = Pipeline(nodes=[metadata_store], logger=logger)
+        pipeline.start()
+        
+        for _ in range(5):
+            acc = random.randint(0, 100) / 100
+            auc = random.randint(0, 100) / 100
+            metadata_store.insert_metadata(acc=acc, auc=auc)
+        time.sleep(1)
+
+        pipeline.terminate_nodes()
+
 
 if __name__ == "__main__":
     unittest.main()

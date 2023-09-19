@@ -9,15 +9,14 @@ from engine.node import ResourceNode
 
 
 class MetadataStoreNode(ResourceNode):
-    def __init__(self, name: str, metadata_store_path: str, init_state: str = "old", **kwargs) -> None:
+    def __init__(self, name: str, metadata_store_path: str, init_state: str = "old", init_data: List[Dict] = None) -> None:
+        print(f"Creating metadata store node with name '{name}'")
         self.metadata_store_path = metadata_store_path
         self.metadata_store_path_json_path = os.path.join(self.metadata_store_path, "metadata_store.json")
 
-        assert init_state in ["current", "old"], f"init_state argument of DataStoreNode must be either 'current' or 'old', not '{init_state}'."
-        metadata = dict(kwargs)
-        metadata["state"] = init_state
-        metadata["created_at"] = str(datetime.now())
-        self.metadata = metadata
+        assert init_state in ["current", "old"], f"init_state argument of MetadataStoreNode must be either 'current' or 'old', not '{init_state}'."
+        self.init_state = init_state
+        self.init_data = init_data
 
         super().__init__(name, "metadata_store")
     
@@ -26,15 +25,27 @@ class MetadataStoreNode(ResourceNode):
         self.log(f"Setting up node '{self.name}'")
 
         if os.path.exists(self.metadata_store_path) is False:
+            print("Creating metadata store directory")
             os.makedirs(self.metadata_store_path, exist_ok=True)
 
         if os.path.exists(self.metadata_store_path_json_path) is False:
+            print("Creating metadata store")
             with open(self.metadata_store_path_json_path, 'w') as json_file:
                 json_entry = {
                     "node": self.name,
                     "resource_path": self.metadata_store_path,
                     "entries": []
                 }
+
+                if self.init_data is not None: 
+                    for data in self.init_data:
+                        metadata = {}
+                        metadata["index"] = len(json_entry["entries"])
+                        metadata.update(data)
+                        metadata["state"] = self.init_state
+                        metadata["created_at"] = str(datetime.now())
+                        json_entry["entries"].append(metadata)
+                        self.log(f"Inserted initial metadata: {data}")
                 
                 json.dump(json_entry, json_file, indent=4)
         
