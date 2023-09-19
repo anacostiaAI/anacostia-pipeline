@@ -7,6 +7,8 @@ from functools import reduce, wraps
 import time
 from logging import Logger
 from datetime import datetime
+import traceback
+import sys
 
 from pydantic import BaseModel
 
@@ -334,7 +336,7 @@ class BaseNode(Thread):
         try:
             self.setup()
         except Exception as e:
-            print(f"{str(self)} setup failed: {e}")
+            print(f"Error setting up node '{self.name}': {traceback.format_exc()}")
             self.status = Status.ERROR
             return
 
@@ -374,6 +376,7 @@ class BaseNode(Thread):
                             self.post_execution()
                             self.send_signals(Status.FAILURE)
                     except Exception as e:
+                        print(f"Error in execution method of node '{self.name}': {traceback.format_exc()}")
                         self.on_failure(e)
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
