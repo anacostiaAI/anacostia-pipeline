@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anacostia AI Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
+    <script src="https://unpkg.com/htmx.org"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav>
+        <div class="navbar-logo">
+            Anacostia AI
+        </div>
+        <ul class="navbar-menu">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Model Registry</a></li>
+            <li><a href="#">Data Node</a></li>
+            <li><a href="#">Metadata Store</a></li>
+            <li><a href="#">Artifact</a></li>
+        </ul>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard">
+        <div class="node red">
+            <h2>Model Registry</h2>
+        </div>
+        <div class="node green">
+            <h2>Data Node</h2>
+        </div>
+        <div class="node yellow">
+            <h2>Metadata Store</h2>
+        </div>
+        <div class="node red">
+            <h2>Artifact</h2>
+        </div>
+    </div>
+
+<!-- ... remaining HTML ... -->
+With this setup, each node will appear as a circle, and you can easily change the color of each node by assigning the appropriate class (red, green, or yellow) based on its stage.
+
+
+
+
+
+
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
