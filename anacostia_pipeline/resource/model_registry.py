@@ -5,17 +5,19 @@ from datetime import datetime
 
 sys.path.append("../../anacostia_pipeline")
 from engine.node import ResourceNode
+from engine.constants import Status
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
 class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str, framework: str, max_old_models: int = None) -> None:
+    def __init__(self, name: str, path: str, framework: str, init_state: str = "current", max_old_models: int = None) -> None:
         self.model_registry_path = os.path.join(os.path.abspath(path), "model_registry")
         self.model_registry_json_path = os.path.join(self.model_registry_path, "model_registry.json")
         self.framework = framework
         self.max_old_models = max_old_models
+        self.init_state = init_state
         self.observer = Observer()
         super().__init__(name, "model_registry")
 
@@ -29,22 +31,18 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
                 json_entry = {
                     "node": self.name,
                     "resource_path": self.model_registry_path,
-                    "files": []
+                    "models": []
                 }
 
                 for filepath in os.listdir(self.model_registry_path):
-                    try:
-                        if filepath.endswith(".json") is False:
-                            path = os.path.join(self.model_registry_path, filepath)
-                            json_file_entry = {}
-                            json_file_entry["filepath"] = os.path.join(path)
-                            json_file_entry["framework"] = self.framework
-                            json_file_entry["state"] = "current"
-                            json_file_entry["created_at"] = str(datetime.now())
-                            json_entry["files"].append(json_file_entry)
-                    except Exception as e:
-                        self.log(f"Error loading model file: {e}")
-                        continue
+                    if filepath.endswith(".json") is False:
+                        path = os.path.join(self.model_registry_path, filepath)
+                        json_file_entry = {}
+                        json_file_entry["model_path"] = os.path.join(path)
+                        json_file_entry["framework"] = self.framework
+                        json_file_entry["state"] = self.init_state
+                        json_file_entry["created_at"] = str(datetime.now())
+                        json_entry["models"].append(json_file_entry)
 
                 json.dump(json_entry, json_file, indent=4)
 
@@ -53,6 +51,14 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
 
+        with open(self.model_registry_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+            filepaths = [entry["model_path"] for entry in json_data["models"] if entry["state"] == "current"]
+
+            if len(filepaths) > 0:
+                self.log("signaling next node on setup")
+                self.send_signals(Status.SUCCESS) 
+
     @ResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
@@ -60,16 +66,15 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
                 json_data = json.load(json_file)
             
             try:
-                # change of direction: use the on_modified method to monitor the change of the model_registry.json file
-                # once we see a new model, we can trigger the next node
-                logged_files = [entry["filepath"] for entry in json_data["files"]]
+                logged_files = [entry["model_path"] for entry in json_data["models"]]
                 if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
+                    self.log(f"New model detected: {event.src_path}")
                     json_entry = {}
-                    json_entry["filepath"] = event.src_path
+                    json_entry["model_path"] = event.src_path
                     json_entry["framework"] = self.framework
                     json_entry["state"] = "new"
                     json_entry["created_at"] = str(datetime.now())
-                    json_data["files"].append(json_entry)
+                    json_data["models"].append(json_entry)
 
                     if self.trigger_condition() is True:
                         self.trigger()
@@ -79,9 +84,6 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
             
             with open(self.model_registry_json_path, 'w') as json_file:
                 json.dump(json_data, json_file, indent=4)
-
-            # make sure signal is created before triggering
-            self.trigger()
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
@@ -101,7 +103,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
             if self.framework == "tensorflow":
                 file_extension = "h5"
             elif self.framework == "pytorch":
-                file_extension = "pt"
+                file_extension = "pth"
             elif self.framework == "sklearn":
                 file_extension = "pkl"
             elif self.framework == "onnx":
@@ -121,7 +123,7 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
-    def get_models_paths(self, state: str) -> list[str]:
+    def get_models_paths(self, state: str, return_immediately: bool = True) -> list[str]:
         if state not in ["current", "old", "new", "all"]:
             raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
         
@@ -129,63 +131,43 @@ class ModelRegistryNode(ResourceNode, FileSystemEventHandler):
             json_data = json.load(json_file)
 
         current_models = []
-        for file_entry in json_data["files"]:
+        for file_entry in json_data["models"]:
             if state == "all":
-                current_models.append(file_entry["filepath"])
+                current_models.append(file_entry["model_path"])
             else:
                 if file_entry["state"] == state:
-                    current_models.append(file_entry["filepath"])
+                    current_models.append(file_entry["model_path"])
 
         return current_models
     
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
-    def load_models(self) -> None:
+    def load_model(self) -> None:
         raise NotImplementedError
 
     @ResourceNode.await_references
     @ResourceNode.resource_accessor
-    def update_state(self):
+    def execute(self):
         with open(self.model_registry_json_path, 'r') as json_file:
             json_data = json.load(json_file)
 
-        for file_entry in json_data["files"]:
+        for file_entry in json_data["models"]:
             if file_entry["state"] == "current":
-                self.log(f'current -> old: {file_entry["filepath"]}')
+                self.log(f'current -> old: {file_entry["model_path"]}')
                 file_entry["state"] = "old"
         
-        for file_entry in json_data["files"]:
+        for file_entry in json_data["models"]:
             if file_entry["state"] == "new":
-                self.log(f'new -> current: {file_entry["filepath"]}')
+                self.log(f'new -> current: {file_entry["model_path"]}')
                 file_entry["state"] = "current"
 
         with open(self.model_registry_json_path, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
+        
+        return True
     
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
-
-    """
-    def load_old_model(self, path: str) -> None:
-        raise NotImplementedError
-    
-    def load_new_models(self) -> None:
-        for model_path in self.new_models_paths():
-            yield self.load_new_model(model_path)
-    
-    def load_old_models(self) -> None:
-        for i, model_path in enumerate(self.old_models_paths()):
-            if i < self.num_old_models:
-                yield self.load_old_model(model_path)
-
-    def old_models_paths(self) -> None:
-        models = os.listdir(self.old_models_path)
-        return models
-
-    def new_models_paths(self) -> None:
-        models = os.listdir(self.new_models_path)
-        return models
-    """
