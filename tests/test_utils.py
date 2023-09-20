@@ -167,11 +167,37 @@ def split_numpy_file(
             time.sleep(time_delay)
         
 
+def combine_files(files_dict: dict, output_dir: str):
+    for key, value in files_dict.items():
+        images = np.load(key)
+        labels = np.load(value)
+
+        filename = key.split("/")[-1]
+        filename, extension = filename.split(".")
+        filename = filename.replace("_images_", "_")
+        save_path = os.path.join(output_dir, f"{filename}.npz")
+
+        print(f"Saving {save_path}")
+        np.savez(save_path, val_images=images, val_labels=labels)
+
+
 if __name__ == '__main__':
     #extract_npz("./testing_artifacts/retinamnist.npz", "./testing_artifacts/data_store")
+    """
     split_numpy_file(
         filepath="./testing_artifacts/data_store/test_images.npy", 
         output_dir="./testing_artifacts/data_store/test_splits", 
         index_splits=(100, 200, 300),
         time_delay=0.5
+    )
+    """
+
+    combine_files(
+        files_dict={
+            "./testing_artifacts/data_store/val_splits/val_images_4.npy": "./testing_artifacts/data_store/val_splits/val_labels_4.npy",
+            "./testing_artifacts/data_store/val_splits/val_images_5.npy": "./testing_artifacts/data_store/val_splits/val_labels_5.npy",
+            "./testing_artifacts/data_store/val_splits/val_images_6.npy": "./testing_artifacts/data_store/val_splits/val_labels_6.npy",
+            "./testing_artifacts/data_store/val_splits/val_images_7.npy": "./testing_artifacts/data_store/val_splits/val_labels_7.npy"
+        },
+        output_dir="./testing_artifacts/data_store/val_splits"
     )

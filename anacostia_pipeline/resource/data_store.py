@@ -133,8 +133,6 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
                 json_data = json.load(json_file)
             
             try:
-                # change of direction: use the on_modified method to monitor the change of the model_registry.json file
-                # once we see a new model, we can trigger the next node
                 logged_files = [entry["filepath"] for entry in json_data["files"]]
                 if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
                     json_entry = {}
@@ -219,12 +217,12 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
 
         for file_entry in json_data["files"]:
             if file_entry["state"] == "current":
-                self.log(f'current -> old: {file_entry["filepath"]}')
+                self.log(f'{self.name} current -> old: {file_entry["filepath"]}')
                 file_entry["state"] = "old"
         
         for file_entry in json_data["files"]:
             if file_entry["state"] == "new":
-                self.log(f'new -> current: {file_entry["filepath"]}')
+                self.log(f'{self.name} new -> current: {file_entry["filepath"]}')
                 file_entry["state"] = "current"
 
         with open(self.data_store_json_path, 'w') as json_file:
