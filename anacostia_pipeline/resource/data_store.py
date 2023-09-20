@@ -189,16 +189,14 @@ class DataStoreNode(ResourceNode, FileSystemEventHandler):
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
-    def load_data_paths(self, state: str) -> iter:
+    def load_data_paths(self, state: str) -> List[str]:
         if state not in ["current", "old", "new", "all"]:
             raise ValueError("state must be one of ['current', 'old', 'new', 'all']")
         
         with open(self.data_store_json_path, 'r') as json_file:
             json_data = json.load(json_file)
             filepaths = [entry["filepath"] for entry in json_data["files"] if entry["state"] == state]
-        
-        for filepath in filepaths:
-            yield filepath
+            return filepaths
 
     @ResourceNode.exeternally_accessible
     @ResourceNode.resource_accessor
