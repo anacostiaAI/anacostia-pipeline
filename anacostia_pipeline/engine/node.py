@@ -356,6 +356,7 @@ class BaseNode(Thread):
                 if self.triggered:
                     # If not all signals received / boolean statement of signals is false, wait and try again
                     # consider making check_signals() a pauseable function
+                    # consider removing self.check_signals() here and just call it in self.pre_trigger()
                     if self.check_signals() is False:
                         self.waiting = True
                         continue

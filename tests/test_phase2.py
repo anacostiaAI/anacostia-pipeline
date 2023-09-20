@@ -5,13 +5,14 @@ import sys
 import os
 import shutil
 import random
-from medmnist import PathMNIST, RetinaMNIST
+from medmnist import PathMNIST, RetinaMNIST, INFO
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 import torchvision.transforms as transforms
+import tqdm
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -45,6 +46,77 @@ logging.basicConfig(
     filemode='w'
 )
 logger = logging.getLogger(__name__)
+
+
+
+# Define constants
+data_flag = 'pathmnist'
+
+NUM_EPOCHS = 3
+BATCH_SIZE = 128
+lr = 0.001
+
+info = INFO[data_flag]
+task = info['task']
+n_channels = info['n_channels']
+n_classes = len(info['label'])
+
+data_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[.5], std=[.5])
+])
+            
+# define a simple CNN model
+class Net(nn.Module):
+    def __init__(self, in_channels, num_classes):
+        super(Net, self).__init__()
+
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels, 16, kernel_size=3),
+            nn.BatchNorm2d(16),
+            nn.ReLU())
+
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(16, 16, kernel_size=3),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(16, 64, kernel_size=3),
+            nn.BatchNorm2d(64),
+            nn.ReLU())
+        
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(64, 64, kernel_size=3),
+            nn.BatchNorm2d(64),
+            nn.ReLU())
+
+        self.layer5 = nn.Sequential(
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.fc = nn.Sequential(
+            nn.Linear(64 * 4 * 4, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, num_classes))
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+model = Net(in_channels=n_channels, num_classes=n_classes)
+
 
 
 class PrelimDataStoreNode(DataStoreNode):
@@ -87,13 +159,15 @@ class DataPreprocessingNode(ActionNode):
         return test_images, test_labels
 
     def execute(self) -> bool:
-        for filepath in self.data_store.load_data_paths("current"):
-
-            # Note: this is a hacky way to ensure that the data store does not update its reference count 
-            # (and by extension update its state) while we are processing data.
-            # This is a temporary solution until we implement a more robust locking mechanism.
+        # Note: this is a hacky way to ensure that the data store does not update its reference count 
+        # (and by extension update its state) while we are processing data.
+        # This is a temporary solution until we implement a more robust locking mechanism.
+        while True:
             with self.data_store.reference_lock:
                 self.data_store.reference_count += 1
+                break
+
+        for filepath in self.data_store.load_data_paths("current"):
 
             self.log(f"Processing data sample: {filepath}")
             
@@ -118,8 +192,12 @@ class DataPreprocessingNode(ActionNode):
             )
             self.log(f"Saved data sample: {filepath} to {output_path}")
 
+        while True:
             with self.data_store.reference_lock:
                 self.data_store.reference_count -= 1
+                if self.data_store.reference_count == 0:
+                    self.data_store.event.set()
+                break
 
         return True
 
@@ -139,20 +217,78 @@ class RetrainingNode(ActionNode):
         self.model_registry = model_registry
         self.metadata_store = metadata_store
         super().__init__(name, "retraining", listen_to=[data_store])
+    
+    def train_model(self, data_dir: str, model: torch.nn.Module, num_batches: int) -> nn.Module:
+            # Load data from data store and create data loaders
+            train_dataset = PathMNIST(split="train", transform=data_transform, root=data_dir)
+            #test_dataset = PathMNIST(split="test", transform=data_transform, root=data_dir)
 
+            train_loader = data.DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+            #train_loader_at_eval = data.DataLoader(dataset=train_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
+            #test_loader = data.DataLoader(dataset=test_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
+
+            # define loss function and optimizer
+            if task == "multi-label, binary-class":
+                criterion = nn.BCEWithLogitsLoss()
+            else:
+                criterion = nn.CrossEntropyLoss()
+                
+            optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+
+            progress = 0
+            task_duration = len(train_dataset) * NUM_EPOCHS
+            for epoch in range(NUM_EPOCHS):
+                
+                model.train()
+                for batch, (inputs, targets) in enumerate(train_loader):
+                    if batch >= num_batches:
+                        break
+            
+                    # forward + backward + optimize
+                    optimizer.zero_grad()
+                    outputs = model(inputs)
+                    
+                    if task == 'multi-label, binary-class':
+                        targets = targets.to(torch.float32)
+                        loss = criterion(outputs, targets)
+                    else:
+                        targets = targets.squeeze().long()
+                        loss = criterion(outputs, targets)
+                    
+                    loss.backward()
+                    optimizer.step()
+
+                    progress += len(inputs)
+
+            print(f"Trained {progress} out of {task_duration}")
+    
     def execute(self, *args, **kwargs) -> bool:
-        self.log(f"Retraining model")
+        # load the model
+        model.load_state_dict(torch.load("./testing_artifacts/model.pth"))
+                
+        while True:
+            with self.data_store.reference_lock:
+                self.data_store.reference_count += 1
+                break
 
         # Load data
         for data_file in self.data_store.load_data_paths("current"):
+            self.log(f"Retraining model with data file: {data_file}")
+            print(f"Retraining model with data file: {data_file}")
+
             data_dir = data_file.split("/")[:-1]
             data_dir = "/".join(data_dir)
-            data_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[.5], std=[.5])
-            ])
-            #print(data_dir)
-            train_dataset = PathMNIST(split="train", transform=data_transform, root=data_dir)
+            num_batches = 2
+            self.train_model(data_dir, model, num_batches)
+
+        while True:
+            with self.data_store.reference_lock:
+                self.data_store.reference_count -= 1
+                if self.data_store.reference_count == 0:
+                    self.data_store.event.set()
+                break
+        
+        return True
 
 
 class RetrainingTests(unittest.TestCase):
@@ -204,16 +340,9 @@ class RetrainingTests(unittest.TestCase):
                 dst=prelim_store.prelim_path
             )
             time.sleep(1)
-        time.sleep(10)
-
-        """
-        time.sleep(5)
-        for i, (img, label) in enumerate(medmnist_store):
-            print(i, img, label)
-            if i == 5:
-                break
-        time.sleep(5)
-        """
+        
+        # Wait for training to finish
+        time.sleep(150)
 
         pipeline_phase2.terminate_nodes()
 
