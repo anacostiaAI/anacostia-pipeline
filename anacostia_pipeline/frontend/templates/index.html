@@ -44,6 +44,9 @@
         const links = [
             // Data Flow Visualization
             { source: "watch_dir", target: "Data Store Node 1" },
+            { source: "data store", target: "Data Store Node 2" }, // Added link from "data store" folder to "Data Store Node 2"
+            { source: "model registry", target: "Model Registry Node" }, // Added link from "model registry" folder to "Model Registry Node"
+            { source: "metadata store", target: "Metadata Store Node" }, // Added link from "metadata store" folder to "Metadata Store Node"
             { source: "Data Store Node 1", target: "Data Processing" },
             { source: "Data Processing", target: "Data Store Node 2" },
             { source: "Data Processing", target: "Training" },
@@ -56,25 +59,62 @@
             { source: "Reporting", target: "artifacts" }
         ];
 
-        // Define a fixed x-coordinate for the folders to position them in a row
+
+        // Define a fixed x-coordinate for the folders and nodes to position them in a row
         const folderPositions = {
             "watch_dir": 100,
-            "data store": 200,
-            "model registry": 300,
-            "metadata store": 400,
-            "artifacts": 500
+            "data store": 250,
+            "model registry": 400,
+            "metadata store": 550,
+            "artifacts": 650
         };
+
+        // Set initial positions for nodes based on your specifications
+        nodes.forEach(node => {
+            if (node.id === "Data Store Node 1") {
+                node.fx = folderPositions["watch_dir"];
+                node.fy = 150;
+            } else if (node.id === "Data Store Node 2") {
+                node.fx = folderPositions["data store"];
+                node.fy = 150;
+            } else if (node.id === "Model Registry Node") {
+                node.fx = folderPositions["model registry"];
+                node.fy = 150;
+            } else if (node.id === "Metadata Store Node") {
+                node.fx = folderPositions["metadata store"];
+                node.fy = 150;
+
+            } else if (node.id === "Data Processing") {
+                node.fx = 175;
+                node.fy = 350;
+            } else if (node.id === "Training") {
+                node.fx = 275;
+                node.fy = 450;
+            } else if (node.id === "Model Eval") {
+                node.fx = 375;
+                node.fy = 500;
+            }
+            else if (node.id === "Reporting") {
+                node.fx = 500;
+                node.fy = 550;
+            } else if (node.type === "folder") {
+                node.fx = folderPositions[node.id];
+                node.fy = 50 + (node.row - 1) * 100; // This sets the y position based on the row attribute
+            }
+                });
 
         const simulation = d3.forceSimulation(nodes)
         .force("link", d3.forceLink(links).id(d => d.id).distance(100))
         .force("charge", d3.forceManyBody().strength(-500))
         .force("collide", d3.forceCollide().radius(50))
         .force("center", d3.forceCenter(500, 250))
-        .force("y", d3.forceY().y(d => 50 + (d.row - 1) * 100).strength(1.5))
+        .force("y", d3.forceY().y(d => {
+        if (d.type !== "folder") return 50 + (d.row - 1) * 100;
+        }).strength(1.5))
         .force("x", d3.forceX().x(d => {
-            if (d.type === "folder") return folderPositions[d.id];
-            return 300;
-        }).strength(d => d.type === "folder" ? 2.0 : 1.0)); // Strengthened x-force for folders
+            if (d.type !== "folder") return 300;
+        }).strength(d => d.type === "folder" ? 0 : 1.0)); // Set the strength to 0 for folders
+
 
         const svg = d3.select("#dashboard");
 
@@ -146,6 +186,34 @@
                 .attr("x", d => d.x)
                 .attr("y", d => d.y);
         });
+
+         // Add drag behavior to nodes
+    const drag = simulation => {
+        const dragStarted = (event, d) => {
+            if (d.type === "folder") return; // Prevent dragging of folder nodes
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        };
+
+        const dragged = (event, d) => {
+            d.fx = event.x;
+            d.fy = event.y;
+        };
+
+        const dragEnded = (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        };
+
+        return d3.drag()
+            .on("start", dragStarted)
+            .on("drag", dragged)
+            .on("end", dragEnded);
+    };
+
+    node.call(drag(simulation));
     </script>
 </body>
 </html>
