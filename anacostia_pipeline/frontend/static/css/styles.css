@@ -1,98 +1,71 @@
 body {
     font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
 }
 
 nav {
-    background-color: #333;
-    color: white;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 50px;
+    padding: 10px 20px;
+    background-color: #333;
+    color: #fff;
 }
 
-.navbar-logo {
+.logo {
     font-size: 24px;
     font-weight: bold;
 }
 
-.navbar-menu {
+.menu-items {
     list-style-type: none;
-    display: flex;
-    gap: 20px;
+    padding: 0;
 }
 
-.navbar-menu li a {
-    color: white;
+.menu-items li {
+    display: inline;
+    margin-right: 20px;
+}
+
+.menu-items a {
+    color: #fff;
     text-decoration: none;
-    transition: color 0.3s;
 }
 
-.navbar-menu li a:hover {
-    color: #ddd;
-}
 
-.dashboard {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 50px;
-    gap: 20px;
-}
-
+/* D3.js styles */
 .node {
-    border: 1px solid #ddd;
-    padding: 20px;
+    stroke: #fff;
+    stroke-width: 1.5px;
+}
+
+.link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+}
+
+.folder-icons {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 0;
+}
+
+.folder {
+    width: calc(20% - 10px); /* 20% for each of the 5 folders, minus a little for spacing */
+    height: 100px;
+    background-color: blue;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     border-radius: 5px;
-    width: 200px;
-    text-align: center;
-}
-/* ... previous CSS ... */
-
-.dashboard {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 50px;
-    gap: 20px;
-}
-
-.node {
-    border: 1px solid #ddd;
-    padding: 50px;
-    border-radius: 50%; /* Makes the node a circle */
-    width: 150px;
-    height: 150px;
-    text-align: center;
     position: relative;
 }
 
-.node h2 {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -60%);
+.folder-label {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
 }
-
-.node p {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, 10%);
-}
-
-/* Node stages */
-.node.red {
-    background-color: red;
-}
-
-.node.green {
-    background-color: green;
-}
-
-.node.yellow {
-    background-color: yellow;
-}
-

@@ -5,49 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anacostia AI Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
-    <script src="https://unpkg.com/htmx.org"></script>
 </head>
 <body>
-    <!-- Navbar -->
     <nav>
-        <div class="navbar-logo">
-            Anacostia AI
-        </div>
-        <ul class="navbar-menu">
-            <li><a href="#">Home</a></li>
+        <div class="logo">Anacostia AI</div>
+        <ul class="menu-items">
             <li><a href="#">Model Registry</a></li>
-            <li><a href="#">Data Node</a></li>
-            <li><a href="#">Metadata Store</a></li>
-            <li><a href="#">Artifact</a></li>
+            <li><a href="#">Data Store</a></li>
+            <!-- Add more sections as needed -->
         </ul>
     </nav>
+    <svg width="960" height="600" id="dashboard"></svg>
 
-    <!-- Dashboard Content -->
-    <div class="dashboard">
-        <div class="node red">
-            <h2>Model Registry</h2>
-        </div>
-        <div class="node green">
-            <h2>Data Node</h2>
-        </div>
-        <div class="node yellow">
-            <h2>Metadata Store</h2>
-        </div>
-        <div class="node red">
-            <h2>Artifact</h2>
-        </div>
-    </div>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const nodes = [
+            // First Row
+            { id: "watch_dir", type: "folder", status: "grey", row: 1 },
+            { id: "data store", type: "folder", status: "grey", row: 1 },
+            { id: "model registry", type: "folder", status: "grey", row: 1 },
+            { id: "metadata store", type: "folder", status: "grey", row: 1 },
+            { id: "artifacts", type: "folder", status: "grey", row: 1 },
+            // Second Row
+            { id: "Data Store Node 1", status: "green", row: 2 },
+            { id: "Data Store Node 2", status: "green", row: 2 },
+            { id: "Model Registry Node", status: "yellow", row: 2 },
+            { id: "Metadata Store Node", status: "green", row: 2 },
+            // Third Row
+            { id: "Data Processing", status: "yellow", row: 3 },
+            // Fourth Row
+            { id: "Training", status: "green", row: 4 },
+            // Fifth Row
+            { id: "Model Eval", status: "yellow", row: 5 },
+            // Sixth Row
+            { id: "Reporting", status: "red", row: 6 }
+        ];
 
-<!-- ... remaining HTML ... -->
-With this setup, each node will appear as a circle, and you can easily change the color of each node by assigning the appropriate class (red, green, or yellow) based on its stage.
+        const links = [
+            // Data Flow Visualization
+            { source: "watch_dir", target: "Data Store Node 1" },
+            { source: "Data Store Node 1", target: "Data Processing" },
+            { source: "Data Processing", target: "Data Store Node 2" },
+            { source: "Data Processing", target: "Training" },
+            { source: "Data Store Node 2", target: "Training" },
+            { source: "Training", target: "Model Registry Node" },
+            { source: "Training", target: "Metadata Store Node" },
+            { source: "Training", target: "Model Eval" },
+            { source: "Metadata Store Node", target: "Model Eval" },
+            { source: "Metadata Store Node", target: "Reporting" },
+            { source: "Reporting", target: "artifacts" }
+        ];
 
+        // Define a fixed x-coordinate for the folders to position them in a row
+        const folderPositions = {
+            "watch_dir": 100,
+            "data store": 200,
+            "model registry": 300,
+            "metadata store": 400,
+            "artifacts": 500
+        };
 
+        const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+        .force("charge", d3.forceManyBody().strength(-500))
+        .force("collide", d3.forceCollide().radius(50))
+        .force("center", d3.forceCenter(500, 250))
+        .force("y", d3.forceY().y(d => 50 + (d.row - 1) * 100).strength(1.5))
+        .force("x", d3.forceX().x(d => {
+            if (d.type === "folder") return folderPositions[d.id];
+            return 300;
+        }).strength(d => d.type === "folder" ? 2.0 : 1.0)); // Strengthened x-force for folders
 
+        const svg = d3.select("#dashboard");
 
+        const link = svg.append("g")
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.6)
+            .selectAll("line")
+            .data(links)
+            .join("line")
+            .attr("marker-end", "url(#arrow)");
 
+        // Arrow definition for links
+        svg.append("defs").selectAll("marker")
+            .data(["arrow"])
+            .enter().append("marker")
+            .attr("id", d => d)
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 25)
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "#999");
 
+        // Render folders as squares and other nodes as circles
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .enter().append("g");
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        node.filter(d => d.type === "folder")
+            .append("rect")
+            .attr("width", 60)
+            .attr("height", 60)
+            .attr("fill", d => d.status)
+            .attr("x", -30)
+            .attr("y", -30);
+
+        node.filter(d => d.type !== "folder")
+            .append("circle")
+            .attr("r", 30)
+            .attr("fill", d => d.status);
+
+        node.append("title")
+            .text(d => d.id);
+
+        const label = svg.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .text(d => d.id)
+            .attr("font-size", "12px")
+            .attr("text-anchor", "middle")
+            .attr("dy", ".35em");
+
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => d.y);
+        });
+    </script>
 </body>
 </html>
