@@ -381,7 +381,13 @@ class BaseNode(Thread):
                         self.post_execution()
                         self.send_signals(Status.FAILURE)
 
+                    # we should think about having an event for each node that is set when the successors are done executing
+                    # self.event.wait()
+
                     self.reset_trigger()    
+                    
+                    # if self.event.is_set():
+                    #     self.event.clear()
             
             elif self.status == Status.PAUSED:
                 # Stay Indefinitely Paused until external action
