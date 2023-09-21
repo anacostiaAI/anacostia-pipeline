@@ -1,19 +1,27 @@
+/* Material Design Fonts */
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap');
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Roboto', sans-serif;
+    background-color: #ECEFF1; /* Material background color */
+    margin: 0;
+    padding: 0;
 }
 
 nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
-    background-color: #333;
+    padding: 00px 20px;
+    background-color: #6200EA; /* Material primary color */
     color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Material shadow */
 }
 
 .logo {
     font-size: 24px;
-    font-weight: bold;
+    font-weight: 500; /* Material medium font weight */
+    
 }
 
 .menu-items {
@@ -29,8 +37,13 @@ nav {
 .menu-items a {
     color: #fff;
     text-decoration: none;
+    font-weight: 500; /* Material medium font weight */
+    transition: color 0.3s;
 }
 
+.menu-items a:hover {
+    color: #BB86FC; /* Material secondary color */
+}
 
 /* D3.js styles */
 .node {
@@ -50,16 +63,21 @@ nav {
 }
 
 .folder {
-    width: calc(20% - 10px); /* 20% for each of the 5 folders, minus a little for spacing */
+    width: calc(20% - 10px);
     height: 100px;
-    background-color: blue;
+    background-color: #6200EA; /* Material primary color */
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    border-radius: 5px;
+    border-radius: 4px; /* Material rounded corner */
     position: relative;
+    transition: background-color 0.3s;
+}
+
+.folder:hover {
+    background-color: #BB86FC; /* Material secondary color */
 }
 
 .folder-label {

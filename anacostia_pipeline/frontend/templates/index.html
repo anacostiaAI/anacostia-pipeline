@@ -4,16 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anacostia AI Dashboard</title>
+   
+    <!-- Material Design CSS -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- Material Design JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
 </head>
 <body>
     <nav>
-        <div class="logo">Anacostia AI</div>
-        <ul class="menu-items">
-            <li><a href="#">Model Registry</a></li>
-            <li><a href="#">Data Store</a></li>
-            <!-- Add more sections as needed -->
-        </ul>
+        <div class="nav-wrapper">
+            <a href="#" class="logo">Anacostia AI Pipeline</a>
+            <ul class="right hide-on-med-and-down menu-items">
+                <li><a href="#">Model Registry</a></li>
+                <li><a href="#">Data Store</a></li>
+                <!-- Add more sections as needed -->
+            </ul>
+        </div>
     </nav>
     <svg width="960" height="600" id="dashboard"></svg>
 
@@ -36,37 +47,39 @@
             // Fourth Row
             { id: "Training", status: "green", row: 4 },
             // Fifth Row
-            { id: "Model Eval", status: "yellow", row: 5 },
+           // { id: "Model Eval", status: "yellow", row: 5 },
             // Sixth Row
             { id: "Reporting", status: "red", row: 6 }
         ];
 
         const links = [
             // Data Flow Visualization
-            { source: "watch_dir", target: "Data Store Node 1" },
+            { source: "watch_dir", target: "Data Store Node 1",  },
             { source: "data store", target: "Data Store Node 2" }, // Added link from "data store" folder to "Data Store Node 2"
             { source: "model registry", target: "Model Registry Node" }, // Added link from "model registry" folder to "Model Registry Node"
             { source: "metadata store", target: "Metadata Store Node" }, // Added link from "metadata store" folder to "Metadata Store Node"
-            { source: "Data Store Node 1", target: "Data Processing" },
-            { source: "Data Processing", target: "Data Store Node 2" },
-            { source: "Data Processing", target: "Training" },
-            { source: "Data Store Node 2", target: "Training" },
-            { source: "Training", target: "Model Registry Node" },
-            { source: "Training", target: "Metadata Store Node" },
-            { source: "Training", target: "Model Eval" },
-            { source: "Metadata Store Node", target: "Model Eval" },
-            { source: "Metadata Store Node", target: "Reporting" },
-            { source: "Reporting", target: "artifacts" }
+            { source: "Data Store Node 1", target: "Data Processing", label: "Raw data"},
+            { source: "Data Processing", target: "Data Store Node 2", label: "Processed data" },
+            { source: "Data Processing", target: "Training", label: "Signal"  },
+            { source: "Data Store Node 2", target: "Training", label: "" },
+            { source: "Training", target: "Model Registry Node", label: "Model" },
+            { source: "Training", target: "Metadata Store Node", label: "New stats" },
+            { source: "Training", target: "Reporting", label: "Signal"},
+            //{ source: "Metadata Store Node", target: "Model Eval", label: "Old stats + New stats" },
+            { source: "Metadata Store Node", target: "Reporting", label: "Old+New stats" },
+            { source: "Reporting", target: "artifacts", label: "Plots + PDF report" }, 
+            //{ source: "Model Registry Node", target: "Model Eval", label: "Recent Model" }, 
+            //{ source: "Model Eval", target: "Reporting", label: "Signal" }, 
         ];
 
 
         // Define a fixed x-coordinate for the folders and nodes to position them in a row
         const folderPositions = {
             "watch_dir": 100,
-            "data store": 250,
-            "model registry": 400,
-            "metadata store": 550,
-            "artifacts": 650
+            "data store": 270,
+            "model registry": 430,
+            "metadata store": 569,
+            "artifacts": 850
         };
 
         // Set initial positions for nodes based on your specifications
@@ -88,15 +101,15 @@
                 node.fx = 175;
                 node.fy = 350;
             } else if (node.id === "Training") {
-                node.fx = 275;
+                node.fx = 350;
                 node.fy = 450;
             } else if (node.id === "Model Eval") {
-                node.fx = 375;
-                node.fy = 500;
+                node.fx = 500;
+                node.fy = 520;
             }
             else if (node.id === "Reporting") {
-                node.fx = 500;
-                node.fy = 550;
+                node.fx = 569;
+                node.fy = 540;
             } else if (node.type === "folder") {
                 node.fx = folderPositions[node.id];
                 node.fy = 50 + (node.row - 1) * 100; // This sets the y position based on the row attribute
@@ -118,28 +131,52 @@
 
         const svg = d3.select("#dashboard");
 
-        const link = svg.append("g")
-            .attr("stroke", "#999")
-            .attr("stroke-opacity", 0.6)
-            .selectAll("line")
-            .data(links)
-            .join("line")
-            .attr("marker-end", "url(#arrow)");
-
         // Arrow definition for links
         svg.append("defs").selectAll("marker")
             .data(["arrow"])
             .enter().append("marker")
             .attr("id", d => d)
             .attr("viewBox", "0 -5 10 10")
-            .attr("refX", 25)
+            .attr("refX", 40)
             .attr("refY", 0)
-            .attr("markerWidth", 6)
-            .attr("markerHeight", 6)
+            .attr("markerWidth", 10)
+            .attr("markerHeight", 10)
             .attr("orient", "auto")
             .append("path")
             .attr("d", "M0,-5L10,0L0,5")
             .attr("fill", "#999");
+
+        const link = svg.append("g")
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.9)
+            .selectAll("line")
+            .data(links)
+            .join("line")
+            .attr("marker-end", "url(#arrow)"); 
+
+        const linkLabel = svg.append("g")
+            .attr("class", "link-label")
+            .selectAll("text")
+            .data(links)
+            .enter().append("text")
+            .text(d => d.label);  // Assuming each link object in your links array has a 'label' property
+
+        const getLabelPosition = (d) => {
+            const dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+            if (angle > 90 || angle < -90) {
+                return { x: (d.source.x + d.target.x) / 2 + 10, y: (d.source.y + d.target.y) / 2 + 10 };
+            } else {
+                return { x: (d.source.x + d.target.x) / 2 - 10, y: (d.source.y + d.target.y) / 2 - 10 };
+            }
+        };
+
+            linkLabel
+            .attr("x", d => getLabelPosition(d).x)
+            .attr("y", d => getLabelPosition(d).y);
+
 
         // Render folders as squares and other nodes as circles
         const node = svg.append("g")
@@ -185,6 +222,10 @@
             label
                 .attr("x", d => d.x)
                 .attr("y", d => d.y);
+
+            linkLabel
+                .attr("x", d => (d.source.x + d.target.x) / 2)
+                .attr("y", d => (d.source.y + d.target.y) / 2);
         });
 
          // Add drag behavior to nodes
