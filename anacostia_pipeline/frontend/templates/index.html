@@ -9,8 +9,10 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+   
+    <!-- Include Material Design Icon Font -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-
     <!-- Material Design JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
@@ -27,7 +29,7 @@
         </div>
     </nav>
     <svg width="960" height="600" id="dashboard"></svg>
-
+    <button hx-post="/run_script" hx-trigger="click" hx-swap="outerHTML" id="startSimulation" class="btn waves-effect waves-light">Start Simulation</button>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script>
         const nodes = [
@@ -147,7 +149,7 @@
             .attr("fill", "#999");
 
         const link = svg.append("g")
-            .attr("stroke", "#999")
+            .attr("stroke", "#3F51B5")
             .attr("stroke-opacity", 0.9)
             .selectAll("line")
             .data(links)
@@ -185,17 +187,23 @@
             .enter().append("g");
 
         node.filter(d => d.type === "folder")
-            .append("rect")
-            .attr("width", 60)
-            .attr("height", 60)
-            .attr("fill", d => d.status)
-            .attr("x", -30)
-            .attr("y", -30);
+            .append("text")
+            .attr("class", "material-icons")
+            .attr("fill", "#FFC107")  // Material Design Amber color
+            .attr("font-size", "100px")
+            .text("folder");  // Material Design folder icon
 
         node.filter(d => d.type !== "folder")
             .append("circle")
             .attr("r", 30)
-            .attr("fill", d => d.status);
+            .attr("fill", d => {
+                switch(d.status) {
+                    case "green": return "#4CAF50";  // Material Design Green color
+                    case "yellow": return "#FFEB3B";  // Material Design Yellow color
+                    case "red": return "#F44336";  // Material Design Red color
+                    default: return "#9E9E9E";  // Material Design Grey color
+                }
+            });
 
         node.append("title")
             .text(d => d.id);
@@ -217,44 +225,63 @@
                 .attr("y2", d => d.target.y);
 
             node
-                .attr("transform", d => `translate(${d.x}, ${d.y})`);
-
+                .attr("transform", d => {
+                    let yOffset = (d.type === "folder") ? -0 : 0;  // Adjust this value as needed
+                    return `translate(${d.x}, ${d.y + yOffset})`;
+                });
             label
                 .attr("x", d => d.x)
-                .attr("y", d => d.y);
+                .attr("y", d => {
+                    let yOffset = (d.type === "folder") ? 0 : 0;  // Adjust this value as needed
+                    return d.y + yOffset;
+                });
 
             linkLabel
                 .attr("x", d => (d.source.x + d.target.x) / 2)
                 .attr("y", d => (d.source.y + d.target.y) / 2);
         });
 
-         // Add drag behavior to nodes
-    const drag = simulation => {
-        const dragStarted = (event, d) => {
-            if (d.type === "folder") return; // Prevent dragging of folder nodes
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        };
+        // Function to start the simulation
+        function startSimulation() {
+            const nodeOrder = ["Data Store Node 1", "Data Processing", "Data Store Node 2", "Training", "Model Registry Node", "Metadata Store Node", "Reporting"];
 
-        const dragged = (event, d) => {
-            d.fx = event.x;
-            d.fy = event.y;
-        };
+            // Set all nodes to grey initially
+            nodes.forEach(node => {
+                node.status = "grey";
+            });
+            updateNodeColors();
 
-        const dragEnded = (event, d) => {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        };
+            // Function to update node colors based on their status
+            function updateNodeColors() {
+                node.selectAll("circle")
+                    .attr("fill", d => {
+                        switch(d.status) {
+                            case "green": return "#4CAF50";  // Material Design Green color
+                            case "yellow": return "#FFEB3B";  // Material Design Yellow color
+                            case "red": return "#F44336";  // Material Design Red color
+                            default: return "#9E9E9E";  // Material Design Grey color
+                        }
+                    });
+            }
 
-        return d3.drag()
-            .on("start", dragStarted)
-            .on("drag", dragged)
-            .on("end", dragEnded);
-    };
+            // Update each node's color one by one based on the nodeOrder
+            nodeOrder.forEach((nodeId, index) => {
+                setTimeout(() => {
+                    const nodeToUpdate = nodes.find(node => node.id === nodeId);
+                    if (nodeToUpdate) {
+                        nodeToUpdate.status = "yellow";
+                        updateNodeColors();
 
-    node.call(drag(simulation));
+                        setTimeout(() => {
+                            nodeToUpdate.status = "green";
+                            updateNodeColors();
+                        }, 1000);
+                    }
+                }, index * 3000);  // 6000ms = 6 seconds (3 seconds for yellow and 3 seconds for green)
+            });
+        }
+        // Add event listener to the button
+        document.getElementById("startSimulation").addEventListener("click", startSimulation);
     </script>
 </body>
 </html>

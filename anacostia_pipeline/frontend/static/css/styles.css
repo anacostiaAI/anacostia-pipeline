@@ -56,34 +56,21 @@ nav {
     stroke-opacity: 0.6;
 }
 
-.folder-icons {
+/* Add/Update this style for the Material Design folder icons */
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 55px; /* Adjust this value to size the icon */
     display: flex;
-    justify-content: space-between;
-    padding: 20px 0;
-}
-
-.folder {
-    width: calc(20% - 10px);
-    height: 100px;
-    background-color: #6200EA; /* Material primary color */
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    line-height: 1;
+    text-transform: none;
     text-align: center;
-    border-radius: 4px; /* Material rounded corner */
-    position: relative;
-    transition: background-color 0.3s;
-}
-
-.folder:hover {
-    background-color: #BB86FC; /* Material secondary color */
-}
-
-.folder-label {
-    font-size: 14px;
+    letter-spacing: normal;
+    word-wrap: normal;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90%;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
 }
+

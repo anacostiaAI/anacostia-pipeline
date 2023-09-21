@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, render_template
+import subprocess
 
 app = Flask(__name__)
 
@@ -26,6 +27,14 @@ def get_node_status():
         "node3": "red"
     }
     return jsonify(node_status)
+
+@app.route('/run_script', methods=['POST'])
+def run_script():
+    try:
+        subprocess.call(['python', 'test_phase1.py'])
+        return jsonify(status="success", message="Script executed successfully"), 200
+    except Exception as e:
+        return jsonify(status="error", message=str(e)), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
