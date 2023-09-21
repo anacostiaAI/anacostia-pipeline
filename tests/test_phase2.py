@@ -5,14 +5,17 @@ import sys
 import os
 import shutil
 import random
-from medmnist import PathMNIST, RetinaMNIST, INFO
+from medmnist import PathMNIST, Evaluator, INFO
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 import torchvision.transforms as transforms
-import tqdm
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from matplotlib import pyplot as plt
+import pdfkit
+from PIL import Image
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -209,23 +212,21 @@ class RetrainingNode(ActionNode):
         data_preprocessing: DataPreprocessingNode, 
         data_store: DataStoreNode, 
         model_registry: ModelRegistryNode,
-        metadata_store: MetadataStoreNode
+        metadata_store: MetadataStoreNode,
+        artifact_store: DataStoreNode,
     ) -> None:
 
         self.data_preprocessing = data_preprocessing
         self.data_store = data_store
         self.model_registry = model_registry
         self.metadata_store = metadata_store
+        self.artifact_store = artifact_store
         super().__init__(name, "retraining", listen_to=[data_store])
     
-    def train_model(self, data_dir: str, model: torch.nn.Module, num_batches: int) -> nn.Module:
+    def train_model(self, data_dir: str, model: torch.nn.Module, num_batches: int = None) -> nn.Module:
             # Load data from data store and create data loaders
             train_dataset = PathMNIST(split="train", transform=data_transform, root=data_dir)
-            #test_dataset = PathMNIST(split="test", transform=data_transform, root=data_dir)
-
             train_loader = data.DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-            #train_loader_at_eval = data.DataLoader(dataset=train_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
-            #test_loader = data.DataLoader(dataset=test_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
 
             # define loss function and optimizer
             if task == "multi-label, binary-class":
@@ -241,8 +242,9 @@ class RetrainingNode(ActionNode):
                 
                 model.train()
                 for batch, (inputs, targets) in enumerate(train_loader):
-                    if batch >= num_batches:
-                        break
+                    if num_batches is not None:
+                        if batch >= num_batches:
+                            break
             
                     # forward + backward + optimize
                     optimizer.zero_grad()
@@ -262,8 +264,88 @@ class RetrainingNode(ActionNode):
                     
             print(f"Trained {progress} out of {task_duration}")
     
+    def validate(self, data_dir: str, model: nn.Module) -> float:
+        # load the data from the validation set
+        val_dataset = PathMNIST(split="val", transform=data_transform, root=data_dir)
+        val_loader = data.DataLoader(dataset=val_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+        # define loss function and optimizer
+        if task == "multi-label, binary-class":
+            criterion = nn.BCEWithLogitsLoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
+            
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+
+        for epoch in range(NUM_EPOCHS):
+            train_correct = 0
+            train_total = 0
+            test_correct = 0
+            test_total = 0
+            
+            model.train()
+            for inputs, targets in val_loader:
+                # forward + backward + optimize
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                
+                if task == 'multi-label, binary-class':
+                    targets = targets.to(torch.float32)
+                    loss = criterion(outputs, targets)
+                else:
+                    targets = targets.squeeze().long()
+                    loss = criterion(outputs, targets)
+                
+                loss.backward()
+                optimizer.step()
+
+    def evaluate(self, split: str, data_dir: str, model: nn.Module):
+        model.eval()
+        y_true = torch.tensor([])
+        y_score = torch.tensor([])
+        
+        test_dataset = PathMNIST(split="test", transform=data_transform, root=data_dir)
+        train_dataset = PathMNIST(split="train", transform=data_transform, root=data_dir)
+        train_loader_at_eval = data.DataLoader(dataset=train_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
+        test_loader = data.DataLoader(dataset=test_dataset, batch_size=2*BATCH_SIZE, shuffle=False)
+
+        data_loader = train_loader_at_eval if split == 'train' else test_loader
+
+        with torch.no_grad():
+            for inputs, targets in data_loader:
+                outputs = model(inputs)
+
+                if task == 'multi-label, binary-class':
+                    targets = targets.to(torch.float32)
+                    outputs = outputs.softmax(dim=-1)
+                else:
+                    targets = targets.squeeze().long()
+                    outputs = outputs.softmax(dim=-1)
+                    targets = targets.float().resize_(len(targets), 1)
+
+                y_true = torch.cat((y_true, targets), 0)
+                y_score = torch.cat((y_score, outputs), 0)
+
+            y_true = y_true.numpy()
+            y_score = y_score.detach().numpy()
+            
+            evaluator = Evaluator(data_flag, split, root=data_dir)
+            metrics = evaluator.evaluate(y_score)
+            print('%s  auc: %.3f  acc:%.3f' % (split, *metrics))
+
+            auc = metrics[0]
+            acc = metrics[1]
+            self.metadata_store.insert_metadata(split=split, auc=auc, acc=acc)
+
+            train_dataset.montage(length=5, save_folder=self.artifact_store.data_store_path)
+            test_dataset.montage(length=5, save_folder=self.artifact_store.data_store_path)
+
     def execute(self, *args, **kwargs) -> bool:
-        # load the model
+        while True:
+            with self.metadata_store.reference_lock:
+                self.metadata_store.reference_count += 1
+                break
+
         while True:
             with self.model_registry.reference_lock:
                 self.model_registry.reference_count += 1
@@ -279,21 +361,39 @@ class RetrainingNode(ActionNode):
         self.log(f"Loaded model from {model_paths[-1]}")
         print(f"Loaded model from {model_paths[-1]}")
 
-        # Load data
+        # Save model
+        #model_name = self.model_registry.create_filename()
+        #torch.save(model.state_dict(), f"{self.model_registry.model_registry_path}/{model_name}")
+        #self.log(f"Saved model {model_name} to registry")
+        #print(f"Saved model {model_name} to registry")
+
         for data_file in self.data_store.load_data_paths("current"):
+            # Load data
             self.log(f"Retraining model with data file: {data_file}")
             print(f"Retraining model with data file: {data_file}")
-
+        """
             data_dir = data_file.split("/")[:-1]
             data_dir = "/".join(data_dir)
             num_batches = 2
             self.train_model(data_dir, model, num_batches)
+        """
+        #self.validate("./testing_artifacts", model)
 
-            # Save model
-            model_name = self.model_registry.create_filename()
-            torch.save(model.state_dict(), f"{self.model_registry.model_registry_path}/{model_name}")
-            self.log(f"Saved model {model_name} to registry")
-            print(f"Saved model {model_name} to registry")
+        self.evaluate("train", "./testing_artifacts", model)
+        self.evaluate("test", "./testing_artifacts", model)
+
+        self.log(f"Saving report to {self.artifact_store.data_store_path}/report.pdf")
+        print(f"Saving report to {self.artifact_store.data_store_path}/report.pdf")
+
+        image_1 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_train_montage.jpg")
+        image_2 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_test_montage.jpg")
+        
+        im_1 = image_1.convert('RGB')
+        im_2 = image_2.convert('RGB')
+
+        image_list = [im_2]
+
+        im_1.save(f'{self.artifact_store.data_store_path}/report.pdf', save_all=True, append_images=image_list)
 
         while True:
             with self.data_store.reference_lock:
@@ -309,8 +409,38 @@ class RetrainingNode(ActionNode):
                     self.model_registry.event.set()
                 break
                 
+        while True:
+            with self.metadata_store.reference_lock:
+                self.metadata_store.reference_count -= 1
+                if self.metadata_store.reference_count == 0:
+                    self.metadata_store.event.set()
+                break
+                
         return True
 
+
+class ReportingNode(ActionNode):
+    def __init__(self, name: str, train_node: RetrainingNode, artifact_store: DataStoreNode) -> None:
+        self.artifact_store = artifact_store
+        #super().__init__(name, "Reporting", listen_to=[train_node])
+        super().__init__(name, "Reporting", listen_to=[artifact_store])
+    
+    def execute(self, *args, **kwargs) -> bool:
+
+        self.log(f"Saving report to {self.artifact_store.data_store_path}/report.pdf")
+        print(f"Saving report to {self.artifact_store.data_store_path}/report.pdf")
+
+        image_1 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_train_montage.png")
+        image_2 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_test_montage.png")
+        
+        im_1 = image_1.convert('RGB')
+        im_2 = image_2.convert('RGB')
+
+        image_list = [im_2]
+
+        im_1.save(f'{self.artifact_store.data_store_path}/report.pdf', save_all=True, append_images=image_list)
+
+        return True
 
 class RetrainingTests(unittest.TestCase):
     def __init__(self, methodName: str = "runTest") -> None:
@@ -328,6 +458,7 @@ class RetrainingTests(unittest.TestCase):
         medmnist_store = PathMNISTDataStoreNode(name="PathMNIST store", path=f"{self.data_store_path}/PathMNIST")
         data_preprocessing = DataPreprocessingNode(name="Data preprocessing", data_store=prelim_store, output_store=medmnist_store)
         metadata_store = MetadataStoreNode(name="Metadata store", metadata_store_path=self.meta_data_store_path, init_state="current")
+        artifact_store = DataStoreNode(name="Artifact store", path=f"{self.path}/artifact_store", init_state="current")
         model_registry = ModelRegistryNode(
             name="Model registry", 
             path=self.path, 
@@ -339,10 +470,13 @@ class RetrainingTests(unittest.TestCase):
             data_preprocessing=data_preprocessing, 
             data_store=medmnist_store, 
             model_registry=model_registry, 
-            metadata_store=metadata_store
+            metadata_store=metadata_store,
+            artifact_store=artifact_store
         )
+        reporting = ReportingNode(name="Reporting", train_node=retraining, artifact_store=artifact_store)
         pipeline_phase2 = Pipeline(
-            nodes=[prelim_store, data_preprocessing, medmnist_store, retraining, model_registry, metadata_store], 
+            nodes=[prelim_store, data_preprocessing, medmnist_store, retraining, model_registry, metadata_store, artifact_store], 
+            #nodes=[reporting, artifact_store],
             logger=logger
         )
         pipeline_phase2.start()
@@ -354,6 +488,18 @@ class RetrainingTests(unittest.TestCase):
             src="./testing_artifacts/model.pth", 
             dst=model_registry.model_registry_path
         )
+
+        """
+        shutil.copy(
+            src="./testing_artifacts/pathmnist_train_montage.png", 
+            dst=artifact_store.data_store_path
+        )
+
+        shutil.copy(
+            src="./testing_artifacts/pathmnist_test_montage.png", 
+            dst=artifact_store.data_store_path
+        )
+        """
 
         # copy files to prelim store
         files_list = [
@@ -370,8 +516,9 @@ class RetrainingTests(unittest.TestCase):
             time.sleep(1)
         
         # Wait for training to finish
-        # time.sleep(10)
-        time.sleep(150)
+        time.sleep(50)
+        #time.sleep(2)
+        #time.sleep(240)
 
         pipeline_phase2.terminate_nodes()
 
