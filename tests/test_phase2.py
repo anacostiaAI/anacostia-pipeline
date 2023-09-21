@@ -259,17 +259,25 @@ class RetrainingNode(ActionNode):
                     optimizer.step()
 
                     progress += len(inputs)
-
+                    
             print(f"Trained {progress} out of {task_duration}")
     
     def execute(self, *args, **kwargs) -> bool:
         # load the model
-        model.load_state_dict(torch.load("./testing_artifacts/model.pth"))
-                
+        while True:
+            with self.model_registry.reference_lock:
+                self.model_registry.reference_count += 1
+                break
+
         while True:
             with self.data_store.reference_lock:
                 self.data_store.reference_count += 1
                 break
+
+        model_paths = self.model_registry.get_models_paths("current")
+        model.load_state_dict(torch.load(model_paths[-1]))
+        self.log(f"Loaded model from {model_paths[-1]}")
+        print(f"Loaded model from {model_paths[-1]}")
 
         # Load data
         for data_file in self.data_store.load_data_paths("current"):
@@ -281,6 +289,12 @@ class RetrainingNode(ActionNode):
             num_batches = 2
             self.train_model(data_dir, model, num_batches)
 
+            # Save model
+            model_name = self.model_registry.create_filename()
+            torch.save(model.state_dict(), f"{self.model_registry.model_registry_path}/{model_name}")
+            self.log(f"Saved model {model_name} to registry")
+            print(f"Saved model {model_name} to registry")
+
         while True:
             with self.data_store.reference_lock:
                 self.data_store.reference_count -= 1
@@ -288,6 +302,13 @@ class RetrainingNode(ActionNode):
                     self.data_store.event.set()
                 break
         
+        while True:
+            with self.model_registry.reference_lock:
+                self.model_registry.reference_count -= 1
+                if self.model_registry.reference_count == 0:
+                    self.model_registry.event.set()
+                break
+                
         return True
 
 
@@ -300,7 +321,6 @@ class RetrainingTests(unittest.TestCase):
         self.data_path = "./testing_artifacts"
         self.data_store_path = f"{self.path}/data_store"
         self.meta_data_store_path = f"{self.path}/metadata_store"
-        self.model_registry_path = f"{self.path}/model_registry"
         os.makedirs(self.path)
     
     def test_initial_setup(self):
@@ -310,7 +330,7 @@ class RetrainingTests(unittest.TestCase):
         metadata_store = MetadataStoreNode(name="Metadata store", metadata_store_path=self.meta_data_store_path, init_state="current")
         model_registry = ModelRegistryNode(
             name="Model registry", 
-            path=self.model_registry_path, 
+            path=self.path, 
             framework="pytorch", 
             init_state="current"
         )
@@ -322,12 +342,20 @@ class RetrainingTests(unittest.TestCase):
             metadata_store=metadata_store
         )
         pipeline_phase2 = Pipeline(
-            nodes=[prelim_store, data_preprocessing, medmnist_store, retraining], 
+            nodes=[prelim_store, data_preprocessing, medmnist_store, retraining, model_registry, metadata_store], 
             logger=logger
         )
         pipeline_phase2.start()
 
         time.sleep(1)
+
+        # copy files to model registry
+        shutil.copy(
+            src="./testing_artifacts/model.pth", 
+            dst=model_registry.model_registry_path
+        )
+
+        # copy files to prelim store
         files_list = [
             "./testing_artifacts/data_store/val_splits/val_4.npz", 
             "./testing_artifacts/data_store/val_splits/val_5.npz", 
@@ -342,6 +370,7 @@ class RetrainingTests(unittest.TestCase):
             time.sleep(1)
         
         # Wait for training to finish
+        # time.sleep(10)
         time.sleep(150)
 
         pipeline_phase2.terminate_nodes()
