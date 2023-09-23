@@ -516,7 +516,7 @@ class RetrainingTests(unittest.TestCase):
             time.sleep(1)
         
         # Wait for training to finish
-        time.sleep(50)
+        time.sleep(30)
         #time.sleep(2)
         #time.sleep(240)
 
