@@ -12,9 +12,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 import torchvision.transforms as transforms
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg') 
 from matplotlib import pyplot as plt
-import pdfkit
 from PIL import Image
 
 sys.path.append('..')
@@ -337,8 +338,17 @@ class RetrainingNode(ActionNode):
             acc = metrics[1]
             self.metadata_store.insert_metadata(split=split, auc=auc, acc=acc)
 
+            # save the montages
             train_dataset.montage(length=5, save_folder=self.artifact_store.data_store_path)
             test_dataset.montage(length=5, save_folder=self.artifact_store.data_store_path)
+
+            # save the metrics as a table
+            data_dict = {'split': split, 'auc': auc, 'acc': acc}
+            df = pd.DataFrame.from_dict(data_dict, orient='index').reset_index()
+            df.columns = ['Attribute', 'Value']
+            plt.table(cellText=df.values, colLabels=df.columns, loc='center')
+            plt.axis('off')
+            plt.savefig(f"{self.artifact_store.data_store_path}/table.jpg", bbox_inches='tight', pad_inches=0)
 
     def execute(self, *args, **kwargs) -> bool:
         while True:
@@ -387,11 +397,13 @@ class RetrainingNode(ActionNode):
 
         image_1 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_train_montage.jpg")
         image_2 = Image.open(f"{self.artifact_store.data_store_path}/pathmnist_test_montage.jpg")
+        image_3 = Image.open(f"{self.artifact_store.data_store_path}/table.jpg")
         
         im_1 = image_1.convert('RGB')
         im_2 = image_2.convert('RGB')
+        im_3 = image_3.convert('RGB')
 
-        image_list = [im_2]
+        image_list = [im_2, im_3]
 
         im_1.save(f'{self.artifact_store.data_store_path}/report.pdf', save_all=True, append_images=image_list)
 

@@ -181,6 +181,27 @@ def combine_files(files_dict: dict, output_dir: str):
         np.savez(save_path, val_images=images, val_labels=labels)
 
 
+import pandas as pd
+import threading
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt
+
+#def create_table(data_dict: dict, output_path: str):
+def create_table(**kwargs):
+    df = pd.DataFrame.from_dict(data_dict, orient='index').reset_index()
+    df.columns = ['Attribute', 'Value']
+
+    def save_figure(df):
+        plt.table(cellText=df.values, colLabels=df.columns, loc='center')
+        plt.axis('off')
+        plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
+
+    #thread = threading.Thread(target=save_figure, args=(df,))
+    #thread.start()
+    #thread.join()
+
+
 if __name__ == '__main__':
     #extract_npz("./testing_artifacts/retinamnist.npz", "./testing_artifacts/data_store")
     """
@@ -190,8 +211,6 @@ if __name__ == '__main__':
         index_splits=(100, 200, 300),
         time_delay=0.5
     )
-    """
-
     combine_files(
         files_dict={
             "./testing_artifacts/data_store/val_splits/val_images_4.npy": "./testing_artifacts/data_store/val_splits/val_labels_4.npy",
@@ -201,3 +220,13 @@ if __name__ == '__main__':
         },
         output_dir="./testing_artifacts/data_store/val_splits"
     )
+    """
+
+    
+
+    data_dict={"Accuracy": 0.96, "Precision": 0.96, "Recall": 0.96, "F1": 0.96},
+    output_path="./testing_artifacts/test.png"
+    
+    thread = threading.Thread(target=create_table, args=(data_dict, output_path))
+    thread.start()
+    thread.join()
