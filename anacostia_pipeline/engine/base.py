@@ -24,13 +24,13 @@ class Message(BaseModel):
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List['BaseNode'], successors: List['BaseNode']) -> None:
         self.name = name
-        self.successors = successors
-        self.predecessors = predecessors
         self._status_lock = Lock()
         self._status = Status.OFF
+
+        self.successors = successors
+        self.predecessors = predecessors
         self.predecessors_queue = Queue()
         self.successors_queue = Queue()
-        
         self.received_predecessors_signals: Dict[str, Message] = dict()
         self.received_successors_signals: Dict[str, Message] = dict()
 
@@ -61,13 +61,22 @@ class BaseNode(Thread):
                 break
 
     @staticmethod
-    def pausable(func):
+    def trap(func):
         '''
-        A Decorator for allowing execution in the Status.RUNNING state to be paused mid execution
+        A Decorator for allowing the node to be paused mid execution
         '''
         def wrapper(self, *args, **kwargs):
-            while self.status == Status.PAUSED:
-                time.sleep(0.1)
+            if self.status == Status.PAUSING:
+                print(f"Node {self.name} paused")
+                self.status = Status.PAUSED
+
+                while self.status == Status.PAUSED:
+                    time.sleep(0.1)
+
+            elif self.status == Status.EXITING:
+                print(f"Node {self.name} exiting")
+                self.status = Status.EXITED
+                sys.exit(0)
 
             ret = func(self, *args, **kwargs)
             return ret
@@ -93,7 +102,7 @@ class BaseNode(Thread):
         )
 
         for successor in self.successors:
-            successor.successors_queue.put(msg)
+            successor.predecessors_queue.put(msg)
 
     def signal_predecessors(self, status:Status):
         msg = Message(
@@ -102,8 +111,8 @@ class BaseNode(Thread):
             status = status
         )
 
-        for predecessors in self.predecessors:
-            predecessors.predecessors_queue.put(msg)
+        for predecessor in self.predecessors:
+            predecessor.successors_queue.put(msg)
 
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
@@ -129,7 +138,7 @@ class BaseNode(Thread):
                     return False
             else:
                 return False
-        
+ 
         # If there are no dependent nodes, then we can just return True
         return True
     
@@ -225,29 +234,15 @@ class BaseResourceNode(BaseNode):
                     return func(self, *args, **kwargs)
         return wrapper
 
+    @BaseNode.trap
     @resource_accessor
     def update_state(self):
         pass
 
+    @BaseNode.trap
     @resource_accessor
     def check_resource(self) -> bool:
         return True
-
-    @resource_accessor
-    def trigger_condition(self) -> bool:
-        """
-        in the default implementation, we trigger the next node as soon as we see a new artifact.
-        override this method to specify a more complex trigger condition (e.g., a cron schedule or a condition).
-        """
-        return True
-    
-    def trigger(self) -> None:
-        self.triggered = True
-
-    def reset_trigger(self):
-        # TODO reset trigger dependent on the state of the system i.e. data store, feature store, model store
-        if self.auto_trigger == False:
-            self.triggered = False
 
     def run(self) -> None:
         # --------------------------- iteration 0 (initialization) ---------------------------
@@ -288,47 +283,23 @@ class BaseResourceNode(BaseNode):
         # --------------------------- iteration 1+ (monitoring phase) -------------------------------------
         while True:
 
-            def trap():
-                if self.status == Status.PAUSING:
-                    self.log(f"Node {self.name} paused")
-                    self.status = Status.PAUSED
-
-                    while self.status == Status.PAUSED:
-                        time.sleep(0.1)
-                
-                elif self.status == Status.EXITING:
-                    self.log(f"Node {self.name} exiting")
-                    self.teardown()
-                    self.status = Status.EXITED
-                    self.log(f"Node {self.name} exited")
-                    break
-                
-            trap()
-
             # check the resource to see if the trigger condition is met, and if so, signal the next node
             self.status = Status.WAITING_RESOURCE
             try:
                 resource_check = self.check_resource()
-                trap()
             except Exception as e:
                 # Note: the only function that should throw an exception is check_resource() because it is a user-defined function
                 # the functions that we've created should not throw exceptions
                 print(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                 resource_check = False
 
-            trap()
-
             # signal the successors to execute if the trigger condition is met
             self.signal_successors(Status.SUCCESS if resource_check is True else Status.FAILURE)
-
-            trap()
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
             self.status = Status.WAITING_SUCCESSORS
             if self.check_successors_signals() is False:
                 continue
-
-            trap()
 
             # if all successors have finished using the state, then update the state of the resource
             self.status = Status.UPDATE_STATE
@@ -338,8 +309,6 @@ class BaseResourceNode(BaseNode):
                 print(f"Error updating state in node '{self.name}': {traceback.format_exc()}")
                 self.status = Status.ERROR
                 return
-            
-            trap()
         # --------------------------- iteration 1+ (monitoring phase) ---------------------------------------
 
 
@@ -355,7 +324,7 @@ class BaseActionNode(BaseNode):
         self.triggered = auto_trigger
         super().__init__(name, predecessors, successors)
 
-    @BaseNode.pausable
+    @BaseNode.trap
     def on_failure(self, e: Exception = None) -> None:
         """
         override to enable node to do something after execution in event of failure of action_function; 
@@ -363,7 +332,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.pausable
+    @BaseNode.trap
     def pre_execution(self) -> None:
         """
         override to enable node to do something before execution; 
@@ -371,14 +340,14 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.pausable
+    @BaseNode.trap
     def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
         return True
 
-    @BaseNode.pausable
+    @BaseNode.trap
     def post_execution(self) -> None:
         """
         override to enable node to do something after execution; 
@@ -386,7 +355,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.pausable
+    @BaseNode.trap
     def on_success(self) -> None:
         """
         override to enable node to do something after execution in event of success of action_function; 
