@@ -38,7 +38,7 @@ class BaseNode(Thread):
         return hash(self.name)
 
     def __repr__(self) -> str:
-        return f"'Node(name: {self.name}, status: {str(self.status)})'"
+        return f"'Node(name: {self.name})'"
     
     def set_logger(self, logger: Logger) -> None:
         self.logger = logger
@@ -67,14 +67,16 @@ class BaseNode(Thread):
         '''
         def wrapper(self, *args, **kwargs):
             if self.status == Status.PAUSING:
-                print(f"Node {self.name} paused")
+                self.log(f"Node {self.name} paused at {datetime.now()}")
                 self.status = Status.PAUSED
 
                 while self.status == Status.PAUSED:
                     time.sleep(0.1)
 
             elif self.status == Status.EXITING:
-                print(f"Node {self.name} exiting")
+                self.log(f"Node {self.name} exiting at {datetime.now()}")
+                self.on_exit()
+                self.log(f"Node {self.name} exited at {datetime.now()}")
                 self.status = Status.EXITED
                 sys.exit(0)
 
@@ -195,12 +197,6 @@ class BaseNode(Thread):
         on_exit is called when the node is being stopped.
         implement this method to do things like release locks, 
         release resources, anouncing to other nodes that this node has stopped, etc.
-        """
-        pass
-
-    def teardown(self) -> None:
-        """
-        override to specify actions to be executed upon removal of node from dag or on pipeline shutdown
         """
         pass
 
