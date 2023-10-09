@@ -253,5 +253,5 @@ if __name__ == "__main__":
     #print(model_registry_node.successors)
 
     pipeline.launch_nodes()
-    time.sleep(15)
+    time.sleep(20)
     pipeline.terminate_nodes()

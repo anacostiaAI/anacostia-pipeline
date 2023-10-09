@@ -258,7 +258,6 @@ class BaseResourceNode(BaseNode):
 
     def run(self) -> None:
         self.log(f"--------------------------- started iteration {self.iteration} (initialization phase of {self.name}) ----------------------------------")
-        # setting up the node and the resource
         self.setup()
     
         # waiting for the trigger condition to be met
@@ -298,8 +297,8 @@ class BaseResourceNode(BaseNode):
             if self.check_successors_signals() is True:
 
                 # if all successors have finished using the state, then update the state of the resource
-                self.iteration += 1
                 self.update_state()
+                self.iteration += 1
 
                 # signal the successors to execute if the trigger condition is met
                 self.signal_successors(Status.SUCCESS if resource_check else Status.FAILURE)
@@ -316,10 +315,19 @@ class BaseActionNode(BaseNode):
 
     @BaseNode.trap_interrupts(status=Status.RUNNING)
     @BaseNode.trap_exceptions
-    def pre_execution(self) -> None:
+    def before_execution(self) -> None:
         """
         override to enable node to do something before execution; 
         e.g., send an email to the data science team to let everyone know the pipeline is about to train a new model
+        """
+        pass
+
+    @BaseNode.trap_interrupts(status=Status.RUNNING)
+    @BaseNode.trap_exceptions
+    def after_execution(self) -> None:
+        """
+        override to enable node to do something after executing the action function regardless of the outcome of the action function; 
+        e.g., send an email to the data science team to let everyone know the pipeline is done training a new model
         """
         pass
 
@@ -357,17 +365,8 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts(status=Status.WAITING_PREDECESSORS)
-    def check_predecessors_state(self) -> bool:
-        for predecessor in self.predecessors:
-            if predecessor.status == Status.UPDATE_STATE:
-                self.log(f"Node {self.name} waiting for {predecessor.name} to finish updating state")
-                return False
-        return True
-
     def run(self) -> None:
         self.log(f"--------------------------- started iteration 0 (initialization phase of {self.name}) ----------------------------------")
-        # setting up the node and the resource
         self.setup()
         self.log(f"--------------------------- finished iteration 0 (initialization phase of {self.name}) ----------------------------------")
         self.iteration += 1
@@ -378,10 +377,7 @@ class BaseActionNode(BaseNode):
             while self.check_predecessors_signals() is False:
                 time.sleep(0.1)
             
-            while self.check_predecessors_state() is False:
-                time.sleep(0.1)
-            
-            self.pre_execution()
+            self.before_execution()
             ret = False
             try:
                 ret = self.execute()
@@ -394,6 +390,8 @@ class BaseActionNode(BaseNode):
                 print(f"Error executing node '{self.name}': {traceback.format_exc()}")
                 self.on_error(e)
                 return
+
+            self.after_execution()
 
             time.sleep(0.2)
             self.signal_successors(Status.SUCCESS if ret else Status.FAILURE)
