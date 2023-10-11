@@ -1,98 +1,76 @@
+/* Material Design Fonts */
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap');
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Roboto', sans-serif;
+    background-color: #ECEFF1; /* Material background color */
     margin: 0;
     padding: 0;
 }
 
 nav {
-    background-color: #333;
-    color: white;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 50px;
+    padding: 00px 20px;
+    background-color: #6200EA; /* Material primary color */
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Material shadow */
 }
 
-.navbar-logo {
+.logo {
     font-size: 24px;
-    font-weight: bold;
+    font-weight: 500; /* Material medium font weight */
+    
 }
 
-.navbar-menu {
+.menu-items {
     list-style-type: none;
-    display: flex;
-    gap: 20px;
+    padding: 0;
 }
 
-.navbar-menu li a {
-    color: white;
+.menu-items li {
+    display: inline;
+    margin-right: 20px;
+}
+
+.menu-items a {
+    color: #fff;
     text-decoration: none;
+    font-weight: 500; /* Material medium font weight */
     transition: color 0.3s;
 }
 
-.navbar-menu li a:hover {
-    color: #ddd;
+.menu-items a:hover {
+    color: #BB86FC; /* Material secondary color */
 }
 
-.dashboard {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 50px;
-    gap: 20px;
-}
-
+/* D3.js styles */
 .node {
-    border: 1px solid #ddd;
-    padding: 20px;
-    border-radius: 5px;
-    width: 200px;
-    text-align: center;
+    stroke: #fff;
+    stroke-width: 1.5px;
 }
-/* ... previous CSS ... */
 
-.dashboard {
+.link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+}
+
+/* Add/Update this style for the Material Design folder icons */
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 55px; /* Adjust this value to size the icon */
     display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 50px;
-    gap: 20px;
-}
-
-.node {
-    border: 1px solid #ddd;
-    padding: 50px;
-    border-radius: 50%; /* Makes the node a circle */
-    width: 150px;
-    height: 150px;
+    line-height: 1;
+    text-transform: none;
     text-align: center;
-    position: relative;
-}
-
-.node h2 {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -60%);
-}
-
-.node p {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, 10%);
-}
-
-/* Node stages */
-.node.red {
-    background-color: red;
-}
-
-.node.green {
-    background-color: green;
-}
-
-.node.yellow {
-    background-color: yellow;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
 }
 

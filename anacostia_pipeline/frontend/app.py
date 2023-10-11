@@ -1,4 +1,6 @@
 from flask import Flask, jsonify, render_template
+import subprocess
+import os
 
 app = Flask(__name__)
 
@@ -27,5 +29,18 @@ def get_node_status():
     }
     return jsonify(node_status)
 
+@app.route('/run_script', methods=['POST'])
+def run_script():
+    # Get the current directory path
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    # Construct the path to the test_phase1.py script in the tests directory
+    script_path = os.path.join(current_directory, 'tests', 'test_phase1.py')
+    
+    try:
+        subprocess.call(['python', script_path])
+        return jsonify(status="success", message="Script executed successfully"), 200
+    except Exception as e:
+        return jsonify(status="error", message=str(e)), 500
+    
 if __name__ == "__main__":
     app.run(debug=True)

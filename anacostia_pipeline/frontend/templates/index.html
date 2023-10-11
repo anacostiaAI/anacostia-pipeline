@@ -4,50 +4,284 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anacostia AI Dashboard</title>
+   
+    <!-- Material Design CSS -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+   
+    <!-- Include Material Design Icon Font -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
-    <script src="https://unpkg.com/htmx.org"></script>
+    <!-- Material Design JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
 </head>
 <body>
-    <!-- Navbar -->
     <nav>
-        <div class="navbar-logo">
-            Anacostia AI
+        <div class="nav-wrapper">
+            <a href="#" class="logo">Anacostia AI Pipeline</a>
+            <ul class="right hide-on-med-and-down menu-items">
+                <li><a href="#">Model Registry</a></li>
+                <li><a href="#">Data Store</a></li>
+                <!-- Add more sections as needed -->
+            </ul>
         </div>
-        <ul class="navbar-menu">
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Model Registry</a></li>
-            <li><a href="#">Data Node</a></li>
-            <li><a href="#">Metadata Store</a></li>
-            <li><a href="#">Artifact</a></li>
-        </ul>
     </nav>
+    <svg width="960" height="600" id="dashboard"></svg>
+    <button hx-post="/run_script" hx-trigger="click" hx-swap="outerHTML" id="startSimulation" class="btn waves-effect waves-light">Start Simulation</button>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const nodes = [
+            // First Row
+            { id: "watch_dir", type: "folder", status: "grey", row: 1 },
+            { id: "data store", type: "folder", status: "grey", row: 1 },
+            { id: "model registry", type: "folder", status: "grey", row: 1 },
+            { id: "metadata store", type: "folder", status: "grey", row: 1 },
+            { id: "artifacts", type: "folder", status: "grey", row: 1 },
+            // Second Row
+            { id: "Data Store Node 1", status: "green", row: 2 },
+            { id: "Data Store Node 2", status: "green", row: 2 },
+            { id: "Model Registry Node", status: "yellow", row: 2 },
+            { id: "Metadata Store Node", status: "green", row: 2 },
+            // Third Row
+            { id: "Data Processing", status: "yellow", row: 3 },
+            // Fourth Row
+            { id: "Training", status: "green", row: 4 },
+            // Fifth Row
+           // { id: "Model Eval", status: "yellow", row: 5 },
+            // Sixth Row
+            { id: "Reporting", status: "red", row: 6 }
+        ];
 
-    <!-- Dashboard Content -->
-    <div class="dashboard">
-        <div class="node red">
-            <h2>Model Registry</h2>
-        </div>
-        <div class="node green">
-            <h2>Data Node</h2>
-        </div>
-        <div class="node yellow">
-            <h2>Metadata Store</h2>
-        </div>
-        <div class="node red">
-            <h2>Artifact</h2>
-        </div>
-    </div>
-
-<!-- ... remaining HTML ... -->
-With this setup, each node will appear as a circle, and you can easily change the color of each node by assigning the appropriate class (red, green, or yellow) based on its stage.
-
-
-
+        const links = [
+            // Data Flow Visualization
+            { source: "watch_dir", target: "Data Store Node 1",  },
+            { source: "data store", target: "Data Store Node 2" }, // Added link from "data store" folder to "Data Store Node 2"
+            { source: "model registry", target: "Model Registry Node" }, // Added link from "model registry" folder to "Model Registry Node"
+            { source: "metadata store", target: "Metadata Store Node" }, // Added link from "metadata store" folder to "Metadata Store Node"
+            { source: "Data Store Node 1", target: "Data Processing", label: "Raw data"},
+            { source: "Data Processing", target: "Data Store Node 2", label: "Processed data" },
+            { source: "Data Processing", target: "Training", label: "Signal"  },
+            { source: "Data Store Node 2", target: "Training", label: "" },
+            { source: "Training", target: "Model Registry Node", label: "Model" },
+            { source: "Training", target: "Metadata Store Node", label: "New stats" },
+            { source: "Training", target: "Reporting", label: "Signal"},
+            //{ source: "Metadata Store Node", target: "Model Eval", label: "Old stats + New stats" },
+            { source: "Metadata Store Node", target: "Reporting", label: "Old+New stats" },
+            { source: "Reporting", target: "artifacts", label: "Plots + PDF report" }, 
+            //{ source: "Model Registry Node", target: "Model Eval", label: "Recent Model" }, 
+            //{ source: "Model Eval", target: "Reporting", label: "Signal" }, 
+        ];
 
 
+        // Define a fixed x-coordinate for the folders and nodes to position them in a row
+        const folderPositions = {
+            "watch_dir": 100,
+            "data store": 270,
+            "model registry": 430,
+            "metadata store": 569,
+            "artifacts": 850
+        };
+
+        // Set initial positions for nodes based on your specifications
+        nodes.forEach(node => {
+            if (node.id === "Data Store Node 1") {
+                node.fx = folderPositions["watch_dir"];
+                node.fy = 150;
+            } else if (node.id === "Data Store Node 2") {
+                node.fx = folderPositions["data store"];
+                node.fy = 150;
+            } else if (node.id === "Model Registry Node") {
+                node.fx = folderPositions["model registry"];
+                node.fy = 150;
+            } else if (node.id === "Metadata Store Node") {
+                node.fx = folderPositions["metadata store"];
+                node.fy = 150;
+
+            } else if (node.id === "Data Processing") {
+                node.fx = 175;
+                node.fy = 350;
+            } else if (node.id === "Training") {
+                node.fx = 350;
+                node.fy = 450;
+            } else if (node.id === "Model Eval") {
+                node.fx = 500;
+                node.fy = 520;
+            }
+            else if (node.id === "Reporting") {
+                node.fx = 569;
+                node.fy = 540;
+            } else if (node.type === "folder") {
+                node.fx = folderPositions[node.id];
+                node.fy = 50 + (node.row - 1) * 100; // This sets the y position based on the row attribute
+            }
+                });
+
+        const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+        .force("charge", d3.forceManyBody().strength(-500))
+        .force("collide", d3.forceCollide().radius(50))
+        .force("center", d3.forceCenter(500, 250))
+        .force("y", d3.forceY().y(d => {
+        if (d.type !== "folder") return 50 + (d.row - 1) * 100;
+        }).strength(1.5))
+        .force("x", d3.forceX().x(d => {
+            if (d.type !== "folder") return 300;
+        }).strength(d => d.type === "folder" ? 0 : 1.0)); // Set the strength to 0 for folders
 
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        const svg = d3.select("#dashboard");
+
+        // Arrow definition for links
+        svg.append("defs").selectAll("marker")
+            .data(["arrow"])
+            .enter().append("marker")
+            .attr("id", d => d)
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 40)
+            .attr("refY", 0)
+            .attr("markerWidth", 10)
+            .attr("markerHeight", 10)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "#999");
+
+        const link = svg.append("g")
+            .attr("stroke", "#3F51B5")
+            .attr("stroke-opacity", 0.9)
+            .selectAll("line")
+            .data(links)
+            .join("line")
+            .attr("marker-end", "url(#arrow)"); 
+
+        const linkLabel = svg.append("g")
+            .attr("class", "link-label")
+            .selectAll("text")
+            .data(links)
+            .enter().append("text")
+            .text(d => d.label);  // Assuming each link object in your links array has a 'label' property
+
+        const getLabelPosition = (d) => {
+            const dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+            if (angle > 90 || angle < -90) {
+                return { x: (d.source.x + d.target.x) / 2 + 10, y: (d.source.y + d.target.y) / 2 + 10 };
+            } else {
+                return { x: (d.source.x + d.target.x) / 2 - 10, y: (d.source.y + d.target.y) / 2 - 10 };
+            }
+        };
+
+            linkLabel
+            .attr("x", d => getLabelPosition(d).x)
+            .attr("y", d => getLabelPosition(d).y);
+
+
+        // Render folders as squares and other nodes as circles
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .enter().append("g");
+
+        node.filter(d => d.type === "folder")
+            .append("text")
+            .attr("class", "material-icons")
+            .attr("fill", "#FFC107")  // Material Design Amber color
+            .attr("font-size", "100px")
+            .text("folder");  // Material Design folder icon
+
+        node.filter(d => d.type !== "folder")
+            .append("circle")
+            .attr("r", 30)
+            .attr("fill", d => {
+                switch(d.status) {
+                    case "green": return "#4CAF50";  // Material Design Green color
+                    case "yellow": return "#FFEB3B";  // Material Design Yellow color
+                    case "red": return "#F44336";  // Material Design Red color
+                    default: return "#9E9E9E";  // Material Design Grey color
+                }
+            });
+
+        node.append("title")
+            .text(d => d.id);
+
+        const label = svg.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .text(d => d.id)
+            .attr("font-size", "12px")
+            .attr("text-anchor", "middle")
+            .attr("dy", ".35em");
+
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => {
+                    let yOffset = (d.type === "folder") ? -0 : 0;  // Adjust this value as needed
+                    return `translate(${d.x}, ${d.y + yOffset})`;
+                });
+            label
+                .attr("x", d => d.x)
+                .attr("y", d => {
+                    let yOffset = (d.type === "folder") ? 0 : 0;  // Adjust this value as needed
+                    return d.y + yOffset;
+                });
+
+            linkLabel
+                .attr("x", d => (d.source.x + d.target.x) / 2)
+                .attr("y", d => (d.source.y + d.target.y) / 2);
+        });
+
+        // Function to start the simulation
+        function startSimulation() {
+            const nodeOrder = ["Data Store Node 1", "Data Processing", "Data Store Node 2", "Training", "Model Registry Node", "Metadata Store Node", "Reporting"];
+
+            // Set all nodes to grey initially
+            nodes.forEach(node => {
+                node.status = "grey";
+            });
+            updateNodeColors();
+
+            // Function to update node colors based on their status
+            function updateNodeColors() {
+                node.selectAll("circle")
+                    .attr("fill", d => {
+                        switch(d.status) {
+                            case "green": return "#4CAF50";  // Material Design Green color
+                            case "yellow": return "#FFEB3B";  // Material Design Yellow color
+                            case "red": return "#F44336";  // Material Design Red color
+                            default: return "#9E9E9E";  // Material Design Grey color
+                        }
+                    });
+            }
+
+            // Update each node's color one by one based on the nodeOrder
+            nodeOrder.forEach((nodeId, index) => {
+                setTimeout(() => {
+                    const nodeToUpdate = nodes.find(node => node.id === nodeId);
+                    if (nodeToUpdate) {
+                        nodeToUpdate.status = "yellow";
+                        updateNodeColors();
+
+                        setTimeout(() => {
+                            nodeToUpdate.status = "green";
+                            updateNodeColors();
+                        }, 3000);
+                    }
+                }, index * 6000);  // 6000ms = 6 seconds (3 seconds for yellow and 3 seconds for green)
+            });
+        }
+        // Add event listener to the button
+        document.getElementById("startSimulation").addEventListener("click", startSimulation);
+    </script>
 </body>
 </html>
