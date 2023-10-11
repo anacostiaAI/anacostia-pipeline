@@ -1,14 +1,9 @@
 from typing import List, Iterable
 import time
-import json
 import sys
 import os
-import pkg_resources
 from logging import Logger
-
 import networkx as nx
-from rich.console import Console
-from rich.prompt import Prompt, Confirm
 
 
 sys.path.append(os.path.abspath('..'))
@@ -82,7 +77,7 @@ class Pipeline:
 
         print("Terminating nodes")
         for node in reversed(self.nodes):
-            node.stop()
+            node.exit()
             node.join()
         print("All nodes terminated")
 

@@ -1,6 +1,6 @@
-from threading import Thread, Lock, RLock
+from threading import Thread, Lock
 from queue import Queue
-from typing import List, Dict, Optional, Set, Union
+from typing import List, Dict
 import time
 from logging import Logger
 from datetime import datetime
@@ -8,7 +8,6 @@ from functools import wraps
 import traceback
 import sys
 from pydantic import BaseModel
-from networkx import DiGraph
 
 if __name__ == "__main__":
     from constants import Status
@@ -188,7 +187,7 @@ class BaseNode(Thread):
     def resume(self):
         self.status = Status.RUNNING
 
-    def stop(self):
+    def exit(self):
         self.status = Status.EXITING
 
     @trap_exceptions
@@ -257,7 +256,7 @@ class BaseResourceNode(BaseNode):
         return True
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration {self.iteration} (initialization phase of {self.name}) ----------------------------------")
+        self.log(f"--------------------------- started iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
         self.setup()
     
         # waiting for the trigger condition to be met
@@ -277,12 +276,12 @@ class BaseResourceNode(BaseNode):
         # updating the state of the resource in case the trigger condition is met in iteration 0
         self.update_state()
 
-        self.log(f"--------------------------- finished iteration {self.iteration} (initialization phase of {self.name}) ----------------------------------")
+        self.log(f"--------------------------- finished iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
         time.sleep(0.2)
         self.signal_successors(Status.SUCCESS)
 
-        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) -------------------------------------")
+        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         while True:
             # check the resource to see if the trigger condition is met, and if so, signal the next node
             resource_check = False
@@ -295,10 +294,12 @@ class BaseResourceNode(BaseNode):
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
             if self.check_successors_signals() is True:
+                #self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # if all successors have finished using the state, then update the state of the resource
                 self.update_state()
                 self.iteration += 1
+                #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # signal the successors to execute if the trigger condition is met
                 self.signal_successors(Status.SUCCESS if resource_check else Status.FAILURE)
@@ -366,17 +367,17 @@ class BaseActionNode(BaseNode):
         pass
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration 0 (initialization phase of {self.name}) ----------------------------------")
+        self.log(f"--------------------------- started iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
         self.setup()
-        self.log(f"--------------------------- finished iteration 0 (initialization phase of {self.name}) ----------------------------------")
+        self.log(f"--------------------------- finished iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
 
-        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) -------------------------------------")
         while True:
             time.sleep(0.2)
             while self.check_predecessors_signals() is False:
                 time.sleep(0.1)
             
+            self.log(f"--------------------------- started iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
             self.before_execution()
             ret = False
             try:
@@ -392,6 +393,7 @@ class BaseActionNode(BaseNode):
                 return
 
             self.after_execution()
+            self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             time.sleep(0.2)
             self.signal_successors(Status.SUCCESS if ret else Status.FAILURE)
