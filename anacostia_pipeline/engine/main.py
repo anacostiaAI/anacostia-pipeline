@@ -113,6 +113,7 @@ class GUI:
         # since we are defining the flask app inside a class, we cannot use the regular flask decorator; 
         # thus, we must register the routes using add_url_rule
         self.app.add_url_rule("/", view_func=self.render_graph, methods=["GET"])
+        self.app.add_url_rule("/node?node_name=node1", view_func=self.get_node_info, methods=["GET"])
 
     def render_graph(self) -> Any:
         """
@@ -128,6 +129,13 @@ class GUI:
         <ul>
             {"".join([node.return_html() for node in self.nodes])}  
         </ul>
+        """
+    
+    def get_node_info(self, node_name) -> str:
+        # get the node with the equivalent node name from self.nodes 
+
+        return f"""
+        create html fragment for the information from the node
         """
     
     def run(self) -> None:
