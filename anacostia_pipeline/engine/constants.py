@@ -48,34 +48,3 @@ class Status(Enum):
     
     def __hash__(self) -> int:
         return super().__hash__()
-
-class ASTOperation(Enum):
-    NOT = 0
-    AND = 1
-    OR = 2
-    XOR = 3
-
-class ExternalSignal(Enum):
-    PAUSE = 0,
-    RUN = 1,
-    EXIT = 3,
-
-    def __repr__(self) -> str:
-        signal_words = {
-            ExternalSignal.PAUSE: "PAUSE",
-            ExternalSignal.RUN: "RUN",
-            ExternalSignal.EXIT: "EXIT",
-        }
-        return signal_words[self]
-    
-    def __int__(self) -> int:
-        return self.value
-    
-    def __eq__(self, other: 'ExternalSignal') -> bool:
-        if other.value == self.value:
-            return True
-        else:
-            return False
-    
-    def __hash__(self) -> int:
-        return super().__hash__()
