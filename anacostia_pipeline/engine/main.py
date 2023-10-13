@@ -113,7 +113,8 @@ class GUI:
         # since we are defining the flask app inside a class, we cannot use the regular flask decorator; 
         # thus, we must register the routes using add_url_rule
         self.app.add_url_rule("/", view_func=self.render_graph, methods=["GET"])
-        self.app.add_url_rule("/node?node_name=node1", view_func=self.get_node_info, methods=["GET"])
+        self.app.add_url_rule("/node_graph/<node_name>", view_func=self.render_graph_node, methods=["GET"])
+        self.app.add_url_rule("/node_modal/<node_name>", view_func=self.render_node_modal, methods=["GET"])
 
     def render_graph(self) -> Any:
         """
@@ -131,11 +132,21 @@ class GUI:
         </ul>
         """
     
-    def get_node_info(self, node_name) -> str:
+    def render_graph_node(self, node_name) -> str:
         # get the node with the equivalent node name from self.nodes 
 
         return f"""
-        create html fragment for the information from the node
+        create html fragment for the information from the node. 
+        insert the html fragment into the graph.
+        """
+
+    def render_node_modal(self, node_name) -> str:
+        # get the node with the equivalent node name from self.nodes 
+
+        return f"""
+        create html fragment for the information from the node.
+        insert the html fragment into the modal.
+        modal should be triggered by clicking on the node in the graph.
         """
     
     def run(self) -> None:
