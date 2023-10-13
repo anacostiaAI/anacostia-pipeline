@@ -16,7 +16,6 @@ class Status(Enum):
     INIT = 12,
     UPDATE_STATE = 13
     OFF = 14
-    STOPPING = 15
 
     def __repr__(self) -> str:
         status_words = {
@@ -35,8 +34,6 @@ class Status(Enum):
             Status.INIT: "INITIALIZING",
             Status.UPDATE_STATE: "UPDATE_STATE",
             Status.OFF: "OFF",
-            # remove Status.STOPPING later
-            Status.STOPPING: "STOPPING"
         }
         return status_words[self]
     
