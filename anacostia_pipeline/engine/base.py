@@ -82,7 +82,7 @@ class BaseNode(Thread):
                     self.status = Status.EXITED
                     sys.exit(0)
 
-                self.status = status
+                #self.status = status
                 ret = func(self, *args, **kwargs)
                 return ret
             return wrapper
