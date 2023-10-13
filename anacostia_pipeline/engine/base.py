@@ -82,6 +82,7 @@ class BaseNode(Thread):
                     self.status = Status.EXITED
                     sys.exit(0)
 
+                self.status = status
                 ret = func(self, *args, **kwargs)
                 return ret
             return wrapper
@@ -221,7 +222,20 @@ class BaseResourceNode(BaseNode):
         self.uri = uri
         self.iteration = 0
         self.resource_lock = Lock()
+        self._trigger = False
+        self._trigger_lock = Lock()
         super().__init__(name, [])
+
+    @property
+    def trigger(self):
+        return self._trigger
+
+    @trigger.setter
+    def trigger(self, value: bool):
+        while True:
+            with self._trigger_lock:
+                self._trigger = value
+                break
 
     def resource_accessor(func):
         @wraps(func)
