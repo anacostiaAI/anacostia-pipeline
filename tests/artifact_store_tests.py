@@ -4,6 +4,7 @@ import sys
 import os
 import shutil
 import random
+import time
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -33,3 +34,29 @@ logging.basicConfig(
 
 # Create a logger
 logger = logging.getLogger(__name__)
+
+
+class DataStoreNode(ArtifactStoreNode):
+    def __init__(self, name: str, path: str, init_state: str = "current", max_old_samples: int = None) -> None:
+        super().__init__(name, path, init_state, max_old_samples)
+
+
+class TestArtifactStore(unittest.TestCase):
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+    
+    def setUp(self) -> None:
+        self.path = f"{artifact_store_tests_path}/{self._testMethodName}"
+        self.artifact_store_path = f"{self.path}/artifact_store"
+        os.makedirs(self.path)
+    
+    def test_empty_pipeline(self):
+        data_store = DataStoreNode("data_store", self.artifact_store_path)
+        pipeline = Pipeline([data_store], logger)
+
+        pipeline.launch_nodes()
+        time.sleep(5)
+        pipeline.terminate_nodes()
+
+if __name__ == "__main__":
+    unittest.main()
