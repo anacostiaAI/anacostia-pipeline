@@ -10,21 +10,22 @@ import sys
 from pydantic import BaseModel
 
 if __name__ == "__main__":
-    from constants import Status
+    from constants import Status, Result, Work
 else:
-    from engine.constants import Status
+    from engine.constants import Status, Result, Work
 
 
 class Message(BaseModel):
     sender: str
     timestamp: datetime
-    status: Status = None
+    status: Result = None
 
 
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List['BaseNode'], logger: Logger = None) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
+        self.work_list = list()
         self.logger = logger
 
         self.successors: List['BaseNode'] = list()
@@ -62,31 +63,29 @@ class BaseNode(Thread):
                 break
 
     @staticmethod
-    def trap_interrupts(status: Status):
+    def trap_interrupts(func):
         """
         A Decorator for allowing the node to be paused mid execution
         """
-        def outer_wrapper(func):
-            def wrapper(self, *args, **kwargs):
-                if self.status == Status.PAUSING:
-                    self.log(f"Node {self.name} paused at {datetime.now()}")
-                    self.status = Status.PAUSED
+        def wrapper(self, *args, **kwargs):
+            if self.status == Status.PAUSING:
+                self.log(f"Node {self.name} paused at {datetime.now()}")
+                self.status = Status.PAUSED
 
-                    while self.status == Status.PAUSED:
-                        time.sleep(0.1)
+                # Wait until the node is resumed by the pipeline calling resume()
+                while self.status == Status.PAUSED:
+                    time.sleep(0.1)
 
-                elif self.status == Status.EXITING:
-                    self.log(f"Node {self.name} exiting at {datetime.now()}")
-                    self.on_exit()
-                    self.log(f"Node {self.name} exited at {datetime.now()}")
-                    self.status = Status.EXITED
-                    sys.exit(0)
+            if self.status == Status.EXITING:
+                self.log(f"Node {self.name} exiting at {datetime.now()}")
+                self.on_exit()
+                self.log(f"Node {self.name} exited at {datetime.now()}")
+                self.status = Status.EXITED
+                sys.exit(0)
 
-                #self.status = status
-                ret = func(self, *args, **kwargs)
-                return ret
-            return wrapper
-        return outer_wrapper
+            ret = func(self, *args, **kwargs)
+            return ret
+        return wrapper
 
     def trap_exceptions(func):
         @wraps(func)
@@ -118,7 +117,7 @@ class BaseNode(Thread):
         for predecessor in self.predecessors:
             predecessor.successors_queue.put(msg)
 
-    @trap_interrupts(status=Status.WAITING_PREDECESSORS)
+    @trap_interrupts
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
             if self.predecessors_queue.empty():
@@ -131,13 +130,13 @@ class BaseNode(Thread):
                 if sig.sender not in self.received_predecessors_signals:
                     self.received_predecessors_signals[sig.sender] = sig.status
                 else:
-                    if self.received_predecessors_signals[sig.sender] != Status.SUCCESS:
+                    if self.received_predecessors_signals[sig.sender] != Result.SUCCESS:
                         self.received_predecessors_signals[sig.sender] = sig.status
                 # TODO For signaling over the network, this is where we'd send back an ACK
 
             # Check if the signals match the execute condition
             if len(self.received_predecessors_signals) == len(self.predecessors):
-                if all([sig == Status.SUCCESS for sig in self.received_predecessors_signals.values()]):
+                if all([sig == Result.SUCCESS for sig in self.received_predecessors_signals.values()]):
 
                     # Reset the received signals
                     self.received_predecessors_signals = dict()
@@ -150,7 +149,7 @@ class BaseNode(Thread):
         # If there are no dependent nodes, then we can just return True
         return True
     
-    @trap_interrupts(status=Status.WAITING_SUCCESSORS)
+    @trap_interrupts
     def check_successors_signals(self) -> bool:
         if len(self.successors) > 0:
             if self.successors_queue.empty():
@@ -163,13 +162,13 @@ class BaseNode(Thread):
                 if sig.sender not in self.received_successors_signals:
                     self.received_successors_signals[sig.sender] = sig.status
                 else:
-                    if self.received_successors_signals[sig.sender] != Status.SUCCESS:
+                    if self.received_successors_signals[sig.sender] != Result.SUCCESS:
                         self.received_successors_signals[sig.sender] = sig.status
                 # TODO For signaling over the network, this is where we'd send back an ACK
 
             # Check if the signals match the execute condition
             if len(self.received_successors_signals) == len(self.successors):
-                if all([sig == Status.SUCCESS for sig in self.received_successors_signals.values()]):
+                if all([sig == Result.SUCCESS for sig in self.received_successors_signals.values()]):
 
                     # Reset the received signals
                     self.received_successors_signals = dict()
@@ -255,7 +254,7 @@ class BaseResourceNode(BaseNode):
                     return func(self, *args, **kwargs)
         return wrapper
 
-    @BaseNode.trap_interrupts(status=Status.UPDATE_STATE)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def update_state(self) -> None:
@@ -264,14 +263,16 @@ class BaseResourceNode(BaseNode):
         """
         raise NotImplementedError
 
-    @BaseNode.trap_interrupts(status=Status.WAITING_RESOURCE)
+    @BaseNode.trap_interrupts
     @resource_accessor
     def check_resource(self) -> bool:
         return True
 
     def run(self) -> None:
         self.log(f"--------------------------- started iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
+        self.status = Status.INIT
         self.setup()
+        self.status = Status.RUNNING
     
         # waiting for the trigger condition to be met
         while True:
@@ -293,7 +294,7 @@ class BaseResourceNode(BaseNode):
         self.log(f"--------------------------- finished iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
         time.sleep(0.2)
-        self.signal_successors(Status.SUCCESS)
+        self.signal_successors(Result.SUCCESS)
 
         self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         while True:
@@ -316,7 +317,7 @@ class BaseResourceNode(BaseNode):
                 #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # signal the successors to execute if the trigger condition is met
-                self.signal_successors(Status.SUCCESS if resource_check else Status.FAILURE)
+                self.signal_successors(Result.SUCCESS if resource_check else Status.FAILURE)
 
 
 class BaseActionNode(BaseNode):
@@ -328,7 +329,7 @@ class BaseActionNode(BaseNode):
         self.iteration = 0
         super().__init__(name, predecessors)
 
-    @BaseNode.trap_interrupts(status=Status.RUNNING)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def before_execution(self) -> None:
         """
@@ -337,7 +338,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts(status=Status.RUNNING)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def after_execution(self) -> None:
         """
@@ -346,14 +347,14 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts(status=Status.RUNNING)
+    @BaseNode.trap_interrupts
     def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
         raise NotImplementedError
 
-    @BaseNode.trap_interrupts(status=Status.FAILURE)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_failure(self) -> None:
         """
@@ -362,7 +363,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_interrupts(status=Status.RUNNING)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_error(self, e: Exception) -> None:
         """
@@ -371,7 +372,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_interrupts(status=Status.SUCCESS)
+    @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_success(self) -> None:
         """
@@ -382,7 +383,9 @@ class BaseActionNode(BaseNode):
 
     def run(self) -> None:
         self.log(f"--------------------------- started iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
+        self.status = Status.INIT
         self.setup()
+        self.status = Status.RUNNING
         self.log(f"--------------------------- finished iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
 
@@ -410,7 +413,7 @@ class BaseActionNode(BaseNode):
             self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             time.sleep(0.2)
-            self.signal_successors(Status.SUCCESS if ret else Status.FAILURE)
+            self.signal_successors(Result.SUCCESS if ret else Status.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the current state
@@ -418,5 +421,5 @@ class BaseActionNode(BaseNode):
                 time.sleep(0.1)
 
             time.sleep(0.2)
-            self.signal_predecessors(Status.SUCCESS if ret else Status.FAILURE)
+            self.signal_predecessors(Result.SUCCESS if ret else Status.FAILURE)
             self.iteration += 1
