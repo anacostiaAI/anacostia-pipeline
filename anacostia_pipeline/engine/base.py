@@ -18,14 +18,14 @@ else:
 class Message(BaseModel):
     sender: str
     timestamp: datetime
-    status: Result = None
+    result: Result = None
 
 
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List['BaseNode'], logger: Logger = None) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
-        self.work_list = list()
+        self.work_list = set()
         self.logger = logger
 
         self.successors: List['BaseNode'] = list()
@@ -99,20 +99,20 @@ class BaseNode(Thread):
                 return
         return wrapper
     
-    def signal_successors(self, status:Status):
+    def signal_successors(self, result: Result):
         msg = Message(
             sender = self.name,
             timestamp = datetime.now(),
-            status = status
+            result = result
         )
         for successor in self.successors:
             successor.predecessors_queue.put(msg)
 
-    def signal_predecessors(self, status:Status):
+    def signal_predecessors(self, result: Result):
         msg = Message(
             sender = self.name,
             timestamp = datetime.now(),
-            status = status
+            result = result
         )
         for predecessor in self.predecessors:
             predecessor.successors_queue.put(msg)
@@ -128,10 +128,10 @@ class BaseNode(Thread):
                 sig: Message = self.predecessors_queue.get()
 
                 if sig.sender not in self.received_predecessors_signals:
-                    self.received_predecessors_signals[sig.sender] = sig.status
+                    self.received_predecessors_signals[sig.sender] = sig.result
                 else:
                     if self.received_predecessors_signals[sig.sender] != Result.SUCCESS:
-                        self.received_predecessors_signals[sig.sender] = sig.status
+                        self.received_predecessors_signals[sig.sender] = sig.result
                 # TODO For signaling over the network, this is where we'd send back an ACK
 
             # Check if the signals match the execute condition
@@ -160,10 +160,10 @@ class BaseNode(Thread):
                 sig: Message = self.successors_queue.get()
 
                 if sig.sender not in self.received_successors_signals:
-                    self.received_successors_signals[sig.sender] = sig.status
+                    self.received_successors_signals[sig.sender] = sig.result
                 else:
                     if self.received_successors_signals[sig.sender] != Result.SUCCESS:
-                        self.received_successors_signals[sig.sender] = sig.status
+                        self.received_successors_signals[sig.sender] = sig.result
                 # TODO For signaling over the network, this is where we'd send back an ACK
 
             # Check if the signals match the execute condition
@@ -317,7 +317,7 @@ class BaseResourceNode(BaseNode):
                 #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # signal the successors to execute if the trigger condition is met
-                self.signal_successors(Result.SUCCESS if resource_check else Status.FAILURE)
+                self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
 
 
 class BaseActionNode(BaseNode):
@@ -413,7 +413,7 @@ class BaseActionNode(BaseNode):
             self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             time.sleep(0.2)
-            self.signal_successors(Result.SUCCESS if ret else Status.FAILURE)
+            self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the current state
@@ -421,5 +421,5 @@ class BaseActionNode(BaseNode):
                 time.sleep(0.1)
 
             time.sleep(0.2)
-            self.signal_predecessors(Result.SUCCESS if ret else Status.FAILURE)
+            self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
             self.iteration += 1

@@ -12,14 +12,6 @@ class Status(Enum):
     DISCONNECTED = 15,
     ERROR = 2,
 
-    # remove these
-    FAILURE = 0,
-    SUCCESS = 1,
-    WAITING_RESOURCE = 3,
-    WAITING_SUCCESSORS = 4,
-    WAITING_PREDECESSORS = 5,
-    UPDATE_STATE = 13
-
     def __repr__(self) -> str:
         status_words = {
             Status.RUNNING: "RUNNING",
@@ -32,14 +24,6 @@ class Status(Enum):
             Status.OFF: "OFF",
             Status.DISCONNECTED: "DISCONNECTED",
             Status.ERROR: "ERROR",
-            
-            # remove these
-            Status.FAILURE: "FAILURE",
-            Status.SUCCESS: "SUCCESS",
-            Status.WAITING_RESOURCE: "WAITING_RESOURCE",
-            Status.WAITING_SUCCESSORS: "WAITING_SUCCESSORS",
-            Status.WAITING_PREDECESSORS: "WAITING_PREDECESSORS",
-            Status.UPDATE_STATE: "UPDATE_STATE",
         }
         return status_words[self]
     
