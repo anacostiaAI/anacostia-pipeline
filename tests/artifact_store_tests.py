@@ -11,6 +11,8 @@ sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 
+from utils import *
+
 
 # Set the seed for reproducibility
 seed_value = 42
@@ -55,7 +57,12 @@ class TestArtifactStore(unittest.TestCase):
         pipeline = Pipeline([data_store], logger)
 
         pipeline.launch_nodes()
-        time.sleep(5)
+        time.sleep(2)
+
+        for i in range(5):
+            create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
+
+        time.sleep(2)
         pipeline.terminate_nodes()
 
 if __name__ == "__main__":
