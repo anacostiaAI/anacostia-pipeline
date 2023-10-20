@@ -58,7 +58,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                         json_file_entry["state"] = self.init_state
                         json_file_entry["created_at"] = self.init_time
                         json_entry["files"].append(json_file_entry)
-                        self.log(f"Added to data_store.json: {filepath}")
+                        self.log(f"Added to data_store.json: '{filepath}'")
                 
                 json.dump(json_entry, json_file, indent=4)
                 self.log(f"Created data_store.json file at {self.data_store_json_path}")

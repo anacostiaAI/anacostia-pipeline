@@ -97,7 +97,14 @@ class TestArtifactStore(unittest.TestCase):
         for i in range(5):
             create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
 
+        time.sleep(2)
+
         pipeline.launch_nodes()
+        
+        for i in range(5, 10):
+            create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
+            time.sleep(1)
+
         time.sleep(15)
         pipeline.terminate_nodes()
 
