@@ -1,4 +1,4 @@
-from threading import Thread, Lock
+from threading import Thread, Lock, RLock
 from queue import Queue
 from typing import List, Dict
 import time
@@ -27,6 +27,7 @@ class BaseNode(Thread):
         self._status = Status.OFF
         self.work_list = set()
         self.logger = logger
+        self.anacostia_path: str = None
 
         self.successors: List['BaseNode'] = list()
         self.predecessors = predecessors
@@ -35,15 +36,21 @@ class BaseNode(Thread):
         self.received_predecessors_signals: Dict[str, Message] = dict()
         self.received_successors_signals: Dict[str, Message] = dict()
         super().__init__(name=name)
-
+    
     def __hash__(self) -> int:
         return hash(self.name)
 
     def __repr__(self) -> str:
         return f"'Node(name: {self.name})'"
     
+    def set_anacostia_path(self, path: str) -> None:
+        self.anacostia_path = path
+    
     def set_logger(self, logger: Logger) -> None:
-        self.logger = logger
+        if self.logger is None:
+            self.logger = logger
+        else:
+            raise ValueError(f"Logger for node '{self.name}' has already been set.")
 
     def log(self, message: str) -> None:
         if self.logger is not None:
@@ -94,7 +101,7 @@ class BaseNode(Thread):
                 ret = func(self, *args, **kwargs)
                 return ret
             except Exception as e:
-                print(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}")
                 self.status = Status.ERROR
                 return
         return wrapper
@@ -216,25 +223,13 @@ class BaseResourceNode(BaseNode):
     def __init__(
         self, 
         name: str, 
-        uri: str
+        uri: str,
+        logger: Logger = None
     ) -> None:
         self.uri = uri
         self.iteration = 0
-        self.resource_lock = Lock()
-        self._trigger = False
-        self._trigger_lock = Lock()
-        super().__init__(name, [])
-
-    @property
-    def trigger(self):
-        return self._trigger
-
-    @trigger.setter
-    def trigger(self, value: bool):
-        while True:
-            with self._trigger_lock:
-                self._trigger = value
-                break
+        self.resource_lock = RLock()
+        super().__init__(name, [], logger=logger)
 
     def resource_accessor(func):
         @wraps(func)
@@ -325,9 +320,10 @@ class BaseActionNode(BaseNode):
         self, 
         name: str,
         predecessors: List[BaseNode], 
+        logger: Logger = None
     ) -> None:
         self.iteration = 0
-        super().__init__(name, predecessors)
+        super().__init__(name, predecessors, logger=logger)
 
     @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions

@@ -31,9 +31,20 @@ class Pipeline:
     2. Ensuring the user built the graph correctly (i.e., ensuring the graph is a DAG)
     """
 
-    def __init__(self, nodes: Iterable[BaseNode], logger: Logger = None) -> None:
+    def __init__(self, nodes: Iterable[BaseNode], anacostia_path: str = None, logger: Logger = None) -> None:
         self.graph = nx.DiGraph()
 
+        if anacostia_path is not None:
+            self.anacostia_path = os.path.join(anacostia_path, "anacostia")
+        else:
+            self.anacostia_path = os.path.join(os.path.abspath('.'), "anacostia")
+        
+        os.makedirs(self.anacostia_path, exist_ok=True)
+        
+        # Set anacostia path for all nodes
+        for node in nodes:
+            node.set_anacostia_path(self.anacostia_path)
+        
         # Add nodes into graph
         for node in nodes:
             self.graph.add_node(node)
@@ -57,7 +68,7 @@ class Pipeline:
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
 
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
-        
+
     def launch_nodes(self):
         """
         Lanches all the registered nodes in topological order.

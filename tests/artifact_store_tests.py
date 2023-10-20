@@ -1,3 +1,4 @@
+from typing import List
 import unittest
 import logging
 import sys
@@ -9,6 +10,7 @@ import time
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
+from anacostia_pipeline.engine.base import BaseActionNode, BaseNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 from utils import *
@@ -39,8 +41,22 @@ logger = logging.getLogger(__name__)
 
 
 class DataStoreNode(ArtifactStoreNode):
-    def __init__(self, name: str, path: str, init_state: str = "current", max_old_samples: int = None) -> None:
+    def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
         super().__init__(name, path, init_state, max_old_samples)
+
+
+class DataPreparationNode(BaseActionNode):
+    def __init__(self, name: str, data_store: DataStoreNode) -> None:
+        self.data_store_path = data_store.data_store_path
+        super().__init__(name, predecessors=[data_store])
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log(f"Executing node '{self.name}'")
+
+        time.sleep(5)
+        
+        self.log(f"Node '{self.name}' executed successfully.")
+        return True
 
 
 class TestArtifactStore(unittest.TestCase):
@@ -54,16 +70,33 @@ class TestArtifactStore(unittest.TestCase):
     
     def test_empty_pipeline(self):
         data_store = DataStoreNode("data_store", self.artifact_store_path)
-        pipeline = Pipeline([data_store], logger)
+        data_prep = DataPreparationNode("data_prep", data_store)
+        pipeline = Pipeline(nodes=[data_store, data_prep], anacostia_path=self.path, logger=logger)
 
         pipeline.launch_nodes()
         time.sleep(2)
 
         for i in range(5):
             create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
+            time.sleep(1)
 
-        time.sleep(2)
+        time.sleep(10)
         pipeline.terminate_nodes()
+
+    def test_nonempty_pipeline(self):
+        data_store = DataStoreNode("data_store", self.artifact_store_path)
+        data_prep = DataPreparationNode("data_prep", data_store)
+        pipeline = Pipeline(nodes=[data_store, data_prep], anacostia_path=self.path, logger=logger)
+
+        for i in range(5):
+            create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
+
+        pipeline.launch_nodes()
+        time.sleep(2)
+
+        time.sleep(10)
+        pipeline.terminate_nodes()
+
 
 if __name__ == "__main__":
     unittest.main()
