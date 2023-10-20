@@ -89,10 +89,34 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                 json.dump(json_data, json_file, indent=4)
 
     def check_resource(self) -> bool:
-        return self.trigger_condition()
-
-    def trigger_condition(self) -> bool:
+        # implement the triggering logic here
         return True
+    
+    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.resource_accessor
+    def get_artifacts(self, state: str) -> List[Any]:
+        with open(self.data_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+        
+        artifacts = []
+        for file_entry in json_data["files"]:
+            if file_entry["state"] == state:
+                artifacts.append(file_entry["filepath"])
+        
+        return artifacts
+    
+    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.resource_accessor
+    def get_num_artifacts(self, state: str) -> int:
+        with open(self.data_store_json_path, 'r') as json_file:
+            json_data = json.load(json_file)
+        
+        num_artifacts = 0
+        for file_entry in json_data["files"]:
+            if file_entry["state"] == state:
+                num_artifacts += 1
+        
+        return num_artifacts
     
     def update_state(self) -> None:
         self.log(f"Updating state of node '{self.name}'")

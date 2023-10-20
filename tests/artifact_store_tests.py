@@ -43,6 +43,12 @@ logger = logging.getLogger(__name__)
 class DataStoreNode(ArtifactStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
         super().__init__(name, path, init_state, max_old_samples)
+    
+    def check_resource(self) -> bool:
+        if self.get_num_artifacts("new") < 2:
+            return False
+        else:
+            return True
 
 
 class DataPreparationNode(BaseActionNode):
@@ -80,7 +86,7 @@ class TestArtifactStore(unittest.TestCase):
             create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
             time.sleep(1)
 
-        time.sleep(10)
+        time.sleep(15)
         pipeline.terminate_nodes()
 
     def test_nonempty_pipeline(self):
@@ -92,9 +98,7 @@ class TestArtifactStore(unittest.TestCase):
             create_file(f"{self.artifact_store_path}/test_file{i}.txt", f"test file {i}")
 
         pipeline.launch_nodes()
-        time.sleep(2)
-
-        time.sleep(10)
+        time.sleep(15)
         pipeline.terminate_nodes()
 
 
