@@ -51,10 +51,15 @@ Check that the new version is now set as default:
 
 How to install the pipeline:
 
-1. Create the python virtual env
+1. Create the python virtual env (Linux/Mac)
 ```
 python3 -m venv venv
 source venv/bin/activate
+```
+Create the python virtual env (Windows)
+```
+python -m venv venv
+venv\Scripts\activate
 ```
 2. pip install requiresments.txt
    
