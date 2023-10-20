@@ -220,12 +220,7 @@ class BaseNode(Thread):
 
 
 class BaseResourceNode(BaseNode):
-    def __init__(
-        self, 
-        name: str, 
-        uri: str,
-        logger: Logger = None
-    ) -> None:
+    def __init__(self, name: str, uri: str, logger: Logger = None) -> None:
         self.uri = uri
         self.iteration = 0
         self.resource_lock = RLock()
@@ -316,12 +311,7 @@ class BaseResourceNode(BaseNode):
 
 
 class BaseActionNode(BaseNode):
-    def __init__(
-        self, 
-        name: str,
-        predecessors: List[BaseNode], 
-        logger: Logger = None
-    ) -> None:
+    def __init__(self, name: str, predecessors: List[BaseNode], logger: Logger = None) -> None:
         self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
 

@@ -10,7 +10,8 @@ import time
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
-from anacostia_pipeline.engine.base import BaseActionNode, BaseNode
+from anacostia_pipeline.engine.base import BaseActionNode
+from anacostia_pipeline.engine.logic import AndAndNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 from utils import *
@@ -58,9 +59,7 @@ class DataPreparationNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
-
         time.sleep(5)
-        
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
