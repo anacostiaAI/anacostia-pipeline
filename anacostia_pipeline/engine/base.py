@@ -206,7 +206,7 @@ class BaseNode(Thread):
         creating python virtual environments, creating database connections, etc.
         note that the setup() method will be ran in a separate thread; 
         this is the main difference between setting up the node using setup() and __init__()
-        therefore, it is best to put set up logic here that is not dependent on other nodes.
+        therefore, it is best to the set up logic is not dependent on other nodes.
         """
         pass
 
@@ -231,20 +231,22 @@ class BaseResourceNode(BaseNode):
     def resource_accessor(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            # make sure setup is finished before allowing other nodes to access the resource
-            # Note: this means any function decorated with the resource_accessor cannot be called inside the setup method
-            while self.status == Status.INIT:
-                if func.__name__ == "setup":
-                    break
-                else:
-                    time.sleep(0.1)
-
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
                 with self.resource_lock:
                     return func(self, *args, **kwargs)
         return wrapper
+    
+    @BaseNode.trap_interrupts
+    @BaseNode.trap_exceptions
+    @resource_accessor
+    def start_monitoring(self) -> None:
+        """
+        Override to specify how the resource is monitored. 
+        Typically, this method will be used to start an observer that runs in a child thread spawned by the thread running the node.
+        """
+        pass
 
     @BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
@@ -261,12 +263,11 @@ class BaseResourceNode(BaseNode):
         return True
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
-        self.status = Status.INIT
-        self.setup()
-        self.status = Status.RUNNING
-    
-        # waiting for the trigger condition to be met
+        self.log(f"--------------------------- started iteration {self.iteration} {self.name} at {datetime.now()}")
+        self.start_monitoring()
+
+        # waiting for the trigger condition to be met; 
+        # sometimes the node is started before the trigger condition is met (e.g., too few files in the directory at initialization)
         while True:
             try:
                 if self.check_resource() is True:
@@ -282,8 +283,8 @@ class BaseResourceNode(BaseNode):
         
         # updating the state of the resource in case the trigger condition is met in iteration 0
         self.update_state()
+        self.log(f"--------------------------- finished iteration {self.iteration} {self.name} at {datetime.now()}")
 
-        self.log(f"--------------------------- finished iteration {self.iteration} (initialization phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
         time.sleep(0.2)
         self.signal_successors(Result.SUCCESS)
@@ -370,11 +371,7 @@ class BaseActionNode(BaseNode):
         pass
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
-        self.status = Status.INIT
-        self.setup()
-        self.status = Status.RUNNING
-        self.log(f"--------------------------- finished iteration 0 (initialization phase of {self.name}) at {datetime.now()}")
+        # note that action nodes start on iteration 1 because iteration 0 is reserved for resource nodes
         self.iteration += 1
 
         while True:
