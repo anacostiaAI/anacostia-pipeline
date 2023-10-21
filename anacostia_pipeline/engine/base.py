@@ -286,7 +286,6 @@ class BaseResourceNode(BaseNode):
         self.log(f"--------------------------- finished iteration {self.iteration} {self.name} at {datetime.now()}")
 
         self.iteration += 1
-        time.sleep(0.2)
         self.signal_successors(Result.SUCCESS)
 
         self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
@@ -375,7 +374,6 @@ class BaseActionNode(BaseNode):
         self.iteration += 1
 
         while True:
-            time.sleep(0.2)
             while self.check_predecessors_signals() is False:
                 time.sleep(0.1)
             
@@ -397,7 +395,6 @@ class BaseActionNode(BaseNode):
             self.after_execution()
             self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
-            time.sleep(0.2)
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
@@ -405,6 +402,5 @@ class BaseActionNode(BaseNode):
             while self.check_successors_signals() is False:
                 time.sleep(0.1)
 
-            time.sleep(0.2)
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
             self.iteration += 1
