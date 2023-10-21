@@ -1,4 +1,6 @@
 from typing import List, Iterable
+from threading import Thread
+from datetime import datetime
 import time
 import sys
 import os
@@ -73,6 +75,22 @@ class Pipeline:
         """
         Lanches all the registered nodes in topological order.
         """
+
+        # set up nodes
+        threads = []
+        for node in self.nodes:
+            node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
+            thread = Thread(target=node.setup)
+            node.status = Status.INIT
+            thread.start()
+            threads.append(thread)
+        
+        for thread, node in zip(threads, self.nodes):
+            thread.join()
+            node.status = Status.RUNNING
+            node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+
+        # start nodes
         for node in self.nodes:
             # Note: since node is a subclass of Thread, calling start() will run the run() method
             node.start()

@@ -67,9 +67,12 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                 json.dump(json_entry, json_file, indent=4)
                 self.log(f"Created tracker file at {self.tracker_filepath}")
 
+        self.log(f"Node '{self.name}' setup complete.")
+    
+    def start_monitoring(self) -> None:
         self.observer.schedule(event_handler=self, path=self.path, recursive=True)
         self.observer.start()
-        self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
+        self.log(f"Observer started for node '{self.name}' monitoring path '{self.path}'")
     
     @BaseResourceNode.resource_accessor
     def on_modified(self, event):
