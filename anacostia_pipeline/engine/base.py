@@ -8,6 +8,7 @@ from functools import wraps
 import traceback
 import sys
 from pydantic import BaseModel
+import os
 
 if __name__ == "__main__":
     from constants import Status, Result, Work
@@ -220,11 +221,12 @@ class BaseNode(Thread):
 
 
 class BaseResourceNode(BaseNode):
-    def __init__(self, name: str, uri: str, logger: Logger = None) -> None:
-        self.uri = uri
+    def __init__(self, name: str, resource_path: str, tracker_filename: str, logger: Logger = None) -> None:
+        super().__init__(name, [], logger=logger)
+        self.resource_path = resource_path
+        self.tracker_filename = tracker_filename
         self.iteration = 0
         self.resource_lock = RLock()
-        super().__init__(name, [], logger=logger)
 
     def resource_accessor(func):
         @wraps(func)

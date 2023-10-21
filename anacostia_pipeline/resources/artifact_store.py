@@ -4,6 +4,7 @@ import json
 from typing import List, Any
 from datetime import datetime
 import time
+from logging import Logger
 
 sys.path.append("../../anacostia_pipeline")
 from engine.base import BaseResourceNode
@@ -14,13 +15,18 @@ from watchdog.events import FileSystemEventHandler
 
 
 class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
-    def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
+    def __init__(
+        self, 
+        name: str, path: str, tracker_filename: str, 
+        init_state: str = "new", max_old_samples: int = None, logger: Logger = None
+    ) -> None:
+
         # TODO: add max_old_samples functionality
         self.max_old_samples = max_old_samples
 
-        self.data_store_path = os.path.abspath(path)
-        if os.path.exists(self.data_store_path) is False:
-            os.makedirs(self.data_store_path, exist_ok=True)
+        self.path = os.path.abspath(path)
+        if os.path.exists(self.path) is False:
+            os.makedirs(self.path, exist_ok=True)
         
         self.observer = Observer()
         
@@ -29,47 +35,46 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.init_state = init_state
         self.init_time = str(datetime.now())
         
-        super().__init__(name, "data_store")
+        super().__init__(name=name, resource_path=path, tracker_filename=tracker_filename, logger=logger)
     
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
+        self.tracker_filepath = os.path.join(self.anacostia_path, self.tracker_filename)
 
-        self.data_store_json_path = os.path.join(self.anacostia_path, "data_store.json")
-
-        if os.path.exists(self.data_store_json_path) is False:
-            with open(self.data_store_json_path, "w") as json_file:
+        if os.path.exists(self.tracker_filepath) is False:
+            with open(self.tracker_filepath, "w") as json_file:
                 json_entry = {
                     "node": self.name,
-                    "resource path": self.data_store_path,
+                    "resource path": self.path,
                     "node initialization time:": self.init_time,
                     "files": []
                 }
                 
-                if len(os.listdir(self.data_store_path)) == 0:
-                    self.log(f"Data store is empty at initialization, no files to add to data_store.json")
+                if len(os.listdir(self.path)) == 0:
+                    self.log(f"Data store is empty at initialization, no files to add to {self.tracker_filename}")
                 else:
-                    self.log(f"Data store is not empty at initialization, adding files to data_store.json")
-                    for filepath in os.listdir(self.data_store_path):
-                        path = os.path.join(self.data_store_path, filepath)
+                    self.log(f"Data store is not empty at initialization, adding files to {self.tracker_filename}")
+                    for filepath in os.listdir(self.path):
+                        path = os.path.join(self.path, filepath)
                         json_file_entry = {}
                         json_file_entry["filepath"] = os.path.join(path)
                         json_file_entry["state"] = self.init_state
                         json_file_entry["created_at"] = self.init_time
                         json_entry["files"].append(json_file_entry)
-                        self.log(f"Added to data_store.json: '{filepath}'")
+                        self.log(f"Added to {self.tracker_filename}: '{filepath}'")
                 
                 json.dump(json_entry, json_file, indent=4)
-                self.log(f"Created data_store.json file at {self.data_store_json_path}")
+                self.log(f"Created tracker file at {self.tracker_filepath}")
 
-        self.observer.schedule(event_handler=self, path=self.data_store_path, recursive=True)
+        self.observer.schedule(event_handler=self, path=self.path, recursive=True)
         self.observer.start()
         self.log(f"Node '{self.name}' setup complete. Observer started, waiting for file change...")
     
     @BaseResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
-            with open(self.data_store_json_path, 'r') as json_file:
+            with open(self.tracker_filepath, 'r') as json_file:
                 json_data = json.load(json_file)
             
             try:
@@ -84,7 +89,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
             except Exception as e:
                 self.log(f"Error processing {event.src_path}: {e}")
             
-            with open(self.data_store_json_path, 'w') as json_file:
+            with open(self.tracker_filepath, 'w') as json_file:
                 json.dump(json_data, json_file, indent=4)
 
     def check_resource(self) -> bool:
@@ -94,7 +99,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.trap_exceptions
     @BaseResourceNode.resource_accessor
     def get_artifacts(self, state: str) -> List[Any]:
-        with open(self.data_store_json_path, 'r') as json_file:
+        with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
         
         artifacts = []
@@ -107,7 +112,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.trap_exceptions
     @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
-        with open(self.data_store_json_path, 'r') as json_file:
+        with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
         
         num_artifacts = 0
@@ -119,7 +124,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     def update_state(self) -> None:
         self.log(f"Updating state of node '{self.name}'")
-        with open(self.data_store_json_path, 'r') as json_file:
+        with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
 
         for file_entry in json_data["files"]:
@@ -132,7 +137,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                 self.log(f'{self.name} new -> current: {file_entry["filepath"]}')
                 file_entry["state"] = "current"
 
-        with open(self.data_store_json_path, 'w') as json_file:
+        with open(self.tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
     
     def on_exit(self) -> None:
