@@ -256,6 +256,18 @@ class BaseResourceNode(BaseNode):
         override to specify how the state of the resource is updated
         """
         raise NotImplementedError
+    
+    @BaseNode.trap_interrupts
+    @BaseNode.trap_exceptions
+    @resource_accessor
+    def after_update(self) -> None:
+        """
+        override to specify what to do after updating the state of the resource 
+        (e.g., send a hash of the updated state of the resource to a database or blockchain,
+        send an email to the data science team to let everyone know the resource has been updated,
+        process the data in the resource and send it to another resource monitored by another resource node, etc.)
+        """
+        pass
 
     @BaseNode.trap_interrupts
     @resource_accessor
@@ -275,7 +287,7 @@ class BaseResourceNode(BaseNode):
                 else:
                     time.sleep(0.1)
             except Exception as e:
-                print(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                 continue
                 # Note: we continue here because we want to keep trying to check the resource until it is available
                 # with that said, we should add an option for the user to specify the number of times to try before giving up
@@ -297,16 +309,15 @@ class BaseResourceNode(BaseNode):
             except Exception as e:
                 # Note: the only function that should throw an exception is check_resource() because it is a user-defined function
                 # the functions that we've created should not throw exceptions
-                print(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
             if self.check_successors_signals() is True:
-                #self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # if all successors have finished using the state, then update the state of the resource
                 self.update_state()
+                self.after_update()
                 self.iteration += 1
-                #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
                 # signal the successors to execute if the trigger condition is met
                 self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
@@ -388,7 +399,7 @@ class BaseActionNode(BaseNode):
                     self.on_failure()
 
             except Exception as e:
-                print(f"Error executing node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
                 self.on_error(e)
                 return
 
