@@ -102,30 +102,48 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.trap_exceptions
     @BaseResourceNode.resource_accessor
     def get_artifacts(self, state: str) -> List[Any]:
+        if state not in ("new", "current", "old", "all"):
+            raise ValueError(f"state argument of get_num_artifacts must be either 'new', 'current', 'old', or 'all', not '{state}'.")
+
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
         
         artifacts = []
-        for file_entry in json_data["files"]:
-            if file_entry["state"] == state:
+
+        if state == "all":
+            for file_entry in json_data["files"]:
                 artifacts.append(file_entry["filepath"])
+        else:
+            for file_entry in json_data["files"]:
+                if file_entry["state"] == state:
+                    artifacts.append(file_entry["filepath"])
         
         return artifacts
     
     @BaseResourceNode.trap_exceptions
     @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
+        if state not in ("new", "current", "old", "all"):
+            raise ValueError(f"state argument of get_num_artifacts must be either 'new', 'current', 'old', or 'all', not '{state}'.")
+
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
         
         num_artifacts = 0
-        for file_entry in json_data["files"]:
-            if file_entry["state"] == state:
-                num_artifacts += 1
-        
+
+        if state == "all":
+            num_artifacts = len(json_data["files"])
+        else:
+            for file_entry in json_data["files"]:
+                if file_entry["state"] == state:
+                    num_artifacts += 1
+
         return num_artifacts
     
     def update_state(self) -> None:
+        if self.get_num_artifacts("new") == 0 and self.get_num_artifacts("current") == 0:
+            return
+
         self.log(f"Updating state of node '{self.name}'")
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
