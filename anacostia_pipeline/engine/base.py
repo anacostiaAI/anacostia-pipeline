@@ -61,7 +61,9 @@ class BaseNode(Thread):
 
     @property
     def status(self):
-        return self._status
+        while True:
+            with self._status_lock:
+                return self._status
 
     @status.setter
     def status(self, value: Status):
@@ -70,14 +72,30 @@ class BaseNode(Thread):
                 self._status = value
                 break
 
-    @staticmethod
+    def trap_interrupts(self):
+        if self.status == Status.PAUSING:
+            self.log(f"Node '{self.name}' paused at {datetime.now()}")
+            self.status = Status.PAUSED
+
+            # Wait until the node is resumed by the pipeline calling resume()
+            while self.status == Status.PAUSED:
+                time.sleep(0.1)
+
+        if self.status == Status.EXITING:
+            self.log(f"Node '{self.name}' exiting at {datetime.now()}")
+            self.on_exit()
+            self.log(f"Node '{self.name}' exited at {datetime.now()}")
+            self.status = Status.EXITED
+            sys.exit(0)
+
+    '''
     def trap_interrupts(func):
         """
         A Decorator for allowing the node to be paused mid execution
         """
         def wrapper(self, *args, **kwargs):
             if self.status == Status.PAUSING:
-                self.log(f"Node {self.name} paused at {datetime.now()}")
+                self.log(f"Node '{self.name}' paused at {datetime.now()}")
                 self.status = Status.PAUSED
 
                 # Wait until the node is resumed by the pipeline calling resume()
@@ -85,15 +103,16 @@ class BaseNode(Thread):
                     time.sleep(0.1)
 
             if self.status == Status.EXITING:
-                self.log(f"Node {self.name} exiting at {datetime.now()}")
+                self.log(f"Node '{self.name}' exiting at {datetime.now()}")
                 self.on_exit()
-                self.log(f"Node {self.name} exited at {datetime.now()}")
+                self.log(f"Node '{self.name}' exited at {datetime.now()}")
                 self.status = Status.EXITED
                 sys.exit(0)
 
             ret = func(self, *args, **kwargs)
             return ret
         return wrapper
+    '''
 
     def trap_exceptions(func):
         @wraps(func)
@@ -125,7 +144,7 @@ class BaseNode(Thread):
         for predecessor in self.predecessors:
             predecessor.successors_queue.put(msg)
 
-    @trap_interrupts
+    #@trap_interrupts
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
             if self.predecessors_queue.empty():
@@ -157,7 +176,7 @@ class BaseNode(Thread):
         # If there are no dependent nodes, then we can just return True
         return True
     
-    @trap_interrupts
+    #@trap_interrupts
     def check_successors_signals(self) -> bool:
         if len(self.successors) > 0:
             if self.successors_queue.empty():
@@ -238,7 +257,7 @@ class BaseResourceNode(BaseNode):
                     return func(self, *args, **kwargs)
         return wrapper
     
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def start_monitoring(self) -> None:
@@ -248,7 +267,7 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def update_state(self) -> None:
@@ -257,7 +276,7 @@ class BaseResourceNode(BaseNode):
         """
         raise NotImplementedError
     
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def after_update(self) -> None:
@@ -269,7 +288,7 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @resource_accessor
     def check_resource(self) -> bool:
         return True
@@ -281,6 +300,7 @@ class BaseResourceNode(BaseNode):
         # waiting for the trigger condition to be met; 
         # sometimes the node is started before the trigger condition is met (e.g., too few files in the directory at initialization)
         while True:
+            self.trap_interrupts()
             try:
                 if self.check_resource() is True:
                     break
@@ -294,15 +314,19 @@ class BaseResourceNode(BaseNode):
                 # and throwing an exception
         
         # updating the state of the resource in case the trigger condition is met in iteration 0
+        self.trap_interrupts()
         self.update_state()
-        self.log(f"--------------------------- finished iteration {self.iteration} {self.name} at {datetime.now()}")
 
+        self.log(f"--------------------------- finished iteration {self.iteration} {self.name} at {datetime.now()}")
         self.iteration += 1
+
+        self.trap_interrupts()
         self.signal_successors(Result.SUCCESS)
 
         self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         while True:
             # check the resource to see if the trigger condition is met, and if so, signal the next node
+            self.trap_interrupts()
             resource_check = False
             try:
                 resource_check = self.check_resource()
@@ -312,14 +336,19 @@ class BaseResourceNode(BaseNode):
                 self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
+            self.trap_interrupts()
             if self.check_successors_signals() is True:
 
                 # if all successors have finished using the state, then update the state of the resource
+                self.trap_interrupts()
                 self.update_state()
+
+                self.trap_interrupts()
                 self.after_update()
                 self.iteration += 1
 
                 # signal the successors to execute if the trigger condition is met
+                self.trap_interrupts()
                 self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
 
 
@@ -328,7 +357,7 @@ class BaseActionNode(BaseNode):
         self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
 
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def before_execution(self) -> None:
         """
@@ -337,7 +366,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def after_execution(self) -> None:
         """
@@ -346,14 +375,14 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_interrupts
+   #@BaseNode.trap_interrupts
     def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
         raise NotImplementedError
 
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_failure(self) -> None:
         """
@@ -362,7 +391,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_error(self, e: Exception) -> None:
         """
@@ -371,7 +400,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_interrupts
+    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_success(self) -> None:
         """
@@ -385,33 +414,45 @@ class BaseActionNode(BaseNode):
         self.iteration += 1
 
         while True:
+            self.trap_interrupts()
             while self.check_predecessors_signals() is False:
                 time.sleep(0.1)
+                self.trap_interrupts()
             
             self.log(f"--------------------------- started iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
+            self.trap_interrupts()
             self.before_execution()
             ret = False
             try:
+                self.trap_interrupts()
                 ret = self.execute()
                 if ret:
+                    self.trap_interrupts()
                     self.on_success()
                 else:
+                    self.trap_interrupts()
                     self.on_failure()
 
             except Exception as e:
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
+                self.trap_interrupts()
                 self.on_error(e)
                 return
 
+            self.trap_interrupts()
             self.after_execution()
             self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
+            self.trap_interrupts()
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the current state
+            self.trap_interrupts()
             while self.check_successors_signals() is False:
                 time.sleep(0.1)
+                self.trap_interrupts()
 
+            self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
             self.iteration += 1
