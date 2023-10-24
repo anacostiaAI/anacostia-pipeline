@@ -65,6 +65,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                         self.log(f"Added to {self.tracker_filename}: '{filepath}'")
                 
                 json.dump(json_entry, json_file, indent=4)
+                json_file.flush()
                 self.log(f"Created tracker file at {self.tracker_filepath}")
 
         self.log(f"Node '{self.name}' setup complete.")
@@ -75,33 +76,48 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.log(f"Observer started for node '{self.name}' monitoring path '{self.path}'")
     
     @BaseResourceNode.resource_accessor
+    def record_artifact(self, filepath: str, log_state: str) -> None:
+        with open(self.tracker_filepath, 'r') as json_file:
+            json_data = json.load(json_file)
+        
+        logged_files = [entry["filepath"] for entry in json_data["files"]]
+        if filepath not in logged_files:
+            json_entry = {}
+            json_entry["filepath"] = filepath
+            json_entry["state"] = log_state
+            json_entry["created_at"] = str(datetime.now())
+            json_data["files"].append(json_entry)
+        else:
+            return
+
+        with open(self.tracker_filepath, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+
+    @BaseResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
-            with open(self.tracker_filepath, 'r') as json_file:
-                json_data = json.load(json_file)
-            
-            try:
-                logged_files = [entry["filepath"] for entry in json_data["files"]]
-                if (event.src_path.endswith(".json") is False) and (event.src_path not in logged_files):
-                    json_entry = {}
-                    json_entry["filepath"] = event.src_path
-                    json_entry["state"] = "new"
-                    json_entry["created_at"] = str(datetime.now())
-                    json_data["files"].append(json_entry)
+            self.log(f"Detected file: {event.src_path}")
+            self.record_artifact(event.src_path, "new") 
 
-            except Exception as e:
-                self.log(f"Error processing {event.src_path}: {e}")
-            
-            with open(self.tracker_filepath, 'w') as json_file:
-                json.dump(json_data, json_file, indent=4)
-
+    @BaseResourceNode.resource_accessor
     def check_resource(self) -> bool:
         # implement the triggering logic here
         return True
     
     @BaseResourceNode.trap_exceptions
     @BaseResourceNode.resource_accessor
-    def get_artifacts(self, state: str) -> List[Any]:
+    def create_filename(self) -> str:
+        return f"file{self.get_num_artifacts('all')}.txt"
+    
+    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.resource_accessor
+    def save_artifact(self, content: str) -> None:
+        pass
+
+    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.resource_accessor
+    def list_artifacts(self, state: str) -> List[Any]:
         if state not in ("new", "current", "old", "all"):
             raise ValueError(f"state argument of get_num_artifacts must be either 'new', 'current', 'old', or 'all', not '{state}'.")
 
@@ -109,7 +125,6 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
             json_data = json.load(json_file)
         
         artifacts = []
-
         if state == "all":
             for file_entry in json_data["files"]:
                 artifacts.append(file_entry["filepath"])
@@ -117,7 +132,6 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
             for file_entry in json_data["files"]:
                 if file_entry["state"] == state:
                     artifacts.append(file_entry["filepath"])
-        
         return artifacts
     
     @BaseResourceNode.trap_exceptions
@@ -130,14 +144,12 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
             json_data = json.load(json_file)
         
         num_artifacts = 0
-
         if state == "all":
             num_artifacts = len(json_data["files"])
         else:
             for file_entry in json_data["files"]:
                 if file_entry["state"] == state:
                     num_artifacts += 1
-
         return num_artifacts
     
     def update_state(self) -> None:
@@ -160,10 +172,10 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
 
         with open(self.tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
+            json_file.flush()
     
     def on_exit(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
         self.observer.join()
         self.log(f"Observer stopped for node '{self.name}'")
-        self.log(f"Node '{self.name}' exited")
