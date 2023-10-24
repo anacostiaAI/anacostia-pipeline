@@ -88,32 +88,6 @@ class BaseNode(Thread):
             self.status = Status.EXITED
             sys.exit(0)
 
-    '''
-    def trap_interrupts(func):
-        """
-        A Decorator for allowing the node to be paused mid execution
-        """
-        def wrapper(self, *args, **kwargs):
-            if self.status == Status.PAUSING:
-                self.log(f"Node '{self.name}' paused at {datetime.now()}")
-                self.status = Status.PAUSED
-
-                # Wait until the node is resumed by the pipeline calling resume()
-                while self.status == Status.PAUSED:
-                    time.sleep(0.1)
-
-            if self.status == Status.EXITING:
-                self.log(f"Node '{self.name}' exiting at {datetime.now()}")
-                self.on_exit()
-                self.log(f"Node '{self.name}' exited at {datetime.now()}")
-                self.status = Status.EXITED
-                sys.exit(0)
-
-            ret = func(self, *args, **kwargs)
-            return ret
-        return wrapper
-    '''
-
     def trap_exceptions(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -144,7 +118,6 @@ class BaseNode(Thread):
         for predecessor in self.predecessors:
             predecessor.successors_queue.put(msg)
 
-    #@trap_interrupts
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
             if self.predecessors_queue.empty():
@@ -176,7 +149,6 @@ class BaseNode(Thread):
         # If there are no dependent nodes, then we can just return True
         return True
     
-    #@trap_interrupts
     def check_successors_signals(self) -> bool:
         if len(self.successors) > 0:
             if self.successors_queue.empty():
@@ -257,7 +229,6 @@ class BaseResourceNode(BaseNode):
                     return func(self, *args, **kwargs)
         return wrapper
     
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def start_monitoring(self) -> None:
@@ -267,7 +238,6 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def update_state(self) -> None:
@@ -276,7 +246,6 @@ class BaseResourceNode(BaseNode):
         """
         raise NotImplementedError
     
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     @resource_accessor
     def after_update(self) -> None:
@@ -288,7 +257,6 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    #@BaseNode.trap_interrupts
     @resource_accessor
     def check_resource(self) -> bool:
         return True
@@ -357,7 +325,6 @@ class BaseActionNode(BaseNode):
         self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
 
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def before_execution(self) -> None:
         """
@@ -366,7 +333,6 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def after_execution(self) -> None:
         """
@@ -375,14 +341,12 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-   #@BaseNode.trap_interrupts
     def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
         raise NotImplementedError
 
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_failure(self) -> None:
         """
@@ -391,7 +355,6 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_error(self, e: Exception) -> None:
         """
@@ -400,7 +363,6 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    #@BaseNode.trap_interrupts
     @BaseNode.trap_exceptions
     def on_success(self) -> None:
         """
