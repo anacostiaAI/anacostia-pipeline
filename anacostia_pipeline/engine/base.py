@@ -302,17 +302,13 @@ class BaseResourceNode(BaseNode):
         while True:
             # check the resource to see if the trigger condition is met, and if so, signal the next node
             self.trap_interrupts()
-            #resource_check = False
             resource_check = self.check_resource()
             if resource_check is True:
                 self.signal_successors(Result.SUCCESS)
-            #self.log(f"{self.name} Signaled successors to check resource")
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
             self.trap_interrupts()
             if self.check_successors_signals() is True:
-                self.log(f"{self.name} successors have finished using the current state")
-
                 # if all successors have finished using the state, then update the state of the resource
                 self.trap_interrupts()
                 self.update_state()
@@ -323,11 +319,9 @@ class BaseResourceNode(BaseNode):
 
                 # signal the successors to execute if the trigger condition is met
                 self.trap_interrupts()
-                #self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
-                #resource_check = False
-                self.log(f"{self.name} Signaled successors updated state")
-            else:
-                self.log(f"{self.name} successors have not finished using the current state")
+            
+            # this delay is used to allow the json file to be updated before the next iteration
+            # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
             time.sleep(0.2)
 
 
@@ -389,7 +383,6 @@ class BaseActionNode(BaseNode):
         while True:
             self.trap_interrupts()
             while self.check_predecessors_signals() is False:
-                self.log(f"{self.name} waiting for predecessors to finish")
                 time.sleep(0.2)
                 self.trap_interrupts()
             
@@ -429,5 +422,4 @@ class BaseActionNode(BaseNode):
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
-            self.log(f"{self.name} Signaled predecessors")
             self.iteration += 1
