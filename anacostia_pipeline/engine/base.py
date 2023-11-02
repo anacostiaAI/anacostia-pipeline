@@ -88,7 +88,7 @@ class BaseNode(Thread):
             self.status = Status.EXITED
             sys.exit(0)
 
-    def trap_exceptions(func):
+    def log_exception(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             try: 
@@ -121,9 +121,10 @@ class BaseNode(Thread):
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
             if self.predecessors_queue.empty():
+                #self.log("check_predecessors_signals stop 1")
                 return False
 
-            # Pull out the queued up incoming signals and register them
+            # Pull out all queued up incoming signals and register them
             while not self.predecessors_queue.empty():
                 sig: Message = self.predecessors_queue.get()
 
@@ -142,8 +143,10 @@ class BaseNode(Thread):
                     self.received_predecessors_signals = dict()
                     return True
                 else:
+                    #self.log("check_predecessors_signals stop 2")
                     return False
             else:
+                #self.log("check_predecessors_signals stop 3")
                 return False
  
         # If there are no dependent nodes, then we can just return True
@@ -152,6 +155,7 @@ class BaseNode(Thread):
     def check_successors_signals(self) -> bool:
         if len(self.successors) > 0:
             if self.successors_queue.empty():
+                #self.log(f"{self.name} check_successors_signals stop 1")
                 return False
 
             # Pull out the queued up incoming signals and register them
@@ -173,8 +177,10 @@ class BaseNode(Thread):
                     self.received_successors_signals = dict()
                     return True
                 else:
+                    #self.log(f"{self.name} check_successors_signals stop 2")
                     return False
             else:
+                #self.log(f"{self.name} check_successors_signals stop 3")
                 return False
         
         # If there are no dependent nodes, then we can just return True
@@ -189,7 +195,7 @@ class BaseNode(Thread):
     def exit(self):
         self.status = Status.EXITING
 
-    @trap_exceptions
+    @log_exception
     def setup(self) -> None:
         """
         override to specify actions needed to create node.
@@ -201,7 +207,7 @@ class BaseNode(Thread):
         """
         pass
 
-    @trap_exceptions
+    @log_exception
     def on_exit(self):
         """
         on_exit is called when the node is being stopped.
@@ -229,7 +235,7 @@ class BaseResourceNode(BaseNode):
                     return func(self, *args, **kwargs)
         return wrapper
     
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     @resource_accessor
     def start_monitoring(self) -> None:
         """
@@ -238,7 +244,7 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     @resource_accessor
     def update_state(self) -> None:
         """
@@ -246,7 +252,7 @@ class BaseResourceNode(BaseNode):
         """
         raise NotImplementedError
     
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     @resource_accessor
     def after_update(self) -> None:
         """
@@ -257,6 +263,7 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
+    @BaseNode.log_exception
     @resource_accessor
     def check_resource(self) -> bool:
         return True
@@ -295,17 +302,16 @@ class BaseResourceNode(BaseNode):
         while True:
             # check the resource to see if the trigger condition is met, and if so, signal the next node
             self.trap_interrupts()
-            resource_check = False
-            try:
-                resource_check = self.check_resource()
-            except Exception as e:
-                # Note: the only function that should throw an exception is check_resource() because it is a user-defined function
-                # the functions that we've created should not throw exceptions
-                self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+            #resource_check = False
+            resource_check = self.check_resource()
+            if resource_check is True:
+                self.signal_successors(Result.SUCCESS)
+            #self.log(f"{self.name} Signaled successors to check resource")
 
             # check for successors signals before updating state to ensure all successors have finished using the current state
             self.trap_interrupts()
             if self.check_successors_signals() is True:
+                self.log(f"{self.name} successors have finished using the current state")
 
                 # if all successors have finished using the state, then update the state of the resource
                 self.trap_interrupts()
@@ -317,7 +323,12 @@ class BaseResourceNode(BaseNode):
 
                 # signal the successors to execute if the trigger condition is met
                 self.trap_interrupts()
-                self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
+                #self.signal_successors(Result.SUCCESS if resource_check else Result.FAILURE)
+                #resource_check = False
+                self.log(f"{self.name} Signaled successors updated state")
+            else:
+                self.log(f"{self.name} successors have not finished using the current state")
+            time.sleep(0.2)
 
 
 class BaseActionNode(BaseNode):
@@ -325,7 +336,7 @@ class BaseActionNode(BaseNode):
         self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
 
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     def before_execution(self) -> None:
         """
         override to enable node to do something before execution; 
@@ -333,7 +344,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     def after_execution(self) -> None:
         """
         override to enable node to do something after executing the action function regardless of the outcome of the action function; 
@@ -347,7 +358,7 @@ class BaseActionNode(BaseNode):
         """
         raise NotImplementedError
 
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     def on_failure(self) -> None:
         """
         override to enable node to do something after execution in event of failure of action_function; 
@@ -355,7 +366,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     def on_error(self, e: Exception) -> None:
         """
         override to enable node to do something after execution in event of error of action_function; 
@@ -363,7 +374,7 @@ class BaseActionNode(BaseNode):
         """
         pass
     
-    @BaseNode.trap_exceptions
+    @BaseNode.log_exception
     def on_success(self) -> None:
         """
         override to enable node to do something after execution in event of success of action_function; 
@@ -378,7 +389,8 @@ class BaseActionNode(BaseNode):
         while True:
             self.trap_interrupts()
             while self.check_predecessors_signals() is False:
-                time.sleep(0.1)
+                self.log(f"{self.name} waiting for predecessors to finish")
+                time.sleep(0.2)
                 self.trap_interrupts()
             
             self.log(f"--------------------------- started iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
@@ -417,4 +429,5 @@ class BaseActionNode(BaseNode):
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
+            self.log(f"{self.name} Signaled predecessors")
             self.iteration += 1

@@ -53,9 +53,6 @@ class DataStoreNode(ArtifactStoreNode):
         #self.log(f"Number of new artifacts: {num_new}")
         return num_new >= 2
     
-    def after_update(self) -> None:
-        self.log(f"{self.name} logged {self.get_num_artifacts('all')} artifacts on blockchain.")
-    
     def create_filename(self) -> str:
         return f"data_file{self.get_num_artifacts('all')}.txt"
 
@@ -140,7 +137,7 @@ class TestArtifactStore(unittest.TestCase):
         #andand = AndAndNode("andand", [collection_data_store, processed_data_store, data_prep])
         #retraining = ModelRetrainingNode("retraining", data_store)
         pipeline = Pipeline(
-            nodes=[collection_data_store, processed_data_store, data_prep], 
+            nodes=[collection_data_store, data_prep], 
             anacostia_path=self.path, 
             logger=logger
         )

@@ -105,17 +105,17 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         # implement the triggering logic here
         return True
     
-    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def create_filename(self) -> str:
         return f"file{self.get_num_artifacts('all')}.txt"
     
-    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def save_artifact(self, content: str) -> None:
         pass
 
-    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
         if state not in ("new", "current", "old", "all"):
@@ -134,7 +134,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                     artifacts.append(file_entry["filepath"])
         return artifacts
     
-    @BaseResourceNode.trap_exceptions
+    @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
         if state not in ("new", "current", "old", "all"):
