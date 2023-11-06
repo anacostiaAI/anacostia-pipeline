@@ -243,6 +243,18 @@ class BaseResourceNode(BaseNode):
 
     @BaseNode.log_exception
     @resource_accessor
+    def stop_monitoring(self) -> None:
+        """
+        Override to specify how the resource is monitored. 
+        Typically, this method will be used to start an observer that runs in a child thread spawned by the thread running the node.
+        """
+        pass
+
+    def on_exit(self):
+        self.stop_monitoring()
+
+    @BaseNode.log_exception
+    @resource_accessor
     def record_new(self) -> None:
         """
         override to specify how to detect new files and mark the detected files as 'new'
@@ -394,7 +406,6 @@ class BaseActionNode(BaseNode):
             self.log(f"--------------------------- started iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
             self.trap_interrupts()
             self.before_execution()
-            ret = False
             try:
                 self.trap_interrupts()
                 ret = self.execute()

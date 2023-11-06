@@ -3,7 +3,6 @@ import os
 import json
 from typing import List, Any
 from datetime import datetime
-import time
 from logging import Logger
 
 sys.path.append("../../anacostia_pipeline")
@@ -188,7 +187,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
     
-    def on_exit(self) -> None:
+    def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
         self.observer.join()
