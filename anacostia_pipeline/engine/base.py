@@ -243,82 +243,86 @@ class BaseResourceNode(BaseNode):
 
     @BaseNode.log_exception
     @resource_accessor
-    def update_state(self) -> None:
+    def record_new(self) -> None:
         """
-        override to specify how the state of the resource is updated
+        override to specify how to detect new files and mark the detected files as 'new'
         """
         raise NotImplementedError
     
     @BaseNode.log_exception
     @resource_accessor
-    def after_update(self) -> None:
+    def record_current(self) -> None:
         """
-        override to specify what to do after updating the state of the resource 
-        (e.g., send a hash of the updated state of the resource to a database or blockchain,
-        send an email to the data science team to let everyone know the resource has been updated,
-        process the data in the resource and send it to another resource monitored by another resource node, etc.)
+        override to specify how to label newly created files as 'current'
         """
         pass
+    
+    @BaseNode.log_exception
+    @resource_accessor
+    def new_to_current(self) -> None:
+        """
+        override to specify how to move new files to current
+        """
+        raise NotImplementedError
+    
+    @BaseNode.log_exception
+    @resource_accessor
+    def current_to_old(self) -> None:
+        """
+        override to specify how to move current files to old
+        """
+        raise NotImplementedError
 
     @BaseNode.log_exception
     @resource_accessor
-    def check_resource(self) -> bool:
+    def trigger_condition(self) -> bool:
         return True
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         self.start_monitoring()
 
-        # waiting for the trigger condition to be met; 
-        # sometimes the node is started before the trigger condition is met (e.g., too few files in the directory at initialization)
         while True:
+            self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
+
+            # waiting for the trigger condition to be met (note: change status to Work.WAITING_RESOURCE)
             self.trap_interrupts()
-            try:
-                if self.check_resource() is True:
-                    break
-                else:
-                    time.sleep(0.1)
-            except Exception as e:
-                self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
-                continue
-                # Note: we continue here because we want to keep trying to check the resource until it is available
-                # with that said, we should add an option for the user to specify the number of times to try before giving up
-                # and throwing an exception
-        
-        # updating the state of the resource in case the trigger condition is met in iteration 0
-        self.trap_interrupts()
-        self.update_state()
-
-        self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
-        self.iteration += 1
-
-        self.trap_interrupts()
-        self.signal_successors(Result.SUCCESS)
-
-        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
-        while True:
-            # check the resource to see if the trigger condition is met, and if so, signal the next node
+            while True:
+                self.trap_interrupts()
+                try:
+                    if self.trigger_condition() is True:
+                        break
+                    else:
+                        self.trap_interrupts()
+                        time.sleep(0.1)
+                except Exception as e:
+                    self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                    continue
+                    # Note: we continue here because we want to keep trying to check the resource until it is available
+                    # with that said, we should add an option for the user to specify the number of times to try before giving up
+                    # and throwing an exception
+                    # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
+                    # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
+                    # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
+                    # or just not move the file to current.
+                
             self.trap_interrupts()
-            if self.check_resource() is True:
-                self.trap_interrupts()
-                self.update_state()
-                self.signal_successors(Result.SUCCESS)
+            self.new_to_current()
 
-            """
-            # check for successors signals before updating state to ensure all successors have finished using the current state
             self.trap_interrupts()
-            if self.check_successors_signals() is True:
-                #self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
+            self.signal_successors(Result.SUCCESS)
 
-                # if all successors have finished using the state, then update the state of the resource
+            # waiting for all successors to finish using the current state before updating the state of the resource
+            # (note: change status to Work.WAITING_SUCCESSORS)
+            self.trap_interrupts()
+            while self.check_successors_signals() is False:
                 self.trap_interrupts()
-                self.update_state()
+                time.sleep(0.2)
+            
+            self.trap_interrupts()
+            self.current_to_old()
+            self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
-                self.trap_interrupts()
-                self.after_update()
-                self.iteration += 1
-                #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
-            """
+            self.iteration += 1
 
 
 class BaseActionNode(BaseNode):
@@ -381,9 +385,6 @@ class BaseActionNode(BaseNode):
         pass
 
     def run(self) -> None:
-        # note that action nodes start on iteration 1 because iteration 0 is reserved for resource nodes
-        self.iteration += 1
-
         while True:
             self.trap_interrupts()
             while self.check_predecessors_signals() is False:
@@ -412,7 +413,6 @@ class BaseActionNode(BaseNode):
 
             self.trap_interrupts()
             self.after_execution()
-            self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
@@ -421,9 +421,12 @@ class BaseActionNode(BaseNode):
             # ensure all action nodes have finished using the current state
             self.trap_interrupts()
             while self.check_successors_signals() is False:
-                time.sleep(0.1)
+                time.sleep(0.2)
                 self.trap_interrupts()
+
+            self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
+
             self.iteration += 1

@@ -93,15 +93,23 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         with open(self.tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
+    
+    @BaseResourceNode.resource_accessor
+    def record_new(self, filepath: str) -> None:
+        return self.record_artifact(filepath, "new")
+
+    @BaseResourceNode.resource_accessor
+    def record_current(self, filepath: str) -> None:
+        return self.record_artifact(filepath, "current")
 
     @BaseResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
             self.log(f"Detected file: {event.src_path}")
-            self.record_artifact(event.src_path, "new") 
+            self.record_new(event.src_path) 
 
     @BaseResourceNode.resource_accessor
-    def check_resource(self) -> bool:
+    def trigger_condition(self) -> bool:
         # implement the triggering logic here
         return True
     
@@ -152,24 +160,30 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                     num_artifacts += 1
         return num_artifacts
     
-    def update_state(self) -> None:
-        if self.get_num_artifacts("new") == 0 and self.get_num_artifacts("current") == 0:
-            return
+    @BaseResourceNode.resource_accessor
+    def new_to_current(self) -> None:
+        with open(self.tracker_filepath, 'r') as json_file:
+            json_data = json.load(json_file)
 
-        self.log(f"Updating state of node '{self.name}'")
+        for file_entry in json_data["files"]:
+            if file_entry["state"] == "new":
+                self.log(f'"{self.name}" new -> current: {file_entry["filepath"]}')
+                file_entry["state"] = "current"
+
+        with open(self.tracker_filepath, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+    
+    @BaseResourceNode.resource_accessor
+    def current_to_old(self) -> None:
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
 
         for file_entry in json_data["files"]:
             if file_entry["state"] == "current":
-                self.log(f'{self.name} current -> old: {file_entry["filepath"]}')
+                self.log(f'"{self.name}" current -> old: {file_entry["filepath"]}')
                 file_entry["state"] = "old"
         
-        for file_entry in json_data["files"]:
-            if file_entry["state"] == "new":
-                self.log(f'{self.name} new -> current: {file_entry["filepath"]}')
-                file_entry["state"] = "current"
-
         with open(self.tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
