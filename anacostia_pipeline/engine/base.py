@@ -121,7 +121,6 @@ class BaseNode(Thread):
     def check_predecessors_signals(self) -> bool:
         if len(self.predecessors) > 0:
             if self.predecessors_queue.empty():
-                #self.log("check_predecessors_signals stop 1")
                 return False
 
             # Pull out all queued up incoming signals and register them
@@ -143,10 +142,8 @@ class BaseNode(Thread):
                     self.received_predecessors_signals = dict()
                     return True
                 else:
-                    #self.log("check_predecessors_signals stop 2")
                     return False
             else:
-                #self.log("check_predecessors_signals stop 3")
                 return False
  
         # If there are no dependent nodes, then we can just return True
@@ -155,7 +152,6 @@ class BaseNode(Thread):
     def check_successors_signals(self) -> bool:
         if len(self.successors) > 0:
             if self.successors_queue.empty():
-                #self.log(f"{self.name} check_successors_signals stop 1")
                 return False
 
             # Pull out the queued up incoming signals and register them
@@ -177,10 +173,8 @@ class BaseNode(Thread):
                     self.received_successors_signals = dict()
                     return True
                 else:
-                    #self.log(f"{self.name} check_successors_signals stop 2")
                     return False
             else:
-                #self.log(f"{self.name} check_successors_signals stop 3")
                 return False
         
         # If there are no dependent nodes, then we can just return True
@@ -231,6 +225,9 @@ class BaseResourceNode(BaseNode):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
+                # this delay is used to allow the json file to be updated before the next iteration
+                # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
+                time.sleep(0.2)
                 with self.resource_lock:
                     return func(self, *args, **kwargs)
         return wrapper
@@ -269,7 +266,7 @@ class BaseResourceNode(BaseNode):
         return True
 
     def run(self) -> None:
-        self.log(f"--------------------------- started iteration {self.iteration} {self.name} at {datetime.now()}")
+        self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         self.start_monitoring()
 
         # waiting for the trigger condition to be met; 
@@ -292,7 +289,7 @@ class BaseResourceNode(BaseNode):
         self.trap_interrupts()
         self.update_state()
 
-        self.log(f"--------------------------- finished iteration {self.iteration} {self.name} at {datetime.now()}")
+        self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
         self.iteration += 1
 
         self.trap_interrupts()
@@ -302,13 +299,17 @@ class BaseResourceNode(BaseNode):
         while True:
             # check the resource to see if the trigger condition is met, and if so, signal the next node
             self.trap_interrupts()
-            resource_check = self.check_resource()
-            if resource_check is True:
+            if self.check_resource() is True:
+                self.trap_interrupts()
+                self.update_state()
                 self.signal_successors(Result.SUCCESS)
 
+            """
             # check for successors signals before updating state to ensure all successors have finished using the current state
             self.trap_interrupts()
             if self.check_successors_signals() is True:
+                #self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
+
                 # if all successors have finished using the state, then update the state of the resource
                 self.trap_interrupts()
                 self.update_state()
@@ -316,19 +317,21 @@ class BaseResourceNode(BaseNode):
                 self.trap_interrupts()
                 self.after_update()
                 self.iteration += 1
-
-                # signal the successors to execute if the trigger condition is met
-                self.trap_interrupts()
-            
-            # this delay is used to allow the json file to be updated before the next iteration
-            # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
-            time.sleep(0.2)
+                #self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
+            """
 
 
 class BaseActionNode(BaseNode):
     def __init__(self, name: str, predecessors: List[BaseNode], logger: Logger = None) -> None:
         self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
+
+    @BaseNode.log_exception
+    def execution_condition(self) -> bool:
+        """
+        override to specify the condition for executing the action function
+        """
+        return True
 
     @BaseNode.log_exception
     def before_execution(self) -> None:
@@ -346,6 +349,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
+    @BaseNode.log_exception
     def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
