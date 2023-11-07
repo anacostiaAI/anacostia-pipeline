@@ -104,7 +104,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.resource_accessor
     def on_modified(self, event):
         if not event.is_directory:
-            self.log(f"Detected file: {event.src_path}")
+            self.log(f"'{self.name}' detected file: {event.src_path}")
             self.record_new(event.src_path) 
 
     @BaseResourceNode.resource_accessor

@@ -101,8 +101,8 @@ class DataPreparationNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
                 content = f"processed {filepath}"
-                #self.processed_data_store.save_artifact(content)
-                self.log(f"Processed {filepath}")
+                self.processed_data_store.save_artifact(content)
+                self.log(f"Created preprocessed {filepath}")
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
@@ -139,7 +139,7 @@ class TestArtifactStore(unittest.TestCase):
         #andand = AndAndNode("andand", [collection_data_store, processed_data_store, data_prep])
         #retraining = ModelRetrainingNode("retraining", data_store)
         pipeline = Pipeline(
-            nodes=[collection_data_store, data_prep], 
+            nodes=[collection_data_store, data_prep, processed_data_store], 
             anacostia_path=self.path, 
             logger=logger
         )
