@@ -227,9 +227,10 @@ class BaseResourceNode(BaseNode):
             while True:
                 # this delay is used to allow the json file to be updated before the next iteration
                 # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
-                time.sleep(0.2)
                 with self.resource_lock:
-                    return func(self, *args, **kwargs)
+                    result = func(self, *args, **kwargs)
+                    time.sleep(0.2)
+                    return result
         return wrapper
     
     @BaseNode.log_exception

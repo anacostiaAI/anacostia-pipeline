@@ -60,7 +60,7 @@ class DataStoreNode(ArtifactStoreNode):
         filepath = os.path.join(self.path, filename)
 
         # note: record_artifact should be called before create_file so that the Observer can see the file is already logged and ignore it
-        self.record_artifact(filepath, "current")
+        self.record_current(filepath)
         create_file(filepath, content)
         self.log(f"Saved {filename} to {self.path}")
     
@@ -73,7 +73,7 @@ class ProcessedDataStoreNode(DataStoreNode):
         super().__init__(name, path, tracker_filename, init_state, max_old_samples)
     
     def trigger_condition(self) -> bool:
-        return self.get_num_artifacts("new") >= 2
+        return True
 
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"
@@ -88,10 +88,9 @@ class ModelRegistryNode(ArtifactStoreNode):
     
 
 class DataPreparationNode(BaseActionNode):
-    def __init__(self, name: str, data_store: DataStoreNode, processed_data_store: ProcessedDataStoreNode) -> None:
+    def __init__(self, name: str, data_store: DataStoreNode) -> None:
         super().__init__(name, predecessors=[data_store])
         self.data_store = data_store
-        self.processed_data_store = processed_data_store
     
     def execution_condition(self) -> bool:
         return self.data_store.get_num_artifacts("current") >= 2
@@ -100,22 +99,23 @@ class DataPreparationNode(BaseActionNode):
         self.log(f"Executing node '{self.name}'")
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
-                content = f"processed {filepath}"
-                self.processed_data_store.save_artifact(content)
+                #content = f"processed {filepath}"
+                #self.processed_data_store.save_artifact(content)
                 self.log(f"Created preprocessed {filepath}")
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
 
 class ModelRetrainingNode(BaseActionNode):
-    def __init__(self, name: str, data_store: DataStoreNode, model_registry: ArtifactStoreNode) -> None:
-        self.data_store_path = data_store.path
-        self.model_registry_path = model_registry.uri
-        super().__init__(name, predecessors=[data_store])
+    def __init__(self, name: str, data_prep: DataPreparationNode, data_store: DataStoreNode) -> None:
+        self.data_store = data_store
+        super().__init__(name, predecessors=[data_prep])
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
-        time.sleep(5)
+        for filepath in self.data_store.list_artifacts("current"):
+            with open(filepath, 'r') as f:
+                self.log(f"Trained on {filepath}")
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
@@ -132,14 +132,14 @@ class TestArtifactStore(unittest.TestCase):
         os.makedirs(self.path)
     
     def test_empty_pipeline(self):
-        processed_data_store = ProcessedDataStoreNode("processed_data_store", self.processed_data_store_path, "processed_data_store.json")
+        #processed_data_store = ProcessedDataStoreNode("processed_data_store", self.processed_data_store_path, "processed_data_store.json")
         collection_data_store = DataStoreNode("collection_data_store", self.collection_data_store_path, "collection_data_store.json")
-        data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
+        data_prep = DataPreparationNode("data_prep", collection_data_store)
         #orand = OrAndNode("or_and", [collection_data_store, processed_data_store])
         #andand = AndAndNode("andand", [collection_data_store, processed_data_store, data_prep])
-        #retraining = ModelRetrainingNode("retraining", data_store)
+        retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
         pipeline = Pipeline(
-            nodes=[collection_data_store, data_prep, processed_data_store], 
+            nodes=[collection_data_store, data_prep, retraining], 
             anacostia_path=self.path, 
             logger=logger
         )

@@ -76,6 +76,9 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def record_artifact(self, filepath: str, log_state: str) -> None:
+        if log_state not in ("new", "current"):
+            raise ValueError(f"log_state must be either 'new' or 'current', not '{log_state}'")
+
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
         
