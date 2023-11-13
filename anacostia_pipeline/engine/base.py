@@ -8,7 +8,6 @@ from functools import wraps
 import traceback
 import sys
 from pydantic import BaseModel
-import os
 
 if __name__ == "__main__":
     from constants import Status, Result, Work
@@ -210,14 +209,98 @@ class BaseNode(Thread):
         """
         pass
 
+    def run(self) -> None:
+        """
+        override to specify the logic of the node.
+        """
+        raise NotImplementedError
+
+
+class BaseMetadataStoreNode(BaseNode):
+    """
+    Base class for metadata store nodes.
+    Metadata store nodes are nodes that are used to store metadata about the pipeline; 
+    e.g., store information about experiments (start time, end time, metrics, etc.).
+    The metadata store node is a special type of resource node that will be the predecessor of all other resource nodes;
+    thus, by extension, the metadata store node will always be the root node of the DAG.
+    """
+    def __init__(
+        self, name: str, resource_path: str, tracker_filename: str,
+        logger: Logger = None
+    ) -> None:
+        super().__init__(name, predecessors=[], logger=logger)
+        self.resource_path = resource_path
+        self.tracker_filename = tracker_filename
+        self.run_number = 0
+        self.resource_lock = RLock()
+    
+    def resource_accessor(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # keep trying to acquire lock until function is finished
+            # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
+            while True:
+                # this delay is used to allow the json file to be updated before the next iteration
+                # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
+                with self.resource_lock:
+                    result = func(self, *args, **kwargs)
+                    time.sleep(0.2)
+                    return result
+        return wrapper
+    
+    @resource_accessor
+    def create_run(self) -> None:
+        """
+        Override to specify how to create a run in the metadata store.
+        E.g., log the start time of the run, log the parameters of the run, etc. 
+        or create a new run in MLFlow, create a new run in Neptune, etc.
+        """
+        raise NotImplementedError
+    
+    @resource_accessor
+    def end_run(self) -> None:
+        """
+        Override to specify how to end a run in the metadata store.
+        E.g., log the end time of the run, log the metrics of the run, etc.
+        or end a run in MLFlow, end a run in Neptune, etc.
+        """
+        raise NotImplementedError
+    
+    def run(self) -> None:
+        while True:
+            self.trap_interrupts()
+            while self.check_successors_signals() is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+
+            self.trap_interrupts()
+            self.create_run()
+
+            self.trap_interrupts()
+            self.signal_successors(Result.SUCCESS)
+
+            self.trap_interrupts()
+            while self.check_successors_signals is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+            
+            self.trap_interrupts()
+            self.end_run()
+
 
 class BaseResourceNode(BaseNode):
-    def __init__(self, name: str, resource_path: str, tracker_filename: str, logger: Logger = None) -> None:
-        super().__init__(name, [], logger=logger)
+    def __init__(
+        self, 
+        name: str, resource_path: str, tracker_filename: str, 
+        logger: Logger = None, monitoring: bool = True, metadata_store: BaseMetadataStoreNode = None
+    ) -> None:
+        super().__init__(name, predecessors=[], logger=logger)
         self.resource_path = resource_path
         self.tracker_filename = tracker_filename
         self.iteration = 0
         self.resource_lock = RLock()
+        self.monitoring = monitoring
+        self.metadata_store = metadata_store
 
     def resource_accessor(func):
         @wraps(func)
@@ -231,6 +314,16 @@ class BaseResourceNode(BaseNode):
                     result = func(self, *args, **kwargs)
                     time.sleep(0.2)
                     return result
+        return wrapper
+    
+    def monitoring_enabled(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.monitoring is True:
+                return func(self, *args, **kwargs)
+            else:
+                # TODO: change this ValueError to a custom exception
+                raise ValueError(f"Cannot call '{func.__name__}' when monitoring is disabled for node 'self.name'.")
         return wrapper
     
     @BaseNode.log_exception
@@ -252,7 +345,8 @@ class BaseResourceNode(BaseNode):
         pass
 
     def on_exit(self):
-        self.stop_monitoring()
+        if self.monitoring is True:
+            self.stop_monitoring()
 
     @BaseNode.log_exception
     @resource_accessor
@@ -292,34 +386,38 @@ class BaseResourceNode(BaseNode):
         return True
 
     def run(self) -> None:
-        self.start_monitoring()
+        if self.monitoring is True:
+            self.start_monitoring()
 
         while True:
             self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
-            # waiting for the trigger condition to be met (note: change status to Work.WAITING_RESOURCE)
-            self.trap_interrupts()
-            while True:
+            # if the node is not monitoring the resource, then we don't need to check for new files
+            if self.monitoring is True:
+                # waiting for the trigger condition to be met (note: change status to Work.WAITING_RESOURCE)
                 self.trap_interrupts()
-                try:
-                    if self.trigger_condition() is True:
-                        break
-                    else:
-                        self.trap_interrupts()
-                        time.sleep(0.1)
-                except Exception as e:
-                    self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
-                    continue
-                    # Note: we continue here because we want to keep trying to check the resource until it is available
-                    # with that said, we should add an option for the user to specify the number of times to try before giving up
-                    # and throwing an exception
-                    # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
-                    # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
-                    # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
-                    # or just not move the file to current.
+                while True:
+                    self.trap_interrupts()
+                    try:
+                        if self.trigger_condition() is True:
+                            break
+                        else:
+                            self.trap_interrupts()
+                            time.sleep(0.1)
+                    except Exception as e:
+                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                        continue
+                        # Note: we continue here because we want to keep trying to check the resource until it is available
+                        # with that said, we should add an option for the user to specify the number of times to try before giving up
+                        # and throwing an exception
+                        # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
+                        # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
+                        # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
+                        # or just not move the file to current.
                 
-            self.trap_interrupts()
-            self.new_to_current()
+            if self.monitoring is True:
+                self.trap_interrupts()
+                self.new_to_current()
 
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)

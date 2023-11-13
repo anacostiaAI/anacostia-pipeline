@@ -65,11 +65,16 @@ class Pipeline:
             for node in nodes:
                 node.set_logger(logger)
 
-        # check if graph is acyclic (i.e., check if graph is a DAG)
+        # check to make sure graph is acyclic (i.e., check if graph is a DAG)
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
 
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
+
+        # TODO: check to make sure root node is a metadata store node
+        # TODO: check to make sure there is only one metadata store node
+        # TODO: check to make sure all resource nodes are successors of the metadata store node
+        # TODO: check to make sure graph is not disconnected
 
     def launch_nodes(self):
         """

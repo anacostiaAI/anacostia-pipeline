@@ -17,12 +17,12 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def __init__(
         self, 
         name: str, path: str, tracker_filename: str, 
-        init_state: str = "new", max_old_samples: int = None, logger: Logger = None
+        init_state: str = "new", max_old_samples: int = None, logger: Logger = None, monitoring: bool = True
     ) -> None:
 
         # TODO: add max_old_samples functionality
         self.max_old_samples = max_old_samples
-
+        
         self.path = os.path.abspath(path)
         if os.path.exists(self.path) is False:
             os.makedirs(self.path, exist_ok=True)
@@ -34,7 +34,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.init_state = init_state
         self.init_time = str(datetime.now())
         
-        super().__init__(name=name, resource_path=path, tracker_filename=tracker_filename, logger=logger)
+        super().__init__(name=name, resource_path=path, tracker_filename=tracker_filename, logger=logger, monitoring=monitoring)
     
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
