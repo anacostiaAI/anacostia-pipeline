@@ -1,3 +1,4 @@
+from logging import Logger
 from typing import List
 import unittest
 import logging
@@ -10,8 +11,8 @@ import time
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
-from anacostia_pipeline.engine.base import BaseActionNode
-from anacostia_pipeline.engine.logic import AndAndNode, AndOrNode, OrAndNode
+from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
+from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 from utils import *
@@ -43,10 +44,10 @@ logger = logging.getLogger(__name__)
 
 class DataStoreNode(ArtifactStoreNode):
     def __init__(
-        self, name: str, path: str, tracker_filename: str, 
+        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
-        super().__init__(name, path, tracker_filename, init_state, max_old_samples)
+        super().__init__(name, path, tracker_filename, metadata_store, init_state, max_old_samples)
     
     def trigger_condition(self) -> bool:
         num_new = self.get_num_artifacts("new")
@@ -132,14 +133,15 @@ class TestArtifactStore(unittest.TestCase):
         os.makedirs(self.path)
     
     def test_empty_pipeline(self):
+        metadata_store = JsonMetadataStoreNode("metadata_store", "metadata_store.json")
         #processed_data_store = ProcessedDataStoreNode("processed_data_store", self.processed_data_store_path, "processed_data_store.json")
-        collection_data_store = DataStoreNode("collection_data_store", self.collection_data_store_path, "collection_data_store.json")
+        collection_data_store = DataStoreNode("collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store)
         data_prep = DataPreparationNode("data_prep", collection_data_store)
         #orand = OrAndNode("or_and", [collection_data_store, processed_data_store])
         #andand = AndAndNode("andand", [collection_data_store, processed_data_store, data_prep])
         retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
         pipeline = Pipeline(
-            nodes=[collection_data_store, data_prep, retraining], 
+            nodes=[metadata_store, collection_data_store, data_prep, retraining], 
             anacostia_path=self.path, 
             logger=logger
         )
@@ -151,7 +153,7 @@ class TestArtifactStore(unittest.TestCase):
             create_file(f"{self.collection_data_store_path}/test_file{i}.txt", f"test file {i}")
             time.sleep(1)
 
-        time.sleep(10)
+        time.sleep(15)
         pipeline.terminate_nodes()
 
     """

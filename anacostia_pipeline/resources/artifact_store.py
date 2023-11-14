@@ -6,7 +6,7 @@ from datetime import datetime
 from logging import Logger
 
 sys.path.append("../../anacostia_pipeline")
-from engine.base import BaseResourceNode
+from engine.base import BaseMetadataStoreNode, BaseResourceNode
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -15,8 +15,7 @@ from watchdog.events import FileSystemEventHandler
 
 class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def __init__(
-        self, 
-        name: str, path: str, tracker_filename: str, 
+        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None, logger: Logger = None, monitoring: bool = True
     ) -> None:
 
@@ -34,7 +33,10 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.init_state = init_state
         self.init_time = str(datetime.now())
         
-        super().__init__(name=name, resource_path=path, tracker_filename=tracker_filename, logger=logger, monitoring=monitoring)
+        super().__init__(
+            name=name, resource_path=path, tracker_filename=tracker_filename, 
+            metadata_store=metadata_store, logger=logger, monitoring=monitoring
+        )
     
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
@@ -170,6 +172,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         for file_entry in json_data["files"]:
             if file_entry["state"] == "new":
                 self.log(f'"{self.name}" new -> current: {file_entry["filepath"]}')
+                file_entry["run_id"] = self.metadata_store.get_run_id()
                 file_entry["state"] = "current"
 
         with open(self.tracker_filepath, 'w') as json_file:

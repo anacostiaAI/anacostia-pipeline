@@ -225,16 +225,16 @@ class BaseMetadataStoreNode(BaseNode):
     thus, by extension, the metadata store node will always be the root node of the DAG.
     """
     def __init__(
-        self, name: str, resource_path: str, tracker_filename: str,
-        logger: Logger = None
-    ) -> None:
+        self, name: str, tracker_filename: str, logger: Logger = None) -> None:
         super().__init__(name, predecessors=[], logger=logger)
-        self.resource_path = resource_path
         self.tracker_filename = tracker_filename
-        self.run_number = 0
+        self.run_id = 0
         self.resource_lock = RLock()
     
-    def resource_accessor(func):
+    def get_run_id(self) -> int:
+        return self.run_id
+
+    def metadata_accessor(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             # keep trying to acquire lock until function is finished
@@ -248,7 +248,7 @@ class BaseMetadataStoreNode(BaseNode):
                     return result
         return wrapper
     
-    @resource_accessor
+    @metadata_accessor
     def create_run(self) -> None:
         """
         Override to specify how to create a run in the metadata store.
@@ -257,33 +257,39 @@ class BaseMetadataStoreNode(BaseNode):
         """
         raise NotImplementedError
     
-    @resource_accessor
+    @metadata_accessor
     def end_run(self) -> None:
         """
         Override to specify how to end a run in the metadata store.
-        E.g., log the end time of the run, log the metrics of the run, etc.
+        E.g., log the end time of the run, log the metrics of the run, update run_number, etc.
         or end a run in MLFlow, end a run in Neptune, etc.
         """
-        raise NotImplementedError
+        self.run_id += 1
     
     def run(self) -> None:
         while True:
+            # waiting for all resource nodes to signal their resources are ready to be used
             self.trap_interrupts()
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
 
+            # creating a new run
             self.trap_interrupts()
             self.create_run()
 
+            # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
+            self.log(f"{self.name} signaling successors")
 
+            # waiting for all resource nodes to signal they are done using the current state
             self.trap_interrupts()
             while self.check_successors_signals is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
             
+            # ending the run
             self.trap_interrupts()
             self.end_run()
 
@@ -291,13 +297,12 @@ class BaseMetadataStoreNode(BaseNode):
 class BaseResourceNode(BaseNode):
     def __init__(
         self, 
-        name: str, resource_path: str, tracker_filename: str, 
-        logger: Logger = None, monitoring: bool = True, metadata_store: BaseMetadataStoreNode = None
+        name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode,
+        logger: Logger = None, monitoring: bool = True
     ) -> None:
-        super().__init__(name, predecessors=[], logger=logger)
+        super().__init__(name, predecessors=[metadata_store], logger=logger)
         self.resource_path = resource_path
         self.tracker_filename = tracker_filename
-        self.iteration = 0
         self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
@@ -386,12 +391,11 @@ class BaseResourceNode(BaseNode):
         return True
 
     def run(self) -> None:
+        # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
             self.start_monitoring()
 
         while True:
-            self.log(f"--------------------------- started iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
-
             # if the node is not monitoring the resource, then we don't need to check for new files
             if self.monitoring is True:
                 # waiting for the trigger condition to be met (note: change status to Work.WAITING_RESOURCE)
@@ -415,10 +419,24 @@ class BaseResourceNode(BaseNode):
                         # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
                         # or just not move the file to current.
                 
+            # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
+            # (note: change status to Work.READY)
+            self.trap_interrupts()
+            self.signal_predecessors(Result.SUCCESS)
+            self.log(f"{self.name} signaling metadata store node")
+
+            # wait for metadata store node to finish creating the run before moving files to current
+            self.trap_interrupts()
+            while self.check_predecessors_signals() is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+
+            # if the node is not monitoring the resource, then there will not be any new files to move to current
             if self.monitoring is True:
                 self.trap_interrupts()
                 self.new_to_current()
 
+            # signalling to all successors that the resource is ready to be used
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
 
@@ -429,11 +447,14 @@ class BaseResourceNode(BaseNode):
                 self.trap_interrupts()
                 time.sleep(0.2)
             
+            # moving 'current' files to 'old'
             self.trap_interrupts()
             self.current_to_old()
-            self.log(f"--------------------------- finished iteration {self.iteration} (monitoring phase of {self.name}) at {datetime.now()}")
 
-            self.iteration += 1
+            # signal the metadata store node that the resource has been used for the current run
+            self.trap_interrupts()
+            self.log(f"{self.name} signaling metadata store node again")
+            self.signal_predecessors(Result.SUCCESS)
 
 
 class BaseActionNode(BaseNode):
@@ -502,7 +523,6 @@ class BaseActionNode(BaseNode):
                 time.sleep(0.2)
                 self.trap_interrupts()
             
-            self.log(f"--------------------------- started iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
             self.trap_interrupts()
             self.before_execution()
             try:
@@ -533,8 +553,6 @@ class BaseActionNode(BaseNode):
             while self.check_successors_signals() is False:
                 time.sleep(0.2)
                 self.trap_interrupts()
-
-            self.log(f"--------------------------- finished iteration {self.iteration} (execution phase of {self.name}) at {datetime.now()}")
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
