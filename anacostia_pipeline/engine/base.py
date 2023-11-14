@@ -111,7 +111,6 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
-            #self.log(msg)
             successor.predecessors_queue.put(msg)
 
     def signal_predecessors(self, result: Result):
@@ -122,7 +121,6 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
-            #self.log(msg)
             predecessor.successors_queue.put(msg)
 
     def check_predecessors_signals(self) -> bool:
@@ -178,7 +176,6 @@ class BaseNode(Thread):
 
                     # Reset the received signals
                     self.received_successors_signals = dict()
-                    #self.log(f"{self.name} received all signals from successors")
                     return True
                 else:
                     return False
@@ -294,18 +291,6 @@ class BaseMetadataStoreNode(BaseNode):
 
             # waiting for all resource nodes to signal they are done using the current state
             self.trap_interrupts()
-            """
-            successor_signals = None
-            while True:
-                successor_signals = self.check_successors_signals()
-                #self.log(f"successor_signals = {successor_signals}")
-                if successor_signals is True:
-                    break
-                else:
-                    #self.log(f"{self.name} waiting for resource nodes to signal they are done using the current state")
-                    self.trap_interrupts()
-                    time.sleep(0.2)
-            """
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
