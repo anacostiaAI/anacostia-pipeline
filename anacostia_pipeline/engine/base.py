@@ -124,66 +124,68 @@ class BaseNode(Thread):
             predecessor.successors_queue.put(msg)
 
     def check_predecessors_signals(self) -> bool:
-        if len(self.predecessors) > 0:
-            if self.predecessors_queue.empty():
-                return False
+        # If there are no predecessors, then we can just return True
+        if len(self.predecessors) == 0:
+            return True
 
-            # Pull out all queued up incoming signals and register them
-            while not self.predecessors_queue.empty():
-                sig: Message = self.predecessors_queue.get()
+        # If there are predecessors, but no signals, then we can return False
+        if self.predecessors_queue.empty():
+            return False
 
-                if sig.sender not in self.received_predecessors_signals:
+        # Pull out all queued up incoming signals and register them
+        while not self.predecessors_queue.empty():
+            sig: Message = self.predecessors_queue.get()
+
+            if sig.sender not in self.received_predecessors_signals:
+                self.received_predecessors_signals[sig.sender] = sig.result
+            else:
+                if self.received_predecessors_signals[sig.sender] != Result.SUCCESS:
                     self.received_predecessors_signals[sig.sender] = sig.result
-                else:
-                    if self.received_predecessors_signals[sig.sender] != Result.SUCCESS:
-                        self.received_predecessors_signals[sig.sender] = sig.result
-                # TODO For signaling over the network, this is where we'd send back an ACK
+            # TODO For signaling over the network, this is where we'd send back an ACK
 
-            # Check if the signals match the execute condition
-            if len(self.received_predecessors_signals) == len(self.predecessors):
-                if all([sig == Result.SUCCESS for sig in self.received_predecessors_signals.values()]):
+        # Check if the signals match the execute condition
+        if len(self.received_predecessors_signals) == len(self.predecessors):
+            if all([sig == Result.SUCCESS for sig in self.received_predecessors_signals.values()]):
 
-                    # Reset the received signals
-                    self.received_predecessors_signals = dict()
-                    return True
-                else:
-                    return False
+                # Reset the received signals
+                self.received_predecessors_signals = dict()
+                return True
             else:
                 return False
+        else:
+            return False
  
-        # If there are no dependent nodes, then we can just return True
-        return True
-    
     def check_successors_signals(self) -> bool:
-        if len(self.successors) > 0:
-            if self.successors_queue.empty():
-                return False
+        # If there are no successors, then we can just return True
+        if len(self.successors) == 0:
+            return True
 
-            # Pull out the queued up incoming signals and register them
-            while not self.successors_queue.empty():
-                sig: Message = self.successors_queue.get()
+        # If there are successors, but no signals, then we can return False
+        if self.successors_queue.empty():
+            return False
 
-                if sig.sender not in self.received_successors_signals:
+        # Pull out the queued up incoming signals and register them
+        while not self.successors_queue.empty():
+            sig: Message = self.successors_queue.get()
+
+            if sig.sender not in self.received_successors_signals:
+                self.received_successors_signals[sig.sender] = sig.result
+            else:
+                if self.received_successors_signals[sig.sender] != Result.SUCCESS:
                     self.received_successors_signals[sig.sender] = sig.result
-                else:
-                    if self.received_successors_signals[sig.sender] != Result.SUCCESS:
-                        self.received_successors_signals[sig.sender] = sig.result
-                # TODO For signaling over the network, this is where we'd send back an ACK
+            # TODO For signaling over the network, this is where we'd send back an ACK
 
-            # Check if the signals match the execute condition
-            if len(self.received_successors_signals) == len(self.successors):
-                if all([sig == Result.SUCCESS for sig in self.received_successors_signals.values()]):
+        # Check if the signals match the execute condition
+        if len(self.received_successors_signals) == len(self.successors):
+            if all([sig == Result.SUCCESS for sig in self.received_successors_signals.values()]):
 
-                    # Reset the received signals
-                    self.received_successors_signals = dict()
-                    return True
-                else:
-                    return False
+                # Reset the received signals
+                self.received_successors_signals = dict()
+                return True
             else:
                 return False
-        
-        # If there are no dependent nodes, then we can just return True
-        return True
+        else:
+            return False
 
     def pause(self):
         self.status = Status.PAUSING
@@ -287,7 +289,6 @@ class BaseMetadataStoreNode(BaseNode):
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
-            self.log(f"{self.name} signaling successors")
 
             # waiting for all resource nodes to signal they are done using the current state
             self.trap_interrupts()
@@ -429,7 +430,6 @@ class BaseResourceNode(BaseNode):
             # (note: change status to Work.READY)
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
-            self.log(f"{self.name} signaling metadata store node")
 
             # wait for metadata store node to finish creating the run before moving files to current
             self.trap_interrupts()
@@ -459,7 +459,6 @@ class BaseResourceNode(BaseNode):
 
             # signal the metadata store node that the resource has been used for the current run
             self.trap_interrupts()
-            self.log(f"{self.name} signaling metadata store node again")
             self.signal_predecessors(Result.SUCCESS)
 
 
