@@ -17,8 +17,12 @@ else:
 
 class Message(BaseModel):
     sender: str
+    receiver: str
     timestamp: datetime
     result: Result = None
+
+    def __repr__(self) -> str:
+        return f"Message(sender: {self.sender}, receiver: {self.receiver}, timestamp: {str(self.timestamp)}, result: {self.result})"
 
 
 class BaseNode(Thread):
@@ -100,21 +104,25 @@ class BaseNode(Thread):
         return wrapper
     
     def signal_successors(self, result: Result):
-        msg = Message(
-            sender = self.name,
-            timestamp = datetime.now(),
-            result = result
-        )
         for successor in self.successors:
+            msg = Message(
+                sender = self.name,
+                receiver = successor.name,
+                timestamp = datetime.now(),
+                result = result
+            )
+            #self.log(msg)
             successor.predecessors_queue.put(msg)
 
     def signal_predecessors(self, result: Result):
-        msg = Message(
-            sender = self.name,
-            timestamp = datetime.now(),
-            result = result
-        )
         for predecessor in self.predecessors:
+            msg = Message(
+                sender = self.name,
+                receiver = predecessor.name,
+                timestamp = datetime.now(),
+                result = result
+            )
+            #self.log(msg)
             predecessor.successors_queue.put(msg)
 
     def check_predecessors_signals(self) -> bool:
@@ -170,6 +178,7 @@ class BaseNode(Thread):
 
                     # Reset the received signals
                     self.received_successors_signals = dict()
+                    #self.log(f"{self.name} received all signals from successors")
                     return True
                 else:
                     return False
@@ -285,7 +294,19 @@ class BaseMetadataStoreNode(BaseNode):
 
             # waiting for all resource nodes to signal they are done using the current state
             self.trap_interrupts()
-            while self.check_successors_signals is False:
+            """
+            successor_signals = None
+            while True:
+                successor_signals = self.check_successors_signals()
+                #self.log(f"successor_signals = {successor_signals}")
+                if successor_signals is True:
+                    break
+                else:
+                    #self.log(f"{self.name} waiting for resource nodes to signal they are done using the current state")
+                    self.trap_interrupts()
+                    time.sleep(0.2)
+            """
+            while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
             
