@@ -93,9 +93,6 @@ class DataPreparationNode(BaseActionNode):
         super().__init__(name, predecessors=[data_store])
         self.data_store = data_store
     
-    def execution_condition(self) -> bool:
-        return self.data_store.get_num_artifacts("current") >= 2
-    
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
         for filepath in self.data_store.list_artifacts("current"):

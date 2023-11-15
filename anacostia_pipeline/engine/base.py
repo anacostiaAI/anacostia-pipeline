@@ -468,13 +468,6 @@ class BaseActionNode(BaseNode):
         super().__init__(name, predecessors, logger=logger)
 
     @BaseNode.log_exception
-    def execution_condition(self) -> bool:
-        """
-        override to specify the condition for executing the action function
-        """
-        return True
-
-    @BaseNode.log_exception
     def before_execution(self) -> None:
         """
         override to enable node to do something before execution; 
@@ -546,8 +539,9 @@ class BaseActionNode(BaseNode):
                 self.on_error(e)
                 return
 
-            self.trap_interrupts()
-            self.after_execution()
+            finally:
+                self.trap_interrupts()
+                self.after_execution()
 
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
