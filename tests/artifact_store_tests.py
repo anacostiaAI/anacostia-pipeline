@@ -56,22 +56,13 @@ class DataStoreNode(ArtifactStoreNode):
     def create_filename(self) -> str:
         return f"data_file{self.get_num_artifacts('all')}.txt"
 
-    def save_artifact(self, content: str) -> None:
-        filename = self.create_filename()
-        filepath = os.path.join(self.path, filename)
 
-        # note: record_artifact should be called before create_file so that the Observer can see the file is already logged and ignore it
-        self.record_current(filepath)
-        create_file(filepath, content)
-        self.log(f"Saved {filename} to {self.path}")
-    
-
-class ProcessedDataStoreNode(DataStoreNode):
+class ProcessedDataStoreNode(ArtifactStoreNode):
     def __init__(
-        self, name: str, path: str, tracker_filename: str, 
+        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
-        super().__init__(name, path, tracker_filename, init_state, max_old_samples)
+        super().__init__(name, path, tracker_filename, metadata_store, init_state, max_old_samples, monitoring=False)
     
     def trigger_condition(self) -> bool:
         return True
@@ -79,6 +70,15 @@ class ProcessedDataStoreNode(DataStoreNode):
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"
 
+    def save_artifact(self, content: str) -> None:
+        filename = self.create_filename()
+        filepath = os.path.join(self.path, filename)
+
+        # note: record_artifact should be called before create_file so that the Observer can see the file is already logged and ignore it
+        self.record_current(filepath)
+        create_file(filepath, content)
+        self.log(f"Saved preprocessed {filepath}")
+    
 
 class ModelRegistryNode(ArtifactStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
@@ -89,17 +89,17 @@ class ModelRegistryNode(ArtifactStoreNode):
     
 
 class DataPreparationNode(BaseActionNode):
-    def __init__(self, name: str, data_store: DataStoreNode) -> None:
+    def __init__(self, name: str, data_store: DataStoreNode, processed_data_store: ProcessedDataStoreNode) -> None:
         super().__init__(name, predecessors=[data_store])
         self.data_store = data_store
+        self.processed_data_store = processed_data_store
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
-                #content = f"processed {filepath}"
-                #self.processed_data_store.save_artifact(content)
-                self.log(f"Created preprocessed {filepath}")
+                content = f"processed {filepath}"
+                self.processed_data_store.save_artifact(content)
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
@@ -131,11 +131,13 @@ class TestArtifactStore(unittest.TestCase):
     
     def test_empty_pipeline(self):
         metadata_store = JsonMetadataStoreNode("metadata_store", "metadata_store.json")
-        #processed_data_store = ProcessedDataStoreNode("processed_data_store", self.processed_data_store_path, "processed_data_store.json")
-        collection_data_store = DataStoreNode("collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store)
-        data_prep = DataPreparationNode("data_prep", collection_data_store)
-        #orand = OrAndNode("or_and", [collection_data_store, processed_data_store])
-        #andand = AndAndNode("andand", [collection_data_store, processed_data_store, data_prep])
+        processed_data_store = ProcessedDataStoreNode(
+            "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
+        )
+        collection_data_store = DataStoreNode(
+            "collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store
+        )
+        data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
         retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
         pipeline = Pipeline(
             nodes=[metadata_store, collection_data_store, data_prep, retraining], 

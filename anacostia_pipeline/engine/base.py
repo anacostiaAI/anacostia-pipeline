@@ -537,7 +537,6 @@ class BaseActionNode(BaseNode):
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
                 self.trap_interrupts()
                 self.on_error(e)
-                return
 
             finally:
                 self.trap_interrupts()
