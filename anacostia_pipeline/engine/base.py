@@ -1,5 +1,4 @@
 from threading import Thread, Lock, RLock
-from queue import Queue
 from typing import List, Dict
 import time
 from logging import Logger
@@ -35,10 +34,8 @@ class BaseNode(Thread):
 
         self.successors: List['BaseNode'] = list()
         self.predecessors = predecessors
-        self.predecessors_queue = Queue()
-        self.successors_queue = Queue()
-        self.received_predecessors_signals: Dict[str, Message] = dict()
-        self.received_successors_signals: Dict[str, Message] = dict()
+        self.predecessors_signals: Dict[str, Message] = dict()
+        self.successors_signals: Dict[str, Message] = dict()
         super().__init__(name=name)
     
     def __hash__(self) -> int:
@@ -111,8 +108,11 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
-            self.log(f"'{self.name}' signaled successor '{successor.name}'")
-            successor.predecessors_queue.put(msg)
+            if successor.name not in self.successors_signals.keys():
+                successor.predecessors_signals[self.name] = msg
+            else:
+                if self.successors_signals[successor.name].result != Result.SUCCESS:
+                    successor.predecessors_signals[self.name] = msg
 
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
@@ -122,8 +122,11 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
-            self.log(f"'{self.name}' signaled predecessor '{predecessor.name}'")
-            predecessor.successors_queue.put(msg)
+            if predecessor.name not in self.predecessors_signals.keys():
+                predecessor.successors_signals[self.name] = msg
+            else:
+                if self.predecessors_signals[predecessor.name].result != Result.SUCCESS:
+                    predecessor.successors_signals[self.name] = msg
 
     def check_predecessors_signals(self) -> bool:
         # If there are no predecessors, then we can just return True
@@ -131,26 +134,17 @@ class BaseNode(Thread):
             return True
 
         # If there are predecessors, but no signals, then we can return False
-        if self.predecessors_queue.empty():
+        if len(self.predecessors_signals) == 0:
             return False
 
-        # Pull out all queued up incoming signals and register them
-        while not self.predecessors_queue.empty():
-            sig: Message = self.predecessors_queue.get()
+        # Check if all the predecessors have sent a signal
+        if len(self.predecessors_signals) == len(self.predecessors):
 
-            if sig.sender not in self.received_predecessors_signals:
-                self.received_predecessors_signals[sig.sender] = sig.result
-            else:
-                if self.received_predecessors_signals[sig.sender] != Result.SUCCESS:
-                    self.received_predecessors_signals[sig.sender] = sig.result
-            # TODO For signaling over the network, this is where we'd send back an ACK
-
-        # Check if the signals match the execute condition
-        if len(self.received_predecessors_signals) == len(self.predecessors):
-            if all([sig == Result.SUCCESS for sig in self.received_predecessors_signals.values()]):
+            # Check if all predecessors have sent a success signal
+            if all([sig.result == Result.SUCCESS for sig in self.predecessors_signals.values()]):
 
                 # Reset the received signals
-                self.received_predecessors_signals = dict()
+                self.predecessors_signals = dict()
                 return True
             else:
                 return False
@@ -163,26 +157,15 @@ class BaseNode(Thread):
             return True
 
         # If there are successors, but no signals, then we can return False
-        if self.successors_queue.empty():
+        if len(self.successors_signals) == 0:
             return False
 
-        # Pull out the queued up incoming signals and register them
-        while not self.successors_queue.empty():
-            sig: Message = self.successors_queue.get()
-
-            if sig.sender not in self.received_successors_signals:
-                self.received_successors_signals[sig.sender] = sig.result
-            else:
-                if self.received_successors_signals[sig.sender] != Result.SUCCESS:
-                    self.received_successors_signals[sig.sender] = sig.result
-            # TODO For signaling over the network, this is where we'd send back an ACK
-
         # Check if the signals match the execute condition
-        if len(self.received_successors_signals) == len(self.successors):
-            if all([sig == Result.SUCCESS for sig in self.received_successors_signals.values()]):
+        if len(self.successors_signals) == len(self.successors):
+            if all([sig.result == Result.SUCCESS for sig in self.successors_signals.values()]):
 
                 # Reset the received signals
-                self.received_successors_signals = dict()
+                self.successors_signals = dict()
                 return True
             else:
                 return False
