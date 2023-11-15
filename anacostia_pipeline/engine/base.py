@@ -111,6 +111,7 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
+            self.log(f"'{self.name}' signaled successor '{successor.name}'")
             successor.predecessors_queue.put(msg)
 
     def signal_predecessors(self, result: Result):
@@ -121,6 +122,7 @@ class BaseNode(Thread):
                 timestamp = datetime.now(),
                 result = result
             )
+            self.log(f"'{self.name}' signaled predecessor '{predecessor.name}'")
             predecessor.successors_queue.put(msg)
 
     def check_predecessors_signals(self) -> bool:
@@ -523,6 +525,7 @@ class BaseActionNode(BaseNode):
             
             self.trap_interrupts()
             self.before_execution()
+            ret = None
             try:
                 self.trap_interrupts()
                 ret = self.execute()

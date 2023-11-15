@@ -7,6 +7,7 @@ import os
 import shutil
 import random
 import time
+import traceback
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -14,6 +15,7 @@ from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
+from anacostia_pipeline.engine.base import Result
 
 from utils import *
 
@@ -42,7 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class DataStoreNode(ArtifactStoreNode):
+class MonitoringDataStoreNode(ArtifactStoreNode):
     def __init__(
         self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
@@ -57,16 +59,10 @@ class DataStoreNode(ArtifactStoreNode):
         return f"data_file{self.get_num_artifacts('all')}.txt"
 
 
-class ProcessedDataStoreNode(ArtifactStoreNode):
-    def __init__(
-        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
-        init_state: str = "new", max_old_samples: int = None
-    ) -> None:
-        super().__init__(name, path, tracker_filename, metadata_store, init_state, max_old_samples, monitoring=False)
+class NonMonitoringDataStoreNode(ArtifactStoreNode):
+    def __init__(self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, path, tracker_filename, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
-    def trigger_condition(self) -> bool:
-        return True
-
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"
 
@@ -79,6 +75,43 @@ class ProcessedDataStoreNode(ArtifactStoreNode):
         create_file(filepath, content)
         self.log(f"Saved preprocessed {filepath}")
     
+    def run(self) -> None:
+        # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
+        # (note: change status to Work.READY)
+        self.trap_interrupts()
+        self.signal_predecessors(Result.SUCCESS)
+
+        while True:
+            # wait for metadata store node to finish creating the run before moving files to current
+            self.trap_interrupts()
+            while self.check_predecessors_signals() is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+
+            self.log(f"'{self.name}' is signalling successors.")
+
+            # signalling to all successors that the resource is ready to be used
+            self.trap_interrupts()
+            self.signal_successors(Result.SUCCESS)
+
+            # waiting for all successors to finish using the current state before updating the state of the resource
+            # (note: change status to Work.WAITING_SUCCESSORS)
+            self.trap_interrupts()
+            while self.check_successors_signals() is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+            
+            self.log(f"'{self.name}' is updating state from current->old.")
+
+            # moving 'current' files to 'old'
+            self.trap_interrupts()
+            self.current_to_old()
+
+            # signal the metadata store node that the resource has been used for the current run
+            while self.check_predecessors_signals() is False:
+                self.trap_interrupts()
+                self.signal_predecessors(Result.SUCCESS)
+                time.sleep(0.2)
 
 class ModelRegistryNode(ArtifactStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
@@ -89,8 +122,8 @@ class ModelRegistryNode(ArtifactStoreNode):
     
 
 class DataPreparationNode(BaseActionNode):
-    def __init__(self, name: str, data_store: DataStoreNode, processed_data_store: ProcessedDataStoreNode) -> None:
-        super().__init__(name, predecessors=[data_store])
+    def __init__(self, name: str, data_store: MonitoringDataStoreNode, processed_data_store: NonMonitoringDataStoreNode) -> None:
+        super().__init__(name, predecessors=[data_store, processed_data_store])
         self.data_store = data_store
         self.processed_data_store = processed_data_store
     
@@ -105,7 +138,7 @@ class DataPreparationNode(BaseActionNode):
 
 
 class ModelRetrainingNode(BaseActionNode):
-    def __init__(self, name: str, data_prep: DataPreparationNode, data_store: DataStoreNode) -> None:
+    def __init__(self, name: str, data_prep: DataPreparationNode, data_store: MonitoringDataStoreNode) -> None:
         self.data_store = data_store
         super().__init__(name, predecessors=[data_prep])
     
@@ -131,16 +164,16 @@ class TestArtifactStore(unittest.TestCase):
     
     def test_empty_pipeline(self):
         metadata_store = JsonMetadataStoreNode("metadata_store", "metadata_store.json")
-        processed_data_store = ProcessedDataStoreNode(
+        processed_data_store = NonMonitoringDataStoreNode(
             "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
         )
-        collection_data_store = DataStoreNode(
+        collection_data_store = MonitoringDataStoreNode(
             "collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store
         )
         data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
         retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
         pipeline = Pipeline(
-            nodes=[metadata_store, collection_data_store, data_prep, retraining], 
+            nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining], 
             anacostia_path=self.path, 
             logger=logger
         )
@@ -152,7 +185,7 @@ class TestArtifactStore(unittest.TestCase):
             create_file(f"{self.collection_data_store_path}/test_file{i}.txt", f"test file {i}")
             time.sleep(1)
 
-        time.sleep(15)
+        time.sleep(20)
         pipeline.terminate_nodes()
 
     """
