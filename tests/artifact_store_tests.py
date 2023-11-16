@@ -75,45 +75,6 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
         create_file(filepath, content)
         self.log(f"Saved preprocessed {filepath}")
     
-    def run(self) -> None:
-        while True:
-            # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
-            # (note: change status to Work.READY)
-            self.trap_interrupts()
-            self.signal_predecessors(Result.SUCCESS)
-
-            # wait for metadata store node to finish creating the run before moving files to current
-            self.trap_interrupts()
-            while self.check_predecessors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-
-            self.log(f"'{self.name}' is signalling successors.")
-
-            # signalling to all successors that the resource is ready to be used
-            self.trap_interrupts()
-            self.signal_successors(Result.SUCCESS)
-
-            # waiting for all successors to finish using the current state before updating the state of the resource
-            # (note: change status to Work.WAITING_SUCCESSORS)
-            self.trap_interrupts()
-            while self.check_successors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            
-            self.log(f"'{self.name}' is updating state from current->old.")
-
-            # moving 'current' files to 'old'
-            self.trap_interrupts()
-            self.current_to_old()
-
-            self.trap_interrupts()
-            self.signal_predecessors(Result.SUCCESS)
-    
-            self.trap_interrupts()
-            while self.check_predecessors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
 
 class ModelRegistryNode(ArtifactStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
