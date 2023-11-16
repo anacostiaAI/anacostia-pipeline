@@ -6,22 +6,14 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import sys
-from pydantic import BaseModel
 
 if __name__ == "__main__":
     from constants import Status, Result, Work
+    from utils import Signal, SignalTable
 else:
     from engine.constants import Status, Result, Work
+    from engine.utils import Signal, SignalTable
 
-
-class Message(BaseModel):
-    sender: str
-    receiver: str
-    timestamp: datetime
-    result: Result = None
-
-    def __repr__(self) -> str:
-        return f"Message(sender: {self.sender}, receiver: {self.receiver}, timestamp: {str(self.timestamp)}, result: {self.result})"
 
 
 class BaseNode(Thread):
@@ -32,10 +24,11 @@ class BaseNode(Thread):
         self.logger = logger
         self.anacostia_path: str = None
 
-        self.successors: List['BaseNode'] = list()
+        # TODO: replace list with tuple
         self.predecessors = predecessors
-        self.predecessors_signals: Dict[str, Message] = dict()
-        self.successors_signals: Dict[str, Message] = dict()
+        self.predecessors_signals = SignalTable()
+        self.successors: List['BaseNode'] = list()
+        self.successors_signals = SignalTable()
         super().__init__(name=name)
     
     def __hash__(self) -> int:
@@ -54,6 +47,7 @@ class BaseNode(Thread):
             raise ValueError(f"Logger for node '{self.name}' has already been set.")
 
     def log(self, message: str) -> None:
+        # TODO: add option to log to multiple loggers
         if self.logger is not None:
             self.logger.info(message)
         else:
@@ -102,34 +96,30 @@ class BaseNode(Thread):
     
     def signal_successors(self, result: Result):
         for successor in self.successors:
-            msg = Message(
+            msg = Signal(
                 sender = self.name,
                 receiver = successor.name,
                 timestamp = datetime.now(),
                 result = result
             )
             if successor.name not in self.successors_signals.keys():
-                self.log(f"Node '{self.name}' sending signal to successor '{successor.name}'")
                 successor.predecessors_signals[self.name] = msg
             else:
                 if self.successors_signals[successor.name].result != Result.SUCCESS:
-                    self.log(f"Node '{self.name}' sending signal to successor '{successor.name}'")
                     successor.predecessors_signals[self.name] = msg
 
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
-            msg = Message(
+            msg = Signal(
                 sender = self.name,
                 receiver = predecessor.name,
                 timestamp = datetime.now(),
                 result = result
             )
             if predecessor.name not in self.predecessors_signals.keys():
-                self.log(f"Node '{self.name}' sending signal to predecessor '{predecessor.name}'")
                 predecessor.successors_signals[self.name] = msg
             else:
                 if self.predecessors_signals[predecessor.name].result != Result.SUCCESS:
-                    self.log(f"Node '{self.name}' sending signal to predecessor '{predecessor.name}'")
                     predecessor.successors_signals[self.name] = msg
 
     def check_predecessors_signals(self) -> bool:
@@ -148,7 +138,7 @@ class BaseNode(Thread):
             if all([sig.result == Result.SUCCESS for sig in self.predecessors_signals.values()]):
 
                 # Reset the received signals
-                self.predecessors_signals = dict()
+                self.predecessors_signals = SignalTable()
                 return True
             else:
                 return False
@@ -169,7 +159,7 @@ class BaseNode(Thread):
             if all([sig.result == Result.SUCCESS for sig in self.successors_signals.values()]):
 
                 # Reset the received signals
-                self.successors_signals = dict()
+                self.successors_signals = SignalTable()
                 return True
             else:
                 return False
