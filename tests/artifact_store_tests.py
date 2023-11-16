@@ -46,10 +46,10 @@ logger = logging.getLogger(__name__)
 
 class MonitoringDataStoreNode(ArtifactStoreNode):
     def __init__(
-        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
+        self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
-        super().__init__(name, path, tracker_filename, metadata_store, init_state, max_old_samples)
+        super().__init__(name, resource_path, tracker_filename, metadata_store, init_state, max_old_samples)
     
     def trigger_condition(self) -> bool:
         num_new = self.get_num_artifacts("new")
@@ -60,8 +60,8 @@ class MonitoringDataStoreNode(ArtifactStoreNode):
 
 
 class NonMonitoringDataStoreNode(ArtifactStoreNode):
-    def __init__(self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, ) -> None:
-        super().__init__(name, path, tracker_filename, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+    def __init__(self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, resource_path, tracker_filename, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"

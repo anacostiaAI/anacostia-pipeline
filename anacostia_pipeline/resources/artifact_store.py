@@ -15,14 +15,14 @@ from watchdog.events import FileSystemEventHandler
 
 class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def __init__(
-        self, name: str, path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
+        self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None, logger: Logger = None, monitoring: bool = True
     ) -> None:
 
         # TODO: add max_old_samples functionality
         self.max_old_samples = max_old_samples
         
-        self.path = os.path.abspath(path)
+        self.path = os.path.abspath(resource_path)
         if os.path.exists(self.path) is False:
             os.makedirs(self.path, exist_ok=True)
         
@@ -34,7 +34,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.init_time = str(datetime.now())
         
         super().__init__(
-            name=name, resource_path=path, tracker_filename=tracker_filename, 
+            name=name, resource_path=resource_path, tracker_filename=tracker_filename, 
             metadata_store=metadata_store, logger=logger, monitoring=monitoring
         )
     
