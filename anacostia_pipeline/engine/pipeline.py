@@ -10,10 +10,10 @@ import networkx as nx
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('../anacostia_pipeline'))
 if __name__ == "__main__":
-    from base import BaseActionNode, BaseResourceNode, BaseNode
+    from base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode
     from constants import Status
 else:
-    from engine.base import BaseActionNode, BaseResourceNode, BaseNode
+    from engine.base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode
     from engine.constants import Status
 
 
@@ -71,10 +71,20 @@ class Pipeline:
 
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
 
-        # TODO: check to make sure root node is a metadata store node
+        # check to make sure root node is a metadata store node
+        if isinstance(self.nodes[0], BaseMetadataStoreNode) is not True:
+            raise InvalidNodeDependencyError("Root node must be a metadata store node")
+        
         # TODO: check to make sure there is only one metadata store node
+        for node in self.nodes:
+            if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
+                raise InvalidNodeDependencyError("There can only be one metadata store node")
+                
+        self.metadata_store = self.nodes[0]
+
         # TODO: check to make sure all resource nodes are successors of the metadata store node
         # TODO: check to make sure graph is not disconnected
+        # TODO: check to make sure all resource nodes are predecessors of an action node 
 
     def launch_nodes(self):
         """
