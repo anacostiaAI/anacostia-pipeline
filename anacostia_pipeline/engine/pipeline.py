@@ -65,26 +65,41 @@ class Pipeline:
             for node in nodes:
                 node.set_logger(logger)
 
-        # check to make sure graph is acyclic (i.e., check if graph is a DAG)
+        # check 1: make sure graph is acyclic (i.e., check if graph is a DAG)
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
 
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
 
-        # check to make sure root node is a metadata store node
+        # check 2: make sure graph is not disconnected
+        for node in self.nodes:
+            if (len(list(self.graph.successors(node))) == 0) and (len(list(self.graph.predecessors(node))) == 0):
+                raise InvalidNodeDependencyError(f"Node '{node.name}' is disconnected from graph")
+
+        # check 3: make sure root node is a metadata store node
         if isinstance(self.nodes[0], BaseMetadataStoreNode) is not True:
             raise InvalidNodeDependencyError("Root node must be a metadata store node")
         
-        # TODO: check to make sure there is only one metadata store node
+        # check 4: make sure there is only one metadata store node
         for node in self.nodes:
             if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
                 raise InvalidNodeDependencyError("There can only be one metadata store node")
                 
+        # set metadata store node
         self.metadata_store = self.nodes[0]
 
-        # TODO: check to make sure all resource nodes are successors of the metadata store node
-        # TODO: check to make sure graph is not disconnected
-        # TODO: check to make sure all resource nodes are predecessors of an action node 
+        # check 5: make sure all resource nodes are successors of the metadata store node
+        for node in self.nodes:
+            if isinstance(node, BaseResourceNode) is True:
+                if node not in list(self.graph.successors(self.metadata_store)):
+                    raise InvalidNodeDependencyError("All resource nodes must be successors of the metadata store node")
+
+        # check 6: make sure all resource nodes have at least one successor
+        for node in self.nodes:
+            if isinstance(node, BaseResourceNode) is True:
+                if len(list(self.graph.successors(node))) == 0:
+                    raise InvalidNodeDependencyError("All resource nodes must have at least one successor")
+
 
     def launch_nodes(self):
         """
