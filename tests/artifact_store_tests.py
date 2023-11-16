@@ -75,14 +75,13 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
         create_file(filepath, content)
         self.log(f"Saved preprocessed {filepath}")
     
-    """
     def run(self) -> None:
-        # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
-        # (note: change status to Work.READY)
-        self.trap_interrupts()
-        self.signal_predecessors(Result.SUCCESS)
-
         while True:
+            # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
+            # (note: change status to Work.READY)
+            self.trap_interrupts()
+            self.signal_predecessors(Result.SUCCESS)
+
             # wait for metadata store node to finish creating the run before moving files to current
             self.trap_interrupts()
             while self.check_predecessors_signals() is False:
@@ -108,13 +107,13 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
             self.trap_interrupts()
             self.current_to_old()
 
-            # signal the metadata store node that the resource has been used for the current run
+            self.trap_interrupts()
+            self.signal_predecessors(Result.SUCCESS)
+    
+            self.trap_interrupts()
             while self.check_predecessors_signals() is False:
                 self.trap_interrupts()
-                self.signal_predecessors(Result.SUCCESS)
                 time.sleep(0.2)
-    """
-    
 
 class ModelRegistryNode(ArtifactStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
@@ -129,22 +128,21 @@ class DataPreparationNode(BaseActionNode):
         self, 
         name: str, 
         data_store: MonitoringDataStoreNode,
-        #processed_data_store: NonMonitoringDataStoreNode 
+        processed_data_store: NonMonitoringDataStoreNode 
     ) -> None:
         super().__init__(name, predecessors=[
             data_store,
-            #processed_data_store
+            processed_data_store
         ])
         self.data_store = data_store
-        #self.processed_data_store = processed_data_store
+        self.processed_data_store = processed_data_store
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
                 content = f"processed {filepath}"
-                #self.processed_data_store.save_artifact(content)
-                self.log(f"Saved preprocessed {filepath}")
+                self.processed_data_store.save_artifact(content)
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
@@ -176,18 +174,16 @@ class TestArtifactStore(unittest.TestCase):
     
     def test_empty_pipeline(self):
         metadata_store = JsonMetadataStoreNode("metadata_store", "metadata_store.json")
-        """
         processed_data_store = NonMonitoringDataStoreNode(
             "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
         )
-        """
         collection_data_store = MonitoringDataStoreNode(
             "collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store
         )
-        data_prep = DataPreparationNode("data_prep", collection_data_store)
+        data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
         retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
         pipeline = Pipeline(
-            nodes=[metadata_store, collection_data_store, data_prep, retraining], 
+            nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining], 
             anacostia_path=self.path, 
             logger=logger
         )

@@ -109,9 +109,11 @@ class BaseNode(Thread):
                 result = result
             )
             if successor.name not in self.successors_signals.keys():
+                self.log(f"Node '{self.name}' sending signal to successor '{successor.name}'")
                 successor.predecessors_signals[self.name] = msg
             else:
                 if self.successors_signals[successor.name].result != Result.SUCCESS:
+                    self.log(f"Node '{self.name}' sending signal to successor '{successor.name}'")
                     successor.predecessors_signals[self.name] = msg
 
     def signal_predecessors(self, result: Result):
@@ -123,9 +125,11 @@ class BaseNode(Thread):
                 result = result
             )
             if predecessor.name not in self.predecessors_signals.keys():
+                self.log(f"Node '{self.name}' sending signal to predecessor '{predecessor.name}'")
                 predecessor.successors_signals[self.name] = msg
             else:
                 if self.predecessors_signals[predecessor.name].result != Result.SUCCESS:
+                    self.log(f"Node '{self.name}' sending signal to predecessor '{predecessor.name}'")
                     predecessor.successors_signals[self.name] = msg
 
     def check_predecessors_signals(self) -> bool:
@@ -284,6 +288,9 @@ class BaseMetadataStoreNode(BaseNode):
             # ending the run
             self.trap_interrupts()
             self.end_run()
+            
+            self.trap_interrupts()
+            self.signal_successors(Result.SUCCESS)
 
 
 class BaseResourceNode(BaseNode):
@@ -445,11 +452,17 @@ class BaseResourceNode(BaseNode):
             # signal the metadata store node that the resource has been used for the current run
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
+            
+            # wait for acknowledgement from metadata store node that the run has been ended
+            self.trap_interrupts()
+            while self.check_predecessors_signals() is False:
+                self.trap_interrupts()
+                time.sleep(0.2)
+            
 
 
 class BaseActionNode(BaseNode):
     def __init__(self, name: str, predecessors: List[BaseNode], logger: Logger = None) -> None:
-        self.iteration = 0
         super().__init__(name, predecessors, logger=logger)
 
     @BaseNode.log_exception
@@ -540,5 +553,3 @@ class BaseActionNode(BaseNode):
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
-
-            self.iteration += 1
