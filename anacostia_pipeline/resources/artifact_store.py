@@ -187,6 +187,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         for file_entry in json_data["files"]:
             if file_entry["state"] == "current":
                 self.log(f'"{self.name}" current -> old: {file_entry["filepath"]}')
+                file_entry["run_id"] = self.metadata_store.get_run_id()
                 file_entry["state"] = "old"
         
         with open(self.tracker_filepath, 'w') as json_file:
