@@ -31,7 +31,7 @@ if os.path.exists(artifact_store_tests_path) is True:
 os.makedirs(artifact_store_tests_path)
 os.chmod(artifact_store_tests_path, 0o777)
 
-log_path = f"{artifact_store_tests_path}/artifact_store.log"
+log_path = f"{artifact_store_tests_path}/anacostia.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -152,7 +152,7 @@ class TestArtifactStore(unittest.TestCase):
         pipeline = Pipeline(
             nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2], 
             anacostia_path=self.path, 
-            logger=logger
+            loggers=logger
         )
 
         pipeline.launch_nodes()

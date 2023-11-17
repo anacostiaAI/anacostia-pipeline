@@ -3,6 +3,7 @@ import os
 import json
 from datetime import datetime
 from logging import Logger
+from typing import List, Union
 
 sys.path.append("../../anacostia_pipeline")
 from engine.base import BaseMetadataStoreNode
@@ -10,8 +11,8 @@ from engine.base import BaseMetadataStoreNode
 
 
 class JsonMetadataStoreNode(BaseMetadataStoreNode):
-    def __init__(self, name: str, tracker_filename: str, logger: Logger = None) -> None:
-        super().__init__(name, tracker_filename, logger)
+    def __init__(self, name: str, tracker_filename: str, loggers: Union[Logger, List[Logger]] = None) -> None:
+        super().__init__(name, tracker_filename, loggers=loggers)
         
     @BaseMetadataStoreNode.metadata_accessor
     def setup(self) -> None:

@@ -1,4 +1,4 @@
-from typing import List, Iterable
+from typing import List, Iterable, Union
 from threading import Thread
 from datetime import datetime
 import time
@@ -33,7 +33,12 @@ class Pipeline:
     2. Ensuring the user built the graph correctly (i.e., ensuring the graph is a DAG)
     """
 
-    def __init__(self, nodes: Iterable[BaseNode], anacostia_path: str = None, logger: Logger = None) -> None:
+    def __init__(
+        self, 
+        nodes: Iterable[BaseNode],
+        anacostia_path: str = None, 
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
         self.graph = nx.DiGraph()
 
         if anacostia_path is not None:
@@ -61,9 +66,9 @@ class Pipeline:
             node.successors = list(self.graph.successors(node))
         
         # Set logger for all nodes
-        if logger is not None:
+        if loggers is not None:
             for node in nodes:
-                node.set_logger(logger)
+                node.add_loggers(loggers)
 
         # check 1: make sure graph is acyclic (i.e., check if graph is a DAG)
         if not nx.is_directed_acyclic_graph(self.graph):

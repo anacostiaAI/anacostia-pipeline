@@ -1,5 +1,5 @@
 from threading import Thread, Lock, RLock
-from typing import List, Dict
+from typing import List, Dict, Union
 import time
 from logging import Logger
 from datetime import datetime
@@ -17,11 +17,19 @@ else:
 
 
 class BaseNode(Thread):
-    def __init__(self, name: str, predecessors: List['BaseNode'], logger: Logger = None) -> None:
+    def __init__(self, name: str, predecessors: List['BaseNode'], loggers: Union[Logger, List[Logger]] = None) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
         self.work_list = set()
-        self.logger = logger
+        
+        if loggers is None:
+            self.loggers: List[Logger] = list()
+        else:
+            if isinstance(loggers, Logger):
+                self.loggers: List[Logger] = [loggers]
+            else:
+                self.loggers: List[Logger] = loggers
+        
         self.anacostia_path: str = None
 
         # TODO: replace list with tuple
@@ -40,16 +48,16 @@ class BaseNode(Thread):
     def set_anacostia_path(self, path: str) -> None:
         self.anacostia_path = path
     
-    def set_logger(self, logger: Logger) -> None:
-        if self.logger is None:
-            self.logger = logger
+    def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
+        if isinstance(loggers, Logger):
+            self.loggers.append(loggers)
         else:
-            raise ValueError(f"Logger for node '{self.name}' has already been set.")
+            self.loggers.extend(loggers)
 
     def log(self, message: str) -> None:
-        # TODO: add option to log to multiple loggers
-        if self.logger is not None:
-            self.logger.info(message)
+        if len(self.loggers) > 0:
+            for logger in self.loggers:
+                logger.info(message)
         else:
             print(message)
 
@@ -212,8 +220,8 @@ class BaseMetadataStoreNode(BaseNode):
     thus, by extension, the metadata store node will always be the root node of the DAG.
     """
     def __init__(
-        self, name: str, tracker_filename: str, logger: Logger = None) -> None:
-        super().__init__(name, predecessors=[], logger=logger)
+        self, name: str, tracker_filename: str, loggers: Union[Logger, List[Logger]] = None) -> None:
+        super().__init__(name, predecessors=[], loggers=loggers)
         self.tracker_filename = tracker_filename
         self.run_id = 0
         self.resource_lock = RLock()
@@ -287,9 +295,9 @@ class BaseResourceNode(BaseNode):
     def __init__(
         self, 
         name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode,
-        logger: Logger = None, monitoring: bool = True
+        loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
     ) -> None:
-        super().__init__(name, predecessors=[metadata_store], logger=logger)
+        super().__init__(name, predecessors=[metadata_store], loggers=loggers)
         self.resource_path = resource_path
         self.tracker_filename = tracker_filename
         self.resource_lock = RLock()
@@ -452,8 +460,8 @@ class BaseResourceNode(BaseNode):
 
 
 class BaseActionNode(BaseNode):
-    def __init__(self, name: str, predecessors: List[BaseNode], logger: Logger = None) -> None:
-        super().__init__(name, predecessors, logger=logger)
+    def __init__(self, name: str, predecessors: List[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
+        super().__init__(name, predecessors, loggers=loggers)
 
     @BaseNode.log_exception
     def before_execution(self) -> None:

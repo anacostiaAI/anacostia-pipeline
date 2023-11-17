@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-from typing import List, Any
+from typing import List, Any, Union
 from datetime import datetime
 from logging import Logger
 
@@ -16,7 +16,7 @@ from watchdog.events import FileSystemEventHandler
 class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def __init__(
         self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
-        init_state: str = "new", max_old_samples: int = None, logger: Logger = None, monitoring: bool = True
+        init_state: str = "new", max_old_samples: int = None, loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
     ) -> None:
 
         # TODO: add max_old_samples functionality
@@ -35,7 +35,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         
         super().__init__(
             name=name, resource_path=resource_path, tracker_filename=tracker_filename, 
-            metadata_store=metadata_store, logger=logger, monitoring=monitoring
+            metadata_store=metadata_store, loggers=loggers, monitoring=monitoring
         )
     
     @BaseResourceNode.resource_accessor
