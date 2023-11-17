@@ -44,3 +44,16 @@ def create_array(shape: tuple = (10, 3)):
         array[i, :] = i
 
     return array
+
+
+def run_computational_task(node: BaseNode, duration_seconds: int):
+    node.log(f"Node {node.name} is starting a computationally intensive task.")
+
+    # Record the start time
+    start_time = time.time()
+    result = 0
+    while time.time() - start_time < duration_seconds:
+        for i in range(10**7):
+            result += i
+
+    node.log(f"Node {node.name} completed the computationally intensive task.")

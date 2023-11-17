@@ -100,6 +100,8 @@ class DataPreparationNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
+        run_computational_task(node=self, duration_seconds=2)
+
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
                 content = f"processed {filepath}"
@@ -109,12 +111,15 @@ class DataPreparationNode(BaseActionNode):
 
 
 class ModelRetrainingNode(BaseActionNode):
-    def __init__(self, name: str, data_prep: DataPreparationNode, data_store: MonitoringDataStoreNode) -> None:
+    def __init__(self, name: str, training_duration: int, data_prep: DataPreparationNode, data_store: MonitoringDataStoreNode) -> None:
         self.data_store = data_store
+        self.training_duration = training_duration
         super().__init__(name, predecessors=[data_prep])
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
+        run_computational_task(node=self, duration_seconds=self.training_duration)
+
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
                 self.log(f"Trained on {filepath}")
@@ -142,9 +147,10 @@ class TestArtifactStore(unittest.TestCase):
             "collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store
         )
         data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
-        retraining = ModelRetrainingNode("retraining", data_prep, collection_data_store)
+        retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store)
+        retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store)
         pipeline = Pipeline(
-            nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining], 
+            nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2], 
             anacostia_path=self.path, 
             logger=logger
         )
