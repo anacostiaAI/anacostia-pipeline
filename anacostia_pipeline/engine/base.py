@@ -243,6 +243,10 @@ class BaseMetadataStoreNode(BaseNode):
         return wrapper
     
     @metadata_accessor
+    def create_artifact_tracker(self, resource_node: 'BaseResourceNode'):
+        raise NotImplementedError
+
+    @metadata_accessor
     def create_run(self) -> None:
         """
         Override to specify how to create a run in the metadata store.

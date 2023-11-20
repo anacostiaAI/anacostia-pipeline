@@ -41,6 +41,8 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
+        self.metadata_store.create_artifact_tracker(self)
+
         self.tracker_filepath = os.path.join(self.anacostia_path, self.tracker_filename)
 
         if os.path.exists(self.tracker_filepath) is False:

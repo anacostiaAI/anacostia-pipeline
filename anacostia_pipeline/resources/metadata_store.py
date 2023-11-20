@@ -20,6 +20,9 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
 
+        if os.path.exists(self.tracker_dir) is False:
+            os.makedirs(self.tracker_dir, exist_ok=True)
+
         if os.path.exists(self.tracker_filepath) is False:
             with open(self.tracker_filepath, "w") as json_file:
                 json_entry = {
@@ -35,6 +38,23 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
 
         self.log(f"Node '{self.name}' setup complete.")
     
+    @BaseMetadataStoreNode.metadata_accessor
+    def create_artifact_tracker(self, resource_node: BaseResourceNode) -> None:
+        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+
+        if os.path.exists(artifact_tracker_filepath) is False:
+            with open(artifact_tracker_filepath, "w") as json_file:
+                json_entry = {
+                    "node": resource_node.name,
+                    "path": artifact_tracker_filepath,
+                    "node initialization time:": str(datetime.now()),
+                    "samples": []
+                }
+
+                json.dump(json_entry, json_file, indent=4)
+                json_file.flush()
+                self.log(f"Created artifact tracker file at {artifact_tracker_filepath}")
+
     @BaseMetadataStoreNode.metadata_accessor
     def create_run(self) -> None:
         with open(self.tracker_filepath, "r") as json_file:

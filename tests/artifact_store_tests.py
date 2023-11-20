@@ -133,13 +133,14 @@ class TestArtifactStore(unittest.TestCase):
     
     def setUp(self) -> None:
         self.path = f"{artifact_store_tests_path}/{self._testMethodName}"
+        self.metadata_store_path = f"{self.path}/metadata_store"
         self.collection_data_store_path = f"{self.path}/collection_data_store"
         self.processed_data_store_path = f"{self.path}/processed_data_store"
         self.model_registry_path = f"{self.path}/model_registry"
         os.makedirs(self.path)
     
     def test_empty_pipeline(self):
-        metadata_store = JsonMetadataStoreNode("metadata_store", self.path)
+        metadata_store = JsonMetadataStoreNode("metadata_store", self.metadata_store_path)
         processed_data_store = NonMonitoringDataStoreNode(
             "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
         )
