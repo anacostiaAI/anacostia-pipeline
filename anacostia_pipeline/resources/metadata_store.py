@@ -6,18 +6,19 @@ from logging import Logger
 from typing import List, Union
 
 sys.path.append("../../anacostia_pipeline")
-from engine.base import BaseMetadataStoreNode
+from engine.base import BaseMetadataStoreNode, BaseResourceNode
 
 
 
 class JsonMetadataStoreNode(BaseMetadataStoreNode):
-    def __init__(self, name: str, tracker_filename: str, loggers: Union[Logger, List[Logger]] = None) -> None:
-        super().__init__(name, tracker_filename, loggers=loggers)
+    def __init__(self, name: str, tracker_dir: str, loggers: Union[Logger, List[Logger]] = None) -> None:
+        super().__init__(name, loggers=loggers)
+        self.tracker_dir = tracker_dir
+        self.tracker_filepath = os.path.join(self.tracker_dir, f"{self.name}.json")
         
     @BaseMetadataStoreNode.metadata_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
-        self.tracker_filepath = os.path.join(self.anacostia_path, self.tracker_filename)
 
         if os.path.exists(self.tracker_filepath) is False:
             with open(self.tracker_filepath, "w") as json_file:

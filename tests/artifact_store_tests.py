@@ -139,7 +139,7 @@ class TestArtifactStore(unittest.TestCase):
         os.makedirs(self.path)
     
     def test_empty_pipeline(self):
-        metadata_store = JsonMetadataStoreNode("metadata_store", "metadata_store.json")
+        metadata_store = JsonMetadataStoreNode("metadata_store", self.path)
         processed_data_store = NonMonitoringDataStoreNode(
             "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
         )

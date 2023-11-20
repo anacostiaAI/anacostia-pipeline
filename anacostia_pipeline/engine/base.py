@@ -220,9 +220,8 @@ class BaseMetadataStoreNode(BaseNode):
     thus, by extension, the metadata store node will always be the root node of the DAG.
     """
     def __init__(
-        self, name: str, tracker_filename: str, loggers: Union[Logger, List[Logger]] = None) -> None:
+        self, name: str, loggers: Union[Logger, List[Logger]] = None) -> None:
         super().__init__(name, predecessors=[], loggers=loggers)
-        self.tracker_filename = tracker_filename
         self.run_id = 0
         self.resource_lock = RLock()
     
