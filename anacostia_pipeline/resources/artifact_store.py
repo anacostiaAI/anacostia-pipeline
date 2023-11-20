@@ -41,7 +41,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
-        self.metadata_store.create_artifact_tracker(self)
+        self.metadata_store.create_resource_tracker(self)
 
         self.tracker_filepath = os.path.join(self.anacostia_path, self.tracker_filename)
 
@@ -102,11 +102,17 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> None:
-        return self.record_artifact(filepath, "new")
+        self.metadata_store.create_sample(self, filepath=filepath, state="new")
+        
+        # remove code below
+        self.record_artifact(filepath, "new")
 
     @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
-        return self.record_artifact(filepath, "current")
+        self.metadata_store.create_sample(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+
+        # remove code below
+        self.record_artifact(filepath, "current")
 
     @BaseResourceNode.resource_accessor
     def on_modified(self, event):

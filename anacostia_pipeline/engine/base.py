@@ -243,7 +243,11 @@ class BaseMetadataStoreNode(BaseNode):
         return wrapper
     
     @metadata_accessor
-    def create_artifact_tracker(self, resource_node: 'BaseResourceNode'):
+    def create_resource_tracker(self, resource_node: 'BaseResourceNode') -> None:
+        raise NotImplementedError
+    
+    @metadata_accessor
+    def create_sample(self, resource_node: 'BaseResourceNode', **kwargs) -> None:
         raise NotImplementedError
 
     @metadata_accessor
