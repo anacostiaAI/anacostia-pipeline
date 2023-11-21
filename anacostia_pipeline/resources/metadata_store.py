@@ -93,11 +93,11 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
                     artifacts.append(file_entry)
             
             elif state == "current":
-                if ("run_id" in file_entry.keys()) and ("end time" not in file_entry.keys()):
+                if ("run_id" in file_entry.keys()) and ("end_time" not in file_entry.keys()):
                     artifacts.append(file_entry)
             
             elif state == "old":
-                if ("run_id" in file_entry.keys()) and ("end time" in file_entry.keys()):
+                if ("run_id" in file_entry.keys()) and ("end_time" in file_entry.keys()):
                     artifacts.append(file_entry)
         
         return artifacts
@@ -170,7 +170,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
     
     @BaseMetadataStoreNode.metadata_accessor
     def end_run(self) -> None:
-        # update the tracker file, end the run by adding an 'end time', and increment the run_id
+        # update the tracker file, end the run by adding an 'end_time', and increment the run_id
         with open(self.tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)
         

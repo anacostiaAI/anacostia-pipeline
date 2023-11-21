@@ -43,6 +43,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.log(f"Setting up node '{self.name}'")
         self.metadata_store.create_resource_tracker(self)
 
+        # remove code below
         self.tracker_filepath = os.path.join(self.anacostia_path, self.tracker_filename)
 
         if os.path.exists(self.tracker_filepath) is False:
@@ -70,6 +71,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
                 json.dump(json_entry, json_file, indent=4)
                 json_file.flush()
                 self.log(f"Created tracker file at {self.tracker_filepath}")
+        # end remove code
 
         self.log(f"Node '{self.name}' setup complete.")
     
@@ -118,7 +120,12 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def on_modified(self, event):
         if not event.is_directory:
             self.log(f"'{self.name}' detected file: {event.src_path}")
+
+            # remove code below
             self.record_new(event.src_path) 
+
+            # replace code above with:
+            # self.metadata_store.create_entry(self, filepath=event.src_path, state="new")
 
     @BaseResourceNode.resource_accessor
     def trigger_condition(self) -> bool:
@@ -138,42 +145,21 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
-        if state not in ("new", "current", "old", "all"):
-            raise ValueError(f"state argument of get_num_artifacts must be either 'new', 'current', 'old', or 'all', not '{state}'.")
-
-        with open(self.tracker_filepath, 'r') as json_file:
-            json_data = json.load(json_file)
-        
-        artifacts = []
-        if state == "all":
-            for file_entry in json_data["files"]:
-                artifacts.append(file_entry["filepath"])
-        else:
-            for file_entry in json_data["files"]:
-                if file_entry["state"] == state:
-                    artifacts.append(file_entry["filepath"])
+        entries = self.metadata_store.get_entries(self, state)
+        artifacts = [entry["filepath"] for entry in entries]
         return artifacts
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
-        if state not in ("new", "current", "old", "all"):
-            raise ValueError(f"state argument of get_num_artifacts must be either 'new', 'current', 'old', or 'all', not '{state}'.")
-
-        with open(self.tracker_filepath, 'r') as json_file:
-            json_data = json.load(json_file)
-        
-        num_artifacts = 0
-        if state == "all":
-            num_artifacts = len(json_data["files"])
-        else:
-            for file_entry in json_data["files"]:
-                if file_entry["state"] == state:
-                    num_artifacts += 1
-        return num_artifacts
+        return self.metadata_store.get_num_entries(self, state)
     
     @BaseResourceNode.resource_accessor
     def new_to_current(self) -> None:
+        new_entries = self.metadata_store.get_entries(self, "new")
+        for entry in new_entries:
+            self.metadata_store.update_entry(self, entry["entry_id"], state="current", run_id=self.metadata_store.get_run_id())
+
         # remove code below
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
@@ -190,6 +176,10 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def current_to_old(self) -> None:
+        current_entries = self.metadata_store.get_entries(self, "current")
+        for entry in current_entries:
+            self.metadata_store.update_entry(self, entry["entry_id"], state="old", end_time=str(datetime.now()))
+
         # remove code below
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)

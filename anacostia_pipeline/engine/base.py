@@ -255,6 +255,10 @@ class BaseMetadataStoreNode(BaseNode):
         pass
 
     @metadata_accessor
+    def update_entry(self, resource_node: 'BaseResourceNode', entry_id: int, **kwargs) -> None:
+        pass
+
+    @metadata_accessor
     def get_num_entries(self, resource_node: 'BaseResourceNode') -> int:
         pass
 
@@ -301,7 +305,6 @@ class BaseMetadataStoreNode(BaseNode):
             # creating a new run
             self.trap_interrupts()
             self.start_run()
-            self.add_run_id()
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
@@ -315,7 +318,6 @@ class BaseMetadataStoreNode(BaseNode):
             
             # ending the run
             self.trap_interrupts()
-            self.add_end_time()
             self.end_run()
             
             self.trap_interrupts()
