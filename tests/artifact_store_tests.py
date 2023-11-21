@@ -70,7 +70,8 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
         filename = self.create_filename()
         filepath = os.path.join(self.path, filename)
 
-        # note: record_artifact should be called before create_file so that the Observer can see the file is already logged and ignore it
+        # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
+        # that way, the Observer can see the file is already logged and ignore it
         self.record_current(filepath)
         create_file(filepath, content)
         self.log(f"Saved preprocessed {filepath}")

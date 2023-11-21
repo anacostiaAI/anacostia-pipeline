@@ -102,14 +102,14 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> None:
-        self.metadata_store.create_sample(self, filepath=filepath, state="new")
+        self.metadata_store.create_entry(self, filepath=filepath, state="new")
         
         # remove code below
         self.record_artifact(filepath, "new")
 
     @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
-        self.metadata_store.create_sample(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+        self.metadata_store.create_entry(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
 
         # remove code below
         self.record_artifact(filepath, "current")
@@ -174,6 +174,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def new_to_current(self) -> None:
+        # remove code below
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
 
@@ -189,6 +190,7 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     
     @BaseResourceNode.resource_accessor
     def current_to_old(self) -> None:
+        # remove code below
         with open(self.tracker_filepath, 'r') as json_file:
             json_data = json.load(json_file)
 

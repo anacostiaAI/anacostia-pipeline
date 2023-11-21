@@ -56,7 +56,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
                 self.log(f"Created artifact tracker file at {artifact_tracker_filepath}")
 
     @BaseMetadataStoreNode.metadata_accessor
-    def create_sample(self, resource_node: BaseResourceNode, **kwargs) -> None:
+    def create_entry(self, resource_node: BaseResourceNode, **kwargs) -> None:
         artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
 
         with open(artifact_tracker_filepath, "r") as json_file:
@@ -64,19 +64,67 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
 
         artifact_entry = {key: value for key, value in kwargs.items()}
         artifact_entry["created_at"] = str(datetime.now())
+        artifact_entry["entry_id"] = self.get_num_entries(resource_node, "all")
         json_data["samples"].append(artifact_entry)
 
         with open(artifact_tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
 
+    def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
+        return len(self.get_entries(resource_node, state))
+    
+    def get_entries(self, resource_node: BaseResourceNode, state: str) -> List[dict]:
+        if state not in ("new", "current", "old", "all"):
+            raise ValueError(f"state argument of get_samples must be either 'new', 'current', 'old', or 'all', not '{state}'.")
+
+        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+
+        with open(artifact_tracker_filepath, "r") as json_file:
+            json_data = json.load(json_file)
+
+        artifacts = []
+        for file_entry in json_data["samples"]:
+            if state == "all":
+                artifacts.append(file_entry)
+
+            elif state == "new":
+                if "run_id" not in file_entry.keys():
+                    artifacts.append(file_entry)
+            
+            elif state == "current":
+                if ("run_id" in file_entry.keys()) and ("end time" not in file_entry.keys()):
+                    artifacts.append(file_entry)
+            
+            elif state == "old":
+                if ("run_id" in file_entry.keys()) and ("end time" in file_entry.keys()):
+                    artifacts.append(file_entry)
+        
+        return artifacts
+    
+    def update_entry(self, resource_node: BaseResourceNode, entry_id: int, **kwargs) -> None:
+        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+
+        with open(artifact_tracker_filepath, "r") as json_file:
+            json_data = json.load(json_file)
+
+        for sample in json_data["samples"]:
+            if sample["entry_id"] == entry_id:
+                for key, value in kwargs.items():
+                    sample[key] = value
+        
+        with open(artifact_tracker_filepath, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+
     @BaseMetadataStoreNode.metadata_accessor
     def create_run(self) -> None:
+        # update the tracker file, start the run by adding a 'start time'
         with open(self.tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)
 
         run_entry = {
-            "run id": self.run_id,
+            "run_id": self.run_id,
             "start time": str(datetime.now()),
             "metrics": {},
             "params": {},
@@ -90,6 +138,13 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
 
+        # update the run_id for all new entries for all resource nodes
+        for successor in self.successors:
+            if isinstance(successor, BaseResourceNode):
+                new_entries = self.get_entries(successor, "new")
+                for entry in new_entries:
+                    self.update_entry(successor, entry["entry_id"], run_id=self.run_id)
+
         self.log(f"--------------------------- started run {self.run_id} at {datetime.now()}")
     
     @BaseMetadataStoreNode.metadata_accessor
@@ -98,20 +153,28 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
             json_data = json.load(json_file)
         
         for run in json_data["runs"]:
-            if run["run id"] == run_id:
+            if run["run_id"] == run_id:
                 return run
         
         return None
     
     @BaseMetadataStoreNode.metadata_accessor
     def end_run(self) -> None:
+        # update the run_id for all new entries for all resource nodes
+        for successor in self.successors:
+            if isinstance(successor, BaseResourceNode):
+                new_entries = self.get_entries(successor, "current")
+                for entry in new_entries:
+                    self.update_entry(successor, entry["entry_id"], end_time=str(datetime.now()))
+
+        # update the tracker file, end the run by adding an 'end time', and increment the run_id
         with open(self.tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)
         
         for run in json_data["runs"]:
-            if run["run id"] == self.run_id: 
+            if run["run_id"] == self.run_id: 
                 run["end time"] = str(datetime.now())
-
+        
         with open(self.tracker_filepath, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()

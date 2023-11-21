@@ -247,8 +247,16 @@ class BaseMetadataStoreNode(BaseNode):
         raise NotImplementedError
     
     @metadata_accessor
-    def create_sample(self, resource_node: 'BaseResourceNode', **kwargs) -> None:
+    def create_entry(self, resource_node: 'BaseResourceNode', **kwargs) -> None:
         raise NotImplementedError
+
+    @metadata_accessor
+    def get_entries(self, resource_node: 'BaseResourceNode') -> List[dict]:
+        pass
+
+    @metadata_accessor
+    def get_num_entries(self, resource_node: 'BaseResourceNode') -> int:
+        pass
 
     @metadata_accessor
     def create_run(self) -> None:
