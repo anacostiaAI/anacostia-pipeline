@@ -259,11 +259,25 @@ class BaseMetadataStoreNode(BaseNode):
         pass
 
     @metadata_accessor
-    def create_run(self) -> None:
+    def start_run(self) -> None:
         """
         Override to specify how to create a run in the metadata store.
         E.g., log the start time of the run, log the parameters of the run, etc. 
         or create a new run in MLFlow, create a new run in Neptune, etc.
+        """
+        raise NotImplementedError
+
+    @metadata_accessor
+    def add_run_id(self) -> None:
+        """
+        Override to specify how to add the run_id to the resource metadata in the metadata store.
+        """
+        raise NotImplementedError
+    
+    @metadata_accessor
+    def add_end_time(self) -> None:
+        """
+        Override to specify how to add the end_time to the resource metadata in the metadata store.
         """
         raise NotImplementedError
     
@@ -286,7 +300,8 @@ class BaseMetadataStoreNode(BaseNode):
 
             # creating a new run
             self.trap_interrupts()
-            self.create_run()
+            self.start_run()
+            self.add_run_id()
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
@@ -300,6 +315,7 @@ class BaseMetadataStoreNode(BaseNode):
             
             # ending the run
             self.trap_interrupts()
+            self.add_end_time()
             self.end_run()
             
             self.trap_interrupts()
