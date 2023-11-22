@@ -36,22 +36,10 @@ class Pipeline:
     def __init__(
         self, 
         nodes: Iterable[BaseNode],
-        anacostia_path: str = None, 
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
         self.graph = nx.DiGraph()
 
-        if anacostia_path is not None:
-            self.anacostia_path = os.path.join(anacostia_path, "anacostia")
-        else:
-            self.anacostia_path = os.path.join(os.path.abspath('.'), "anacostia")
-        
-        os.makedirs(self.anacostia_path, exist_ok=True)
-        
-        # Set anacostia path for all nodes
-        for node in nodes:
-            node.set_anacostia_path(self.anacostia_path)
-        
         # Add nodes into graph
         for node in nodes:
             self.graph.add_node(node)

@@ -30,8 +30,6 @@ class BaseNode(Thread):
             else:
                 self.loggers: List[Logger] = loggers
         
-        self.anacostia_path: str = None
-
         # TODO: replace list with tuple
         self.predecessors = predecessors
         self.predecessors_signals = SignalTable()
@@ -44,9 +42,6 @@ class BaseNode(Thread):
 
     def __repr__(self) -> str:
         return f"'Node(name: {self.name})'"
-    
-    def set_anacostia_path(self, path: str) -> None:
-        self.anacostia_path = path
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):

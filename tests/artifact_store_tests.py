@@ -149,7 +149,6 @@ class TestArtifactStore(unittest.TestCase):
         retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store)
         pipeline = Pipeline(
             nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2], 
-            anacostia_path=self.path, 
             loggers=logger
         )
 
@@ -167,7 +166,7 @@ class TestArtifactStore(unittest.TestCase):
     def test_nonempty_pipeline(self):
         data_store = DataStoreNode("data_store", self.collection_data_store_path)
         data_prep = DataPreparationNode("data_prep", data_store)
-        pipeline = Pipeline(nodes=[data_store, data_prep], anacostia_path=self.path, logger=logger)
+        pipeline = Pipeline(nodes=[data_store, data_prep], logger=logger)
 
         for i in range(5):
             create_file(f"{self.collection_data_store_path}/test_file{i}.txt", f"test file {i}")
