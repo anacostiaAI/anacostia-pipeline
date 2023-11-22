@@ -93,6 +93,19 @@ class Pipeline:
                 if len(list(self.graph.successors(node))) == 0:
                     raise InvalidNodeDependencyError("All resource nodes must have at least one successor")
 
+        """
+        # check 7: make sure all successors of a resource node are action nodes 
+        # (not working because isinstance(successor, BaseActionNode) is False even though successor is a BaseActionNode)
+        for node in self.nodes:
+            print(f"node: {node.name}, type: {type(node)}, isinstance: {isinstance(node, BaseNode)}")
+            if isinstance(node, BaseResourceNode) is True:
+                print(f"resource node: {node.name}, type: {type(node)}, isinstance: {isinstance(node, BaseResourceNode)}")
+                for successor in list(self.graph.successors(node)):
+                    print(f"successor: {successor.name}, type: {type(successor)}, isinstance: {isinstance(successor, BaseActionNode)}")
+                    if isinstance(successor, BaseActionNode) is False:
+                        raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
+        """
+
 
     def launch_nodes(self):
         """
