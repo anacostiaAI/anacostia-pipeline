@@ -86,18 +86,6 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def get_num_artifacts(self, state: str) -> int:
         return self.metadata_store.get_num_entries(self, state)
     
-    @BaseResourceNode.resource_accessor
-    def new_to_current(self) -> None:
-        new_entries = self.metadata_store.get_entries(self, "new")
-        for entry in new_entries:
-            self.metadata_store.update_entry(self, entry["entry_id"], state="current", run_id=self.metadata_store.get_run_id())
-    
-    @BaseResourceNode.resource_accessor
-    def current_to_old(self) -> None:
-        current_entries = self.metadata_store.get_entries(self, "current")
-        for entry in current_entries:
-            self.metadata_store.update_entry(self, entry["entry_id"], state="old", end_time=str(datetime.now()))
-    
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()

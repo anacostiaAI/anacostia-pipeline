@@ -157,7 +157,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
             if isinstance(successor, BaseResourceNode):
                 new_entries = self.get_entries(successor, "new")
                 for entry in new_entries:
-                    self.update_entry(successor, entry["entry_id"], run_id=self.run_id)
+                    self.update_entry(successor, entry["entry_id"], state="current", run_id=self.run_id)
 
     @BaseMetadataStoreNode.metadata_accessor
     def add_end_time(self) -> None:
@@ -166,7 +166,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
             if isinstance(successor, BaseResourceNode):
                 new_entries = self.get_entries(successor, "current")
                 for entry in new_entries:
-                    self.update_entry(successor, entry["entry_id"], end_time=str(datetime.now()))
+                    self.update_entry(successor, entry["entry_id"], state="old", end_time=str(datetime.now()))
     
     @BaseMetadataStoreNode.metadata_accessor
     def end_run(self) -> None:

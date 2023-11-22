@@ -300,6 +300,7 @@ class BaseMetadataStoreNode(BaseNode):
             # creating a new run
             self.trap_interrupts()
             self.start_run()
+            self.add_run_id()
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
@@ -313,6 +314,7 @@ class BaseMetadataStoreNode(BaseNode):
             
             # ending the run
             self.trap_interrupts()
+            self.add_end_time()
             self.end_run()
             
             self.trap_interrupts()
@@ -395,22 +397,6 @@ class BaseResourceNode(BaseNode):
     
     @BaseNode.log_exception
     @resource_accessor
-    def new_to_current(self) -> None:
-        """
-        override to specify how to move new files to current
-        """
-        raise NotImplementedError
-    
-    @BaseNode.log_exception
-    @resource_accessor
-    def current_to_old(self) -> None:
-        """
-        override to specify how to move current files to old
-        """
-        raise NotImplementedError
-
-    @BaseNode.log_exception
-    @resource_accessor
     def trigger_condition(self) -> bool:
         return True
 
@@ -454,11 +440,6 @@ class BaseResourceNode(BaseNode):
                 self.trap_interrupts()
                 time.sleep(0.2)
 
-            # if the node is not monitoring the resource, then there will not be any new files to move to current
-            if self.monitoring is True:
-                self.trap_interrupts()
-                self.new_to_current()
-
             # signalling to all successors that the resource is ready to be used
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
@@ -469,10 +450,6 @@ class BaseResourceNode(BaseNode):
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
-            
-            # moving 'current' files to 'old'
-            self.trap_interrupts()
-            self.current_to_old()
 
             # signal the metadata store node that the resource has been used for the current run
             self.trap_interrupts()
