@@ -46,10 +46,10 @@ logger = logging.getLogger(__name__)
 
 class MonitoringDataStoreNode(ArtifactStoreNode):
     def __init__(
-        self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, 
+        self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
-        super().__init__(name, resource_path, tracker_filename, metadata_store, init_state, max_old_samples)
+        super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
     
     def trigger_condition(self) -> bool:
         num_new = self.get_num_artifacts("new")
@@ -60,8 +60,8 @@ class MonitoringDataStoreNode(ArtifactStoreNode):
 
 
 class NonMonitoringDataStoreNode(ArtifactStoreNode):
-    def __init__(self, name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode, ) -> None:
-        super().__init__(name, resource_path, tracker_filename, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"
@@ -142,12 +142,8 @@ class TestArtifactStore(unittest.TestCase):
     
     def test_empty_pipeline(self):
         metadata_store = JsonMetadataStoreNode("metadata_store", self.metadata_store_path)
-        processed_data_store = NonMonitoringDataStoreNode(
-            "processed_data_store", self.processed_data_store_path, "processed_data_store.json", metadata_store
-        )
-        collection_data_store = MonitoringDataStoreNode(
-            "collection_data_store", self.collection_data_store_path, "collection_data_store.json", metadata_store
-        )
+        processed_data_store = NonMonitoringDataStoreNode("processed_data_store", self.processed_data_store_path, metadata_store)
+        collection_data_store = MonitoringDataStoreNode("collection_data_store", self.collection_data_store_path, metadata_store)
         data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
         retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store)
         retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store)

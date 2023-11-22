@@ -327,12 +327,11 @@ class BaseMetadataStoreNode(BaseNode):
 class BaseResourceNode(BaseNode):
     def __init__(
         self, 
-        name: str, resource_path: str, tracker_filename: str, metadata_store: BaseMetadataStoreNode,
+        name: str, resource_path: str, metadata_store: BaseMetadataStoreNode,
         loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
     ) -> None:
         super().__init__(name, predecessors=[metadata_store], loggers=loggers)
         self.resource_path = resource_path
-        self.tracker_filename = tracker_filename
         self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
