@@ -183,4 +183,3 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
             json_file.flush()
 
         self.log(f"--------------------------- ended run {self.run_id} at {datetime.now()}")
-        self.run_id += 1

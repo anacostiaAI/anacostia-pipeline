@@ -287,7 +287,7 @@ class BaseMetadataStoreNode(BaseNode):
         E.g., log the end time of the run, log the metrics of the run, update run_number, etc.
         or end a run in MLFlow, end a run in Neptune, etc.
         """
-        self.run_id += 1
+        raise NotImplementedError
     
     def run(self) -> None:
         while True:
@@ -316,6 +316,8 @@ class BaseMetadataStoreNode(BaseNode):
             self.trap_interrupts()
             self.add_end_time()
             self.end_run()
+
+            self.run_id += 1
             
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
