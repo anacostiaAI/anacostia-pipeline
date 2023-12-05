@@ -14,4 +14,7 @@ setup(
         "pydantic",
         "rich"
     ],
+    extras_require={
+        "web": ['fastapi', 'uvicorn[standard]']
+    }
 )

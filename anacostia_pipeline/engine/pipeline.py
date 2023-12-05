@@ -1,26 +1,28 @@
 from typing import List, Iterable, Union
 from threading import Thread
 from datetime import datetime
-import time
 import sys
 import os
 from logging import Logger
+
+from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
-sys.path.append(os.path.abspath('..'))
-sys.path.append(os.path.abspath('../anacostia_pipeline'))
-if __name__ == "__main__":
-    from base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode
-    from constants import Status
-else:
-    from engine.base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode
-    from engine.constants import Status
-
+from .base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel
+from .constants import Status
 
 
 class InvalidNodeDependencyError(Exception):
     pass
 
+
+class PipelineModel(BaseModel):
+    '''
+    A Pydantic Model for validation and serialization of a Pipeline
+    '''
+    model_config = ConfigDict(from_attributes=True)
+
+    nodes: List[NodeModel]
 
 class Pipeline:
     """
@@ -38,11 +40,14 @@ class Pipeline:
         nodes: Iterable[BaseNode],
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
+
+        self.node_dict = dict()
         self.graph = nx.DiGraph()
 
         # Add nodes into graph
         for node in nodes:
             self.graph.add_node(node)
+            self.node_dict[node.name] = node
 
         # Add edges into graph
         for node in nodes:
@@ -65,13 +70,12 @@ class Pipeline:
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
 
         # check 2: make sure graph is not disconnected
-        for node in self.nodes:
-            if (len(list(self.graph.successors(node))) == 0) and (len(list(self.graph.predecessors(node))) == 0):
-                raise InvalidNodeDependencyError(f"Node '{node.name}' is disconnected from graph")
+        if not nx.is_weakly_connected(self.graph):
+            raise InvalidNodeDependencyError(f"Node '{node.name}' is disconnected from graph")
 
         # check 3: make sure root node is a metadata store node
         if isinstance(self.nodes[0], BaseMetadataStoreNode) is not True:
-            raise InvalidNodeDependencyError("Root node must be a metadata store node")
+            raise InvalidNodeDependencyError(f"Root node \'{self.nodes[0].name}\', must be a metadata store node. Got: {type(self.nodes[0]).__name__}")
         
         # check 4: make sure there is only one metadata store node
         for node in self.nodes:
@@ -100,6 +104,11 @@ class Pipeline:
                     if (isinstance(successor, BaseMetadataStoreNode) is True) or (isinstance(successor, BaseResourceNode) is True):
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
 
+    def __getitem__(self, key):
+        return self.node_dict.get(key, None)
+
+    def model(self):
+        return PipelineModel(nodes=[n.model() for n in self.nodes])
 
     def launch_nodes(self):
         """

@@ -1,11 +1,14 @@
+from __future__ import annotations
 from threading import Thread, Lock, RLock
-from typing import List, Dict, Union
+from typing import List, Union
 import time
 from logging import Logger
 from datetime import datetime
 from functools import wraps
 import traceback
 import sys
+
+from pydantic import BaseModel, ConfigDict
 
 if __name__ == "__main__":
     from constants import Status, Result, Work
@@ -14,10 +17,20 @@ else:
     from engine.constants import Status, Result, Work
     from engine.utils import Signal, SignalTable
 
+class NodeModel(BaseModel):
+    '''
+    A Pydantic Model for validation and serialization of a BaseNode
+    '''
+    model_config = ConfigDict(from_attributes=True)
+
+    name:str
+    status:Union[Status, str]
+    predecessors: List[str]
+    successors: List[str]
 
 
 class BaseNode(Thread):
-    def __init__(self, name: str, predecessors: List['BaseNode'], loggers: Union[Logger, List[Logger]] = None) -> None:
+    def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
         self.work_list = set()
@@ -31,9 +44,12 @@ class BaseNode(Thread):
                 self.loggers: List[Logger] = loggers
         
         # TODO: replace list with tuple
+        if predecessors is None:
+            predecessors = list()
+            
         self.predecessors = predecessors
         self.predecessors_signals = SignalTable()
-        self.successors: List['BaseNode'] = list()
+        self.successors: List[BaseNode] = list()
         self.successors_signals = SignalTable()
         super().__init__(name=name)
     
@@ -43,6 +59,14 @@ class BaseNode(Thread):
     def __repr__(self) -> str:
         return f"'Node(name: {self.name})'"
     
+    def model(self):
+        return NodeModel(
+            name = self.name,
+            status = self.status.name,
+            predecessors = [n.name for n in self.predecessors],
+            successors = [n.name for n in self.successors]
+        )
+
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
             self.loggers.append(loggers)
