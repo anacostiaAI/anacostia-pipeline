@@ -1,8 +1,6 @@
 from typing import List, Iterable, Union
 from threading import Thread
 from datetime import datetime
-import sys
-import os
 from logging import Logger
 
 from pydantic import BaseModel, ConfigDict
@@ -75,7 +73,7 @@ class Pipeline:
 
         # check 3: make sure root node is a metadata store node
         if isinstance(self.nodes[0], BaseMetadataStoreNode) is not True:
-            raise InvalidNodeDependencyError(f"Root node \'{self.nodes[0].name}\', must be a metadata store node. Got: {type(self.nodes[0]).__name__}")
+            raise InvalidNodeDependencyError(f"Root node \'{self.nodes[0].name}\' must be a metadata store node. Got: {type(self.nodes[0]).__name__}")
         
         # check 4: make sure there is only one metadata store node
         for node in self.nodes:

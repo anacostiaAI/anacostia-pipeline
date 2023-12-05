@@ -1,11 +1,9 @@
-import sys
 import os
 from typing import List, Any, Union
 from datetime import datetime
 from logging import Logger
 
-sys.path.append("../../anacostia_pipeline")
-from engine.base import BaseMetadataStoreNode, BaseResourceNode
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler

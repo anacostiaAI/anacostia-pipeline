@@ -1,12 +1,10 @@
-import sys
 import os
 import json
 from datetime import datetime
 from logging import Logger
 from typing import List, Union
 
-sys.path.append("../../anacostia_pipeline")
-from engine.base import BaseMetadataStoreNode, BaseResourceNode
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 
 
 
