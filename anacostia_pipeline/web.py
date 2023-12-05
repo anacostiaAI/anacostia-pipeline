@@ -54,13 +54,13 @@ async def index(request: Request):
     return templates.TemplateResponse("base.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
 
 @app.get("/preprocessing", response_class=HTMLResponse)
-def preprocessing():
-    return '<h1 class="blue-text">preprocessing</h1>'
+async def preprocessing():
+    return "<h1>preprocessing</h1>"
 
 @app.get("/training", response_class=HTMLResponse)
-def training():
+async def training():
     return "<h1>training</h1>"
 
 @app.get("/evaluation", response_class=HTMLResponse)
-def evaluation():
+async def evaluation():
     return "<h1>evaluation</h1>"
