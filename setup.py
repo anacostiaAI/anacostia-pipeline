@@ -15,6 +15,6 @@ setup(
         "rich"
     ],
     extras_require={
-        "web": ['fastapi', 'uvicorn[standard]']
+        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2']
     }
 )

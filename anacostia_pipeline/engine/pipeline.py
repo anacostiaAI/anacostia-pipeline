@@ -6,7 +6,7 @@ from logging import Logger
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
-from .base import BaseActionNode, BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel
+from .base import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel
 from .constants import Status
 
 

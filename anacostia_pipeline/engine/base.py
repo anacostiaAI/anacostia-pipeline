@@ -28,6 +28,14 @@ class NodeModel(BaseModel):
     predecessors: List[str]
     successors: List[str]
 
+    def endpoint(self):
+        return f"/node?name={self.name}"
+
+    def view(self, templates, request):
+        data = self.dict()
+        data["request"] = request
+        return templates.TemplateResponse("node.html", data)
+
 
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
