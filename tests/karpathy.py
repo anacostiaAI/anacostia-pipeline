@@ -9,6 +9,7 @@ import random
 import time
 import traceback
 import subprocess
+import threading
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -17,6 +18,7 @@ from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.engine.base import Result
+import plotly.graph_objects as go
 # from anacostia_pipeline.web import app
 
 import torch
@@ -65,7 +67,7 @@ logger = logging.getLogger(__name__)
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
 block_size = 256 # what is the maximum context length for predictions?
-max_iters = 5000
+max_iters = 2500
 eval_interval = 500
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -270,11 +272,30 @@ print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+epochs = [epoch for epoch in range(max_iters) if epoch % eval_interval == 0]
+val_loss = []
+train_loss = []
+
+# Function to generate and save a line plot
+def generate_and_save_line_plot(x: List, y: List, title: str, path: str):
+    try:
+        # Create a Plotly figure with a line plot
+        fig = go.Figure(data=go.Scatter(x=x, y=y, mode='lines'))
+        fig.update_layout(title=title)
+
+        # Save the plot as an HTML file
+        fig.write_html(path)
+
+    except Exception as e:
+        print(f"Error: {e}")
+
 for iter in range(max_iters):
 
     # every once in a while evaluate the loss on train and val sets
     if iter % eval_interval == 0 or iter == max_iters - 1:
         losses = estimate_loss(model)
+        val_loss.append(losses['val'])
+        train_loss.append(losses['train'])
         print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
     # sample a batch of data
@@ -289,4 +310,22 @@ for iter in range(max_iters):
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
-#open('more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
+open(f'{karpathy_tests_path}/more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
+
+# Create and start a separate thread for plotting
+plot_thread_train = threading.Thread(
+    target=generate_and_save_line_plot, args=(epochs, train_loss, "Train Loss", f"{karpathy_tests_path}/train_plot.html")
+)
+plot_thread_train.daemon = True  # The thread will exit when the main program exits
+plot_thread_train.start()
+
+plot_thread_val = threading.Thread(
+    target=generate_and_save_line_plot, args=(epochs, val_loss, "Val Loss", f"{karpathy_tests_path}/val_plot.html")
+)
+plot_thread_val.daemon = True  # The thread will exit when the main program exits
+plot_thread_val.start()
+
+# Simulate other work in the main thread
+for i in range(3):
+    print(f"Waiting for plots to be rendered... {i}")
+    time.sleep(1)
