@@ -1,1 +1,1 @@
-uvicorn web:app --reload
+uvicorn web_test:app --reload
