@@ -1,3 +1,5 @@
+import os
+import sys
 from importlib import metadata
 
 from fastapi import FastAPI
@@ -7,17 +9,21 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 import uvicorn
 
-from anacostia_pipeline.engine.base import NodeModel
-from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
+from .engine.base import NodeModel
+from .engine.pipeline import Pipeline, PipelineModel
 
-PACKAGE_NAME="anacostia_pipeline"
+PACKAGE_NAME = "anacostia_pipeline"
+PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
 
 class Webserver:
     def __init__(self, p:Pipeline):
         self.p = p
+        self.static_dir = os.path.join(PACKAGE_DIR, "static")
+        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+
         self.app = FastAPI()
-        self.app.mount("/static", StaticFiles(directory="./static"), name="static")
-        self.templates = Jinja2Templates(directory="./templates")
+        self.app.mount("/static", StaticFiles(directory=self.static_dir), name="static")
+        self.templates = Jinja2Templates(directory=self.templates_dir)
 
         @self.app.get('/api')
         def welcome():
@@ -58,4 +64,7 @@ class Webserver:
             return str(getattr(n, property))
 
     def run(self):
+        '''
+        Launches the Webserver (Blocking Call)
+        '''
         uvicorn.run(self.app, host="0.0.0.0", port=8000)
