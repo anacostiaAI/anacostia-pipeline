@@ -1,0 +1,17 @@
+{% include 'node.html' %}
+<div class="container">
+    <div class="row">
+        <div class="col s12">
+            {% if train_chart is not none %}
+            {{ train_chart | safe }}
+            {% endif %}
+        </div>
+        <div class="col s12">
+            {% if validation_chart is not none %}
+            {{ validation_chart | safe }}
+            {% endif %}
+        </div>
+    </div>
+    
+    
+</div>

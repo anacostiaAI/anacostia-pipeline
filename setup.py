@@ -15,7 +15,8 @@ setup(
         "watchdog==3.0.0",
         "numpy",
         "pydantic",
-        "rich"
+        "rich",
+        "beautifulsoup4"
     ],
     extras_require={
         "web": ['fastapi', 'uvicorn[standard]', 'Jinja2']

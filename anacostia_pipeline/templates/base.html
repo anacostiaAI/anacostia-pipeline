@@ -23,6 +23,10 @@
         <!-- Materialize Compiled and minified JavaScript -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
+        <!-- Materialize Icons -->
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+
         <!-- custom CSS and JS for node UIs 
         {% for stylesheet in stylesheets %}
         <link rel="stylesheet" type="text/css" href="{{ stylesheet }}">
@@ -41,10 +45,9 @@
         <header>
             <nav>
                 <div class="nav-wrapper indigo darken-1">
-                    <a href="/" class="brand-logo">Anacostia</a>
-                    
+                    <a href="/" class="brand-logo">Anacostia</a>                   
                     <ul id="nav-mobile" class="right hide-on-med-and-down">
-                        <li> 
+                        <!-- <li> 
                             <a class='blue-grey darken-1 dropdown-trigger btn' href='#' data-target='dropdown1'>Nodes</a>
                             <ul id='dropdown1' class='dropdown-content blue-grey darken-1 center-align'>
                                 {% for node in nodes %}
@@ -55,16 +58,52 @@
     
                                 {% endfor %}
                             </ul>
-                        </li>
+                        </li> -->
                     </ul>
                 </div>
             </nav>
         </header>
         
         <main>
+            <div id="node_list" class="container">
+                <ul class="collapsible">
+                    <li class="active">
+                        <div class="collapsible-header"><h4>Pipeline Nodes</h4></div>
+                        <div class="collapsible-body">
+                            <span>
+                                <table class="striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for node in nodes %}
+                                        <tr>
+                                            <td>{{ node.name }}</td>
+                                            <td>{{ node.type }}</td>
+                                            <td>
+                                                <div hx-get="{{ node.endpoint() }}" hx-target="#node_content" hx-swap="innerHTML" hx-trigger="click">
+                                                    <a href="#"><i class="material-icons">pageview</i></a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </span>
+                            
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
             <div id="node_content"></div>
         </main>
-  
+
+        <br><br><br>
         <footer class="page-footer indigo darken-1">
             <div class="container">
                 <div class="row">
@@ -76,9 +115,6 @@
                     <h5 class="white-text">Links</h5>
                     <ul>
                     <li><a class="grey-text text-lighten-3" href="#!">Github</a></li>
-                    <!-- <li><a class="grey-text text-lighten-3" href="#!">Link 2</a></li>
-                    <li><a class="grey-text text-lighten-3" href="#!">Link 3</a></li>
-                    <li><a class="grey-text text-lighten-3" href="#!">Link 4</a></li> -->
                     </ul>
                 </div>
                 </div>
@@ -95,6 +131,10 @@
             document.addEventListener('DOMContentLoaded', function() {
                 var elems = document.querySelectorAll('.dropdown-trigger');
                 var instances = M.Dropdown.init(elems);
+            });
+            document.addEventListener('DOMContentLoaded', function() {
+                var elems = document.querySelectorAll('.collapsible');
+                var instances = M.Collapsible.init(elems);
             });
         </script>
     </body>

@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
+
 import uvicorn
 
 from .engine.base import NodeModel, BaseMetadataStoreNode, BaseResourceNode, BaseActionNode
@@ -23,7 +24,11 @@ PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
 def basename(value, attribute=None):
     return os.path.basename(value)
 
+def type_name(value):
+    return type(value).__name__
+
 FILTERS['basename'] = basename
+FILTERS['type'] = type_name
 
 class Webserver:
     def __init__(self, p:Pipeline):
@@ -91,7 +96,7 @@ class Webserver:
                 return node.html(self.templates, request)
 
             if isinstance(node, BaseActionNode):
-                return "BaseActionNode"
+                return node.html(self.templates, request)
 
             n = node.model()
             return n.view(self.templates, request)
@@ -116,6 +121,7 @@ class Webserver:
         # create handler from this process to kill self._proc
         def _kill_handler(sig, frame):
             print("CTRL+C Caught!; Killing Webserver...")
+            # webserver also catches a sigint causing it to die too
             self._proc.join()
             
         signal.signal(signal.SIGINT, _kill_handler)
