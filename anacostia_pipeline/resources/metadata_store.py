@@ -15,6 +15,9 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
         )
         self.tracker_dir = tracker_dir
 
+    def resource_uri(self, r_node: BaseResourceNode):
+        return os.path.join(self.tracker_dir, f"{r_node.name}.json")
+
     @BaseMetadataStoreNode.metadata_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
@@ -39,7 +42,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
     
     @BaseMetadataStoreNode.metadata_accessor
     def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
-        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+        artifact_tracker_filepath = self.resource_uri(resource_node)
 
         if os.path.exists(artifact_tracker_filepath) is False:
             with open(artifact_tracker_filepath, "w") as json_file:
@@ -56,7 +59,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
 
     @BaseMetadataStoreNode.metadata_accessor
     def create_entry(self, resource_node: BaseResourceNode, **kwargs) -> None:
-        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+        artifact_tracker_filepath = self.resource_uri(resource_node)
 
         with open(artifact_tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)
@@ -77,7 +80,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
         if state not in ("new", "current", "old", "all"):
             raise ValueError(f"state argument of get_samples must be either 'new', 'current', 'old', or 'all', not '{state}'.")
 
-        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+        artifact_tracker_filepath = self.resource_uri(resource_node)
 
         with open(artifact_tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)
@@ -102,7 +105,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
         return artifacts
     
     def update_entry(self, resource_node: BaseResourceNode, entry_id: int, **kwargs) -> None:
-        artifact_tracker_filepath = os.path.join(self.tracker_dir, f"{resource_node.name}.json")
+        artifact_tracker_filepath = self.resource_uri(resource_node)
 
         with open(artifact_tracker_filepath, "r") as json_file:
             json_data = json.load(json_file)

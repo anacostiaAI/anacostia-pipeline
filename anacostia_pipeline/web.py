@@ -3,6 +3,7 @@ import sys
 from importlib import metadata
 import json
 
+from jinja2.filters import FILTERS
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -15,6 +16,12 @@ from .engine.pipeline import Pipeline, PipelineModel
 
 PACKAGE_NAME = "anacostia_pipeline"
 PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
+
+# Additional Filters for Jinja Templates
+def basename(value, attribute=None):
+    return os.path.basename(value)
+
+FILTERS['basename'] = basename
 
 class Webserver:
     def __init__(self, p:Pipeline):
@@ -49,7 +56,7 @@ class Webserver:
             return self.p[name].model()
 
         @self.app.get('/api/metadata')
-        def metadata():
+        def _metadata():
             data_uri = self.p.metadata_store.uri
             with open(data_uri, 'r') as f:
                 data = json.load(f)
@@ -66,23 +73,23 @@ class Webserver:
             if node is None:
                 return "<h1>Node Not Found</h1>"
             
+            if property is not None:
+                n = node.model().dict()
+                return n.get(property, "")
+
             # TODO update this so all node types have a .model() that
             # returns a pydantic BaseModel Type to streamlize serialization of nodes
             if isinstance(node, BaseMetadataStoreNode):
                 return node.html(self.templates, request)
 
             if isinstance(node, BaseResourceNode):
-                return "BaseResourceNode"
+                return node.html(self.templates, request)
 
             if isinstance(node, BaseActionNode):
                 return "BaseActionNode"
 
             n = node.model()
-            
-            if property is None:
-                return n.view(self.templates, request)
-
-            return str(getattr(n, property))
+            return n.view(self.templates, request)
 
     def run(self):
         '''

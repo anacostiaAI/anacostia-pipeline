@@ -267,6 +267,9 @@ class BaseMetadataStoreNode(BaseNode):
         metadata_html = templates.TemplateResponse("metadatastore.html", data)
         return metadata_html
 
+    def resource_uri(self, r_node: BaseResourceNode):
+        raise NotImplementedError
+
     def get_run_id(self) -> int:
         return self.run_id
 
@@ -381,6 +384,20 @@ class BaseResourceNode(BaseNode):
         self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
+
+    # TODO 
+    # TEMPORARY SHORTERM SOLUTION
+    # Replace with proper model() implementation that returns a BaseModel
+    def html(self, templates, request):       
+        data = dict()
+        data["request"] = request
+        data.update(self.model().dict())
+        artifact_path = self.metadata_store.resource_uri(self)
+        
+        with open(artifact_path, "r") as json_file:
+            data.update(json.load(json_file))
+
+        return templates.TemplateResponse("resourcenode.html", data)
 
     def resource_accessor(func):
         @wraps(func)
