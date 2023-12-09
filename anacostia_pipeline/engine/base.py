@@ -10,12 +10,8 @@ import sys
 
 from pydantic import BaseModel, ConfigDict
 
-if __name__ == "__main__":
-    from constants import Status, Result, Work
-    from utils import Signal, SignalTable
-else:
-    from engine.constants import Status, Result, Work
-    from engine.utils import Signal, SignalTable
+from .constants import Status, Result, Work
+from .utils import Signal, SignalTable
 
 class NodeModel(BaseModel):
     '''

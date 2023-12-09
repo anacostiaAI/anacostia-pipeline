@@ -7,8 +7,6 @@ import random
 import time
 import sys
 
-sys.path.append('..')
-sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
