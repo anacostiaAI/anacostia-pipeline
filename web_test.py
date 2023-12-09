@@ -166,6 +166,9 @@ pipeline = Pipeline(
     loggers=logger
 )
 
+w = Webserver(pipeline)
+w.run()
+
 print('launching nodes')
 pipeline.launch_nodes()
 time.sleep(2)
@@ -180,6 +183,3 @@ time.sleep(3)
 pipeline.terminate_nodes()
 print('pipeline terminated')
 
-w = Webserver(pipeline)
-# app = w.app
-w.run()

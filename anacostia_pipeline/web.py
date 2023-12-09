@@ -1,7 +1,9 @@
 import os
 import sys
-from importlib import metadata
 import json
+import signal
+from importlib import metadata
+from multiprocessing import Process
 
 from jinja2.filters import FILTERS
 from fastapi import FastAPI
@@ -28,6 +30,9 @@ class Webserver:
         self.p = p
         self.static_dir = os.path.join(PACKAGE_DIR, "static")
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+
+        # Only used for self.run(blocking=False)
+        self._proc = None
 
         self.app = FastAPI()
         self.app.mount("/static", StaticFiles(directory=self.static_dir), name="static")
@@ -91,8 +96,28 @@ class Webserver:
             n = node.model()
             return n.view(self.templates, request)
 
-    def run(self):
+    def run(self, blocking=False):
         '''
         Launches the Webserver (Blocking Call)
         '''
-        uvicorn.run(self.app, host="0.0.0.0", port=8000)
+        if blocking:
+            uvicorn.run(self.app, host="0.0.0.0", port=8000)
+            return None
+        
+        # Launch webserver as new daemon process 
+        def _uvicorn_wrapper():
+            uvicorn.run(self.app, host="0.0.0.0", port=8000)
+        
+        print("Launching Webserver")
+        self._proc = Process(target=_uvicorn_wrapper, args=())
+        self._proc.start()
+        print(f"Webserver PID: {self._proc.pid}")
+        
+        # create handler from this process to kill self._proc
+        def _kill_handler(sig, frame):
+            print("CTRL+C Caught!; Killing Webserver...")
+            self._proc.join()
+            
+        signal.signal(signal.SIGINT, _kill_handler)
+        print("CTRL+C to Kill the Webserver; Or send a SIGINT to THIS process")
+        return self._proc.pid
