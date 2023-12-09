@@ -7,15 +7,12 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import sys
+import json
 
 from pydantic import BaseModel, ConfigDict
 
-if __name__ == "__main__":
-    from constants import Status, Result, Work
-    from utils import Signal, SignalTable
-else:
-    from engine.constants import Status, Result, Work
-    from engine.utils import Signal, SignalTable
+from .constants import Status, Result
+from .utils import Signal, SignalTable
 
 class NodeModel(BaseModel):
     '''
@@ -35,7 +32,6 @@ class NodeModel(BaseModel):
         data = self.dict()
         data["request"] = request
         return templates.TemplateResponse("node.html", data)
-
 
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
@@ -247,11 +243,30 @@ class BaseMetadataStoreNode(BaseNode):
     thus, by extension, the metadata store node will always be the root node of the DAG.
     """
     def __init__(
-        self, name: str, loggers: Union[Logger, List[Logger]] = None) -> None:
+        self,
+        name: str,
+        uri: str,
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
+    
         super().__init__(name, predecessors=[], loggers=loggers)
+        self.uri = uri
         self.run_id = 0
         self.resource_lock = RLock()
     
+    # TODO 
+    # TEMPORARY SHORTERM SOLUTION
+    # Replace with proper model() implementation that returns a BaseModel
+    def html(self, templates, request):       
+        data = dict()
+        data["request"] = request
+        data.update(self.model().dict())        
+        with open(self.uri, "r") as json_file:
+            data.update(json.load(json_file))
+
+        metadata_html = templates.TemplateResponse("metadatastore.html", data)
+        return metadata_html
+
     def get_run_id(self) -> int:
         return self.run_id
 

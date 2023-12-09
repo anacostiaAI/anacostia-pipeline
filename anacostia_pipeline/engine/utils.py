@@ -3,12 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import List
 
-if __name__ == "__main__":
-    from constants import Status, Result, Work
-else:
-    from engine.constants import Status, Result, Work
-
-
+from .constants import Status, Result, Work
 
 class Signal(BaseModel):
     sender: str
@@ -18,8 +13,6 @@ class Signal(BaseModel):
 
     def __repr__(self) -> str:
         return f"Signal (sender: {self.sender}, receiver: {self.receiver}, timestamp: {str(self.timestamp)}, result: {self.result})"
-
-
 
 class SignalTable:
     def __init__(self) -> None:

@@ -1,6 +1,7 @@
 import os
 import sys
 from importlib import metadata
+import json
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -9,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 import uvicorn
 
-from .engine.base import NodeModel
+from .engine.base import NodeModel, BaseMetadataStoreNode, BaseResourceNode, BaseActionNode
 from .engine.pipeline import Pipeline, PipelineModel
 
 PACKAGE_NAME = "anacostia_pipeline"
@@ -47,16 +48,36 @@ class Webserver:
             '''
             return self.p[name].model()
 
+        @self.app.get('/api/metadata')
+        def metadata():
+            data_uri = self.p.metadata_store.uri
+            with open(data_uri, 'r') as f:
+                data = json.load(f)
+            return data
+
         @self.app.get('/', response_class=HTMLResponse)
         async def index(request: Request):
             nodes = self.p.model().nodes
             return self.templates.TemplateResponse("base.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
 
         @self.app.get('/node', response_class=HTMLResponse)
-        async def node(request: Request, name:str, property:str=None):
-            n = self.p[name].model()
-            if n is None:
+        async def node_html(request: Request, name:str, property:str=None):
+            node = self.p[name]
+            if node is None:
                 return "<h1>Node Not Found</h1>"
+            
+            # TODO update this so all node types have a .model() that
+            # returns a pydantic BaseModel Type to streamlize serialization of nodes
+            if isinstance(node, BaseMetadataStoreNode):
+                return node.html(self.templates, request)
+
+            if isinstance(node, BaseResourceNode):
+                return "BaseResourceNode"
+
+            if isinstance(node, BaseActionNode):
+                return "BaseActionNode"
+
+            n = node.model()
             
             if property is None:
                 return n.view(self.templates, request)

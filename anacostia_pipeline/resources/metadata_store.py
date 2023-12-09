@@ -6,14 +6,15 @@ from typing import List, Union
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 
-
-
 class JsonMetadataStoreNode(BaseMetadataStoreNode):
     def __init__(self, name: str, tracker_dir: str, loggers: Union[Logger, List[Logger]] = None) -> None:
-        super().__init__(name, loggers=loggers)
+        super().__init__(
+            name,
+            uri=os.path.join(tracker_dir, f"{name}.json"),
+            loggers=loggers
+        )
         self.tracker_dir = tracker_dir
-        self.tracker_filepath = os.path.join(self.tracker_dir, f"{self.name}.json")
-        
+
     @BaseMetadataStoreNode.metadata_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
@@ -21,18 +22,18 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
         if os.path.exists(self.tracker_dir) is False:
             os.makedirs(self.tracker_dir, exist_ok=True)
 
-        if os.path.exists(self.tracker_filepath) is False:
-            with open(self.tracker_filepath, "w") as json_file:
+        if os.path.exists(self.uri) is False:
+            with open(self.uri, "w") as json_file:
                 json_entry = {
                     "node": self.name,
-                    "path": self.tracker_filepath,
+                    "path": self.uri,
                     "node initialization time:": str(datetime.now()),
                     "runs": []
                 }
 
                 json.dump(json_entry, json_file, indent=4)
                 json_file.flush()
-                self.log(f"Created metadata store file at {self.tracker_filepath}")
+                self.log(f"Created metadata store file at {self.uri}")
 
         self.log(f"Node '{self.name}' setup complete.")
     
@@ -117,7 +118,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
 
     @BaseMetadataStoreNode.metadata_accessor
     def get_run(self, run_id: int) -> int:
-        with open(self.tracker_filepath, "r") as json_file:
+        with open(self.uri, "r") as json_file:
             json_data = json.load(json_file)
         
         for run in json_data["runs"]:
@@ -129,7 +130,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
     @BaseMetadataStoreNode.metadata_accessor
     def start_run(self) -> None:
         # update the tracker file, start the run by adding a 'start time'
-        with open(self.tracker_filepath, "r") as json_file:
+        with open(self.uri, "r") as json_file:
             json_data = json.load(json_file)
 
         run_entry = {
@@ -142,7 +143,7 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
 
         json_data["runs"].append(run_entry)
 
-        with open(self.tracker_filepath, 'w') as json_file:
+        with open(self.uri, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
 
@@ -169,14 +170,14 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
     @BaseMetadataStoreNode.metadata_accessor
     def end_run(self) -> None:
         # update the tracker file, end the run by adding an 'end_time', and increment the run_id
-        with open(self.tracker_filepath, "r") as json_file:
+        with open(self.uri, "r") as json_file:
             json_data = json.load(json_file)
         
         for run in json_data["runs"]:
             if run["run_id"] == self.run_id: 
                 run["end_time"] = str(datetime.now())
         
-        with open(self.tracker_filepath, 'w') as json_file:
+        with open(self.uri, 'w') as json_file:
             json.dump(json_data, json_file, indent=4)
             json_file.flush()
 
