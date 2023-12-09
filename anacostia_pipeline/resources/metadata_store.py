@@ -153,6 +153,48 @@ class JsonMetadataStoreNode(BaseMetadataStoreNode):
         self.log(f"--------------------------- started run {self.run_id} at {datetime.now()}")
     
     @BaseMetadataStoreNode.metadata_accessor
+    def log_metrics(self, **kwargs) -> None:
+        with open(self.uri, "r") as json_file:
+            json_data = json.load(json_file)
+        
+        for run in json_data["runs"]:
+            if run["run_id"] == self.run_id:
+                for key, value in kwargs.items(): 
+                    run["metrics"][key] = value
+
+        with open(self.uri, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+
+    @BaseMetadataStoreNode.metadata_accessor
+    def log_params(self, **kwargs) -> None:
+        with open(self.uri, "r") as json_file:
+            json_data = json.load(json_file)
+        
+        for run in json_data["runs"]:
+            if run["run_id"] == self.run_id:
+                for key, value in kwargs.items(): 
+                    run["params"][key] = value
+
+        with open(self.uri, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+
+    @BaseMetadataStoreNode.metadata_accessor
+    def set_tags(self, **kwargs) -> None:
+        with open(self.uri, "r") as json_file:
+            json_data = json.load(json_file)
+        
+        for run in json_data["runs"]:
+            if run["run_id"] == self.run_id:
+                for key, value in kwargs.items(): 
+                    run["tags"][key] = value
+
+        with open(self.uri, 'w') as json_file:
+            json.dump(json_data, json_file, indent=4)
+            json_file.flush()
+
+    @BaseMetadataStoreNode.metadata_accessor
     def add_run_id(self) -> None:
         # update the run_id for all new entries for all resource nodes
         for successor in self.successors:
