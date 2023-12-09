@@ -86,9 +86,13 @@ class DataPreparationNode(BaseActionNode):
 
 
 class ModelRetrainingNode(BaseActionNode):
-    def __init__(self, name: str, training_duration: int, data_prep: DataPreparationNode, data_store: MonitoringDataStoreNode) -> None:
+    def __init__(
+        self, name: str, training_duration: int, data_prep: DataPreparationNode, 
+        data_store: MonitoringDataStoreNode, metadata_store: BaseMetadataStoreNode
+    ) -> None:
         self.data_store = data_store
         self.training_duration = training_duration
+        self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_prep])
     
     def execute(self, *args, **kwargs) -> bool:
@@ -98,6 +102,26 @@ class ModelRetrainingNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
                 self.log(f"Trained on {filepath}")
+        
+        self.metadata_store.log_metrics(acc="1.00")
+        
+        self.metadata_store.log_params(
+            batch_size = 64, # how many independent sequences will we process in parallel?
+            block_size = 256, # what is the maximum context length for predictions?
+            max_iters = 2500,
+            eval_interval = 500,
+            learning_rate = 3e-4,
+            eval_iters = 200,
+            n_embd = 384,
+            n_head = 6,
+            n_layer = 6,
+            dropout = 0.2,
+            seed = 1337,
+            split = 0.9    # first 90% will be train, rest val
+        )
+
+        self.metadata_store.set_tags(test_name="artifact store test")
+
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
@@ -135,8 +159,8 @@ processed_data_store = NonMonitoringDataStoreNode(
 )
 collection_data_store = MonitoringDataStoreNode("collection_data_store", collection_data_store_path, metadata_store)
 data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
-retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store)
-retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store)
+retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store, metadata_store)
+retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store, metadata_store)
 pipeline = Pipeline(
     nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2], 
     loggers=logger

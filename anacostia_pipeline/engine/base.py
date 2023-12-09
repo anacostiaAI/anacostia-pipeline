@@ -305,6 +305,18 @@ class BaseMetadataStoreNode(BaseNode):
         pass
 
     @metadata_accessor
+    def log_metrics(self, **kwargs) -> None:
+        pass
+    
+    @metadata_accessor
+    def log_params(self, **kwargs) -> None:
+        pass
+
+    @metadata_accessor
+    def set_tags(self, **kwargs) -> None:
+        pass
+
+    @metadata_accessor
     def start_run(self) -> None:
         """
         Override to specify how to create a run in the metadata store.
