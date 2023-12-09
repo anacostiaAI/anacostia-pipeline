@@ -1,16 +1,10 @@
-from logging import Logger
-from typing import List
 import unittest
 import logging
-import sys
 import os
 import shutil
 import random
 import time
-import traceback
 
-sys.path.append('..')
-sys.path.append('../anacostia_pipeline')
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode

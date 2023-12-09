@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import List
 
-from .constants import Status, Result, Work
+from .constants import Result
 
 class Signal(BaseModel):
     sender: str
