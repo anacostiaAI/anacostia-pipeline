@@ -4,6 +4,8 @@ import time
 import logging
 import shutil
 from typing import List, Union
+import requests
+from dotenv import load_dotenv
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
@@ -12,9 +14,9 @@ from anacostia_pipeline.web import Webserver
 from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 
-# n1=BaseMetadataStoreNode("test_node1")
-# n2=BaseNode("test_node2", predecessors=[n1])
-# pipeline = Pipeline([n1, n2])
+
+# Make sure that the .env file is in the same directory as this Python script
+load_dotenv()
 
 def run_computational_task(node: BaseNode, duration_seconds: int):
     node.log(f"Node {node.name} is starting a computationally intensive task.")
@@ -129,7 +131,7 @@ class ModelRetrainingNode(BaseActionNode):
 
 
 class BlockchainNode(BaseActionNode):
-    def __init__(self, name: str, metadata_store: BaseMetadataStoreNode, 
+    def __init__(self, name: str, metadata_store: JsonMetadataStoreNode, 
         predecessors: List[BaseNode], loggers: Logger | List[Logger] = None
     ) -> None:
         self.metadata_store = metadata_store
@@ -139,6 +141,29 @@ class BlockchainNode(BaseActionNode):
         """
         logic to upload to IPFS
         """
+
+        url = "https://api.quicknode.com/ipfs/rest/v1/s3/put-object"
+
+        tracker_dir = self.metadata_store.tracker_dir
+        files_paths = [os.path.join(tracker_dir, json_file_path) for json_file_path in os.listdir(tracker_dir)]
+
+        def send_file(path: str):
+            payload = {
+                'Key': path,
+                'ContentType': 'text'
+            }
+            files=[
+                ('Body', (path, open(path,'rb'),'text/json'))
+            ]
+            headers = {
+                'x-api-key': os.getenv("API_KEY")
+            }
+            response = requests.request("POST", url, headers=headers, data=payload, files=files)
+            self.log(response.text)
+        
+        for path in files_paths:
+            send_file(path)
+
         return True
 
 
