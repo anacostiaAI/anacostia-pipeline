@@ -1,7 +1,9 @@
+from logging import Logger
 import os
 import time
 import logging
 import shutil
+from typing import List, Union
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
@@ -125,6 +127,21 @@ class ModelRetrainingNode(BaseActionNode):
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
+
+class BlockchainNode(BaseActionNode):
+    def __init__(self, name: str, metadata_store: BaseMetadataStoreNode, 
+        predecessors: List[BaseNode], loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        """
+        logic to upload to IPFS
+        """
+        return True
+
+
 artifact_store_tests_path = "./testing_artifacts/artifact_store_tests"
 if os.path.exists(artifact_store_tests_path) is True:
     shutil.rmtree(artifact_store_tests_path)
@@ -161,8 +178,9 @@ collection_data_store = MonitoringDataStoreNode("collection_data_store", collect
 data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
 retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store, metadata_store)
 retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store, metadata_store)
+blockchain = BlockchainNode("blockchain", metadata_store, predecessors=[retraining_1, retraining_2])
 pipeline = Pipeline(
-    nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2], 
+    nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2, blockchain], 
     loggers=logger
 )
 
