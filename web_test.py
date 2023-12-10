@@ -179,7 +179,7 @@ for i in range(10):
      
     time.sleep(1)
 
-time.sleep(3)
+time.sleep(25)
 pipeline.terminate_nodes()
 print('pipeline terminated')
 
