@@ -72,38 +72,13 @@ testing  = haiku[n:]
 print(f"training lines: {len(training)}")
 print(f"testing lines: {len(testing)}")
 
-
-#open the files
-testing_file   =  open(f"{haiku_data_path}/testing.txt",'w')
-training_files = [open(f"{haiku_data_path}/training-{i}.txt",'w') for i in range(20)]
-
 #write the testing file
-for line in testing:
-    testing_file.write(line)
+with open(f"{haiku_data_path}/testing.txt", 'w') as testing_file:
+    for line in testing:
+        testing_file.write(line) 
 
 #write the training files
-for i in range(len(training)):
-    training_files[i%20].write(training[i])
-
-#close the files
-testing_file.close()
 for i in range(20):
-    training_files[i].close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    with open(f"{haiku_data_path}/training-{i}.txt", 'w') as file:
+        for i in range(len(training)):
+            file.write(training[i])
