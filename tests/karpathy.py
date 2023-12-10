@@ -4,6 +4,7 @@ import unittest
 import logging
 import sys
 import os
+import math
 import shutil
 import random
 import time
@@ -37,6 +38,7 @@ if os.path.exists(karpathy_tests_path) is True:
 os.makedirs(karpathy_tests_path)
 os.chmod(karpathy_tests_path, 0o777)
 
+#shakepeare data
 shakespeare_data_path = "./testing_artifacts/shakespeare"
 url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
 output_file = f"{shakespeare_data_path}/input.txt"
@@ -50,6 +52,23 @@ if os.path.exists(shakespeare_data_path) is False:
     except subprocess.CalledProcessError as e:
         print(f"Error downloading file: {e}")
 
+#haiku data
+haiku_data_path = "./testing_artifacts/haiku"
+#for now manually insert data
+#url = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+#output_file = f"{shakespeare_data_path}/input.txt"
+if os.path.exists(haiku_data_path) is False:
+    os.makedirs(haiku_data_path)
+    
+    """
+    wget_command = f"wget {url} -O {output_file}"
+
+    try:
+        subprocess.run(wget_command, shell=True, check=True)
+        print("Download completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error downloading file: {e}")
+    """
 
 log_path = f"{karpathy_tests_path}/anacostia.log"
 logging.basicConfig(
@@ -67,7 +86,7 @@ logger = logging.getLogger(__name__)
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
 block_size = 256 # what is the maximum context length for predictions?
-max_iters = 2500
+max_iters = 2500 #usually 2500
 eval_interval = 500
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -77,12 +96,12 @@ n_head = 6
 n_layer = 6
 dropout = 0.2
 seed = 1337
-split = 0.9     # first 90% will be train, rest val
+split_ratio = 0.9     # first 90% will be train, rest val
 # ------------
 
 torch.manual_seed(seed)
 
-
+#start with the skakespeare data set to get a character mapping
 with open(output_file, 'r', encoding='utf-8') as f:
     text = f.read()
 
@@ -98,35 +117,46 @@ decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integ
 
 # Train and test splits
 data = torch.tensor(encode(text), dtype=torch.long)
-n = int(split*len(data))
-train_data = data[:n]
-val_data = data[n:]
-
+shakespeare_data = data.detach().clone()
 
 # data loading
-def get_batch(split):
+def get_batch(split, data=data,split_ratio=split_ratio):
+    n = int(split_ratio*len(data))
+    train_data = data[:n]
+    val_data = data[n:]
+    
     # generate a small batch of data of inputs x and targets y
     data = train_data if split == 'train' else val_data
-    ix = torch.randint(len(data) - block_size, (batch_size,))
+    ix = torch.randint(max(0,len(data) - block_size), (batch_size,))
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
     x, y = x.to(device), y.to(device)
     return x, y
 
 @torch.no_grad()
-def estimate_loss(model):
+def estimate_loss(model, data=data, split_ratio=split_ratio):
     out = {}
     model.eval()
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch(split)
+            X, Y = get_batch(split, data=data, split_ratio=split_ratio) #Potenital point of failure here. this function may need data as an argument
             logits, loss = model(X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean()
     model.train()
     return out
 
+def evaluate_haiku(model, test_data_file="testing_artifacts/haiku/test.txt"):
+    with open(test_data_file, 'r') as f:
+        text = f.read()
+    test_data = torch.tensor(encode(text), dtype=torch.long)
+    losses = estimate_loss(model, data=test_data, split_ratio=0.1)
+    return losses['val']
+
+def evaluate_shakespeare(model):
+    losses = estimate_loss(model, data=shakespeare_data, split_ratio=0.9)
+    return losses['val']
 
 class Head(nn.Module):
     """ one head of self-attention """
@@ -289,41 +319,90 @@ def generate_and_save_line_plot(x: List, y: List, title: str, path: str):
     except Exception as e:
         print(f"Error: {e}")
 
-for iter in range(max_iters):
+#generate from the model
+def generate_from_model(model, output_path = f'{karpathy_tests_path}/more.txt'):
+    m = model.to(device)
+    context = torch.zeros((1, 1), dtype=torch.long, device=device)
+    print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+    # open(output_path, 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
 
-    # every once in a while evaluate the loss on train and val sets
-    if iter % eval_interval == 0 or iter == max_iters - 1:
-        losses = estimate_loss(model)
-        val_loss.append(losses['val'])
-        train_loss.append(losses['train'])
-        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+def train_model(train_data_file, model, max_iters=max_iters):
+    #training_data_file = f"{haiku_data_path}/input.txt"
+    with open(train_data_file, 'r', encoding='utf-8') as f:
+        text = f.read()
+    
+    # Train and test splits
+    data = torch.tensor(encode(text), dtype=torch.long)
+    n = int(split_ratio*len(data))
+    train_data = data[:n]
+    val_data = data[n:]
+    
+    #training loop
+    for iter in range(max_iters):
+        if iter % 100 == 0:
+            print(iter)    
+        # every once in a while evaluate the loss on train and val sets
+        if iter % eval_interval == 0 or iter == max_iters - 1:
+            losses = estimate_loss(model, data)
+            val_loss.append(losses['val'])
+            train_loss.append(losses['train'])
+            print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+    
+        # sample a batch of data
+        xb, yb = get_batch('train', data)
+    
+        # evaluate the loss
+        logits, loss = model(xb, yb)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
 
-    # sample a batch of data
-    xb, yb = get_batch('train')
+    # Create and start a separate thread for plotting
+    plot_thread_train = threading.Thread(
+        target=generate_and_save_line_plot, args=(epochs, train_loss, "Train Loss", f"{karpathy_tests_path}/train_plot.html")
+    )
+    plot_thread_train.daemon = True  # The thread will exit when the main program exits
+    plot_thread_train.start()
+    
+    plot_thread_val = threading.Thread(
+        target=generate_and_save_line_plot, args=(epochs, val_loss, "Val Loss", f"{karpathy_tests_path}/val_plot.html")
+    )
+    plot_thread_val.daemon = True  # The thread will exit when the main program exits
+    plot_thread_val.start()
 
-    # evaluate the loss
-    logits, loss = model(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
+"""
+returns a float in the interval (-1,1)
+0 roughly means no net improvement
+positive is net improvement, converse for negative
 
-# generate from the model
-context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
-open(f'{karpathy_tests_path}/more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
+for now this is pseudocode
+We would need to be able to access past performance values
+this should be stored in some metadata file
 
-# Create and start a separate thread for plotting
-plot_thread_train = threading.Thread(
-    target=generate_and_save_line_plot, args=(epochs, train_loss, "Train Loss", f"{karpathy_tests_path}/train_plot.html")
-)
-plot_thread_train.daemon = True  # The thread will exit when the main program exits
-plot_thread_train.start()
+We would need to store the negative log likelyhood
+"""
+# def score_model(model):
+#     #shakespeare_old = get_old_shakespeare_score(model)
+#     #haiku_old = get_old_haiku_score(model) 
+#     shakespeare_new = evaluate_shakespeare_score(model)
+#     haiku_new = evaluate_haiku(model)
+#     increase  = shakespeare_new / shakespeare_old - 1.0
+#     increase += haiku_new / haiku_old - 1.0
+#     increase /= 2.0
+#     return math.tanh(increase)
 
-plot_thread_val = threading.Thread(
-    target=generate_and_save_line_plot, args=(epochs, val_loss, "Val Loss", f"{karpathy_tests_path}/val_plot.html")
-)
-plot_thread_val.daemon = True  # The thread will exit when the main program exits
-plot_thread_val.start()
+#Shakespeare
+train_model(f"{shakespeare_data_path}/input.txt", model, max_iters=201)
+#generate from shake
+generate_from_model(model)
+print(f"\n\nHaiku value = {evaluate_haiku(model)}\nShakespeare value = {evaluate_shakespeare(model)}\n\n")
+#train on haiku
+#we should have 20 training files. test on 2 for now
+haiku_data_path = "testing_artifacts/haiku"
+for i in range(5):
+    train_model(f"{haiku_data_path}/training-{i}.txt", model, max_iters=201)
+    generate_from_model(model)
+    print(f"\n\nHaiku value = {evaluate_haiku(model)}\nShakespeare value = {evaluate_shakespeare(model)}\n\n")
 
 # Simulate other work in the main thread
 for i in range(3):
