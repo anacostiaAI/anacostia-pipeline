@@ -19,6 +19,9 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
         # TODO: add max_old_samples functionality
         self.max_old_samples = max_old_samples
         
+        # note: the resource_path must be a path for a directory.
+        # we may want to rename this node to be a directory watch node;
+        # this means this node should only be used to monitor filesystem directories and S3 buckets
         self.path = os.path.abspath(resource_path)
         if os.path.exists(self.path) is False:
             os.makedirs(self.path, exist_ok=True)
@@ -84,6 +87,11 @@ class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
     def get_num_artifacts(self, state: str) -> int:
         return self.metadata_store.get_num_entries(self, state)
     
+    @BaseResourceNode.log_exception
+    @BaseResourceNode.resource_accessor
+    def load_artifact(self, artifact_path: str) -> Any:
+        pass
+
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
         self.observer.stop()
