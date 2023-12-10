@@ -19,6 +19,6 @@ setup(
         "beautifulsoup4"
     ],
     extras_require={
-        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2']
+        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2', 'requests']
     }
 )
