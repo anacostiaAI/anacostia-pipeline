@@ -107,7 +107,7 @@ class ModelRetrainingNode(BaseActionNode):
             with open(filepath, 'r') as f:
                 self.log(f"Trained on {filepath}")
         
-        self.metadata_store.log_metrics(acc="1.00")
+        self.metadata_store.log_metrics(acc=1.00)
         
         self.metadata_store.log_params(
             batch_size = 64, # how many independent sequences will we process in parallel?
