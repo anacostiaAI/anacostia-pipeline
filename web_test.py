@@ -18,6 +18,7 @@ from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 # Make sure that the .env file is in the same directory as this Python script
 load_dotenv()
 
+"""
 def run_computational_task(node: BaseNode, duration_seconds: int):
     node.log(f"Node {node.name} is starting a computationally intensive task.")
 
@@ -29,6 +30,7 @@ def run_computational_task(node: BaseNode, duration_seconds: int):
             result += i
 
     node.log(f"Node {node.name} completed the computationally intensive task.")
+"""
 
 class MonitoringDataStoreNode(ArtifactStoreNode):
     def __init__(
@@ -39,13 +41,9 @@ class MonitoringDataStoreNode(ArtifactStoreNode):
     
     def trigger_condition(self) -> bool:
         num_new = self.get_num_artifacts("new")
-        return num_new >= 2
-    
-    def create_filename(self) -> str:
-        return f"data_file{self.get_num_artifacts('all')}.txt"
+        return num_new >= 1
 
-
-class NonMonitoringDataStoreNode(ArtifactStoreNode):
+class ModelRegistryNode(ArtifactStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
@@ -63,45 +61,26 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
             f.write(content)
         self.log(f"Saved preprocessed {filepath}")
 
-class DataPreparationNode(BaseActionNode):
-    def __init__(
-        self, 
-        name: str, 
-        data_store: MonitoringDataStoreNode,
-        processed_data_store: NonMonitoringDataStoreNode 
-    ) -> None:
-        super().__init__(name, predecessors=[
-            data_store,
-            processed_data_store
-        ])
-        self.data_store = data_store
-        self.processed_data_store = processed_data_store
+
+class PlotsStoreNode(ArtifactStoreNode):
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
-    def execute(self, *args, **kwargs) -> bool:
-        self.log(f"Executing node '{self.name}'")
-        run_computational_task(node=self, duration_seconds=2)
-
-        for filepath in self.data_store.list_artifacts("current"):
-            with open(filepath, 'r') as f:
-                content = f"processed {filepath}"
-                self.processed_data_store.save_artifact(content)
-        self.log(f"Node '{self.name}' executed successfully.")
-        return True
-
 
 class ModelRetrainingNode(BaseActionNode):
     def __init__(
-        self, name: str, training_duration: int, data_prep: DataPreparationNode, 
-        data_store: MonitoringDataStoreNode, metadata_store: BaseMetadataStoreNode
+        self, name: str, 
+        data_store: MonitoringDataStoreNode, plots_store: PlotsStoreNode,
+        model_registry: ModelRegistryNode, metadata_store: BaseMetadataStoreNode
     ) -> None:
         self.data_store = data_store
-        self.training_duration = training_duration
+        self.model_registry = model_registry
+        self.plots_store = plots_store
         self.metadata_store = metadata_store
-        super().__init__(name, predecessors=[data_prep])
+        super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'")
-        run_computational_task(node=self, duration_seconds=self.training_duration)
 
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
@@ -124,11 +103,37 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(test_name="artifact store test")
+        self.metadata_store.set_tags(test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.")
         return True
 
+
+class ShakespeareEvalNode(BaseActionNode):
+    def __init__(
+        self, name: str, predecessors: List[BaseNode], 
+        metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log("Evaluating LLM on Shakespeare validation dataset")
+        self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        return True
+
+class HaikuEvalNode(BaseActionNode):
+    def __init__(
+        self, name: str, predecessors: List[BaseNode], 
+        metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log("Evaluating LLM on Haiku validation dataset")
+        self.metadata_store.log_metrics(haiku_test_loss=2.43)
+        return True
 
 class BlockchainNode(BaseActionNode):
     def __init__(self, name: str, metadata_store: JsonMetadataStoreNode, 
@@ -185,44 +190,48 @@ logger = logging.getLogger(__name__)
 
 path = f"{artifact_store_tests_path}/webserver_test"
 metadata_store_path = f"{path}/metadata_store"
-collection_data_store_path = f"{path}/collection_data_store"
-processed_data_store_path = f"{path}/processed_data_store"
+haiku_data_store_path = f"{path}/haiku"
 model_registry_path = f"{path}/model_registry"
+plots_path = f"{path}/plots"
 
 metadata_store = JsonMetadataStoreNode(
     name="metadata_store", 
     tracker_dir=metadata_store_path
 )
-
-processed_data_store = NonMonitoringDataStoreNode(
-    "processed_data_store", 
-    processed_data_store_path, 
+model_registry = ModelRegistryNode(
+    "model_registry", 
+    model_registry_path, 
     metadata_store
 )
-collection_data_store = MonitoringDataStoreNode("collection_data_store", collection_data_store_path, metadata_store)
-data_prep = DataPreparationNode("data_prep", collection_data_store, processed_data_store)
-retraining_1 = ModelRetrainingNode("retraining 1", 2, data_prep, collection_data_store, metadata_store)
-retraining_2 = ModelRetrainingNode("retraining 2", 2.5, data_prep, collection_data_store, metadata_store)
-blockchain = BlockchainNode("blockchain", metadata_store, predecessors=[retraining_1, retraining_2])
+plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
+haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
+retraining = ModelRetrainingNode("retraining 1", haiku_data_store, plots_store, model_registry, metadata_store)
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[retraining], metadata_store=metadata_store)
+haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[retraining], metadata_store=metadata_store)
+blockchain = BlockchainNode("blockchain", metadata_store, predecessors=[shakespeare_eval, haiku_eval])
 pipeline = Pipeline(
-    nodes=[metadata_store, collection_data_store, processed_data_store, data_prep, retraining_1, retraining_2, blockchain], 
+    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, shakespeare_eval, haiku_eval, retraining, blockchain], 
     loggers=logger
 )
 
-w = Webserver(pipeline)
-w.run()
+#w = Webserver(pipeline)
+#w.run()
 
 print('launching nodes')
 pipeline.launch_nodes()
 time.sleep(2)
 
-for i in range(10):
-    with open(f"{collection_data_store_path}/test_file{i}.txt", 'w') as f:
-        f.write(f"test file {i}")
-     
-    time.sleep(1)
+haiku_partitions_dir = "./testing_artifacts/haiku"
+max_files = 20
+for i, filename in enumerate(os.listdir(haiku_partitions_dir)):
+    if i < max_files:
+        if filename not in ["haiku.csv", "testing.txt"]:
+            shutil.copy(
+                src=os.path.join(haiku_partitions_dir, filename),
+                dst=haiku_data_store_path
+            )
+            time.sleep(1)
 
-time.sleep(25)
+time.sleep(35)
 pipeline.terminate_nodes()
 print('pipeline terminated')
-
