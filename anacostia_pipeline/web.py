@@ -4,6 +4,7 @@ import json
 import signal
 from importlib import metadata
 from multiprocessing import Process
+from web3 import Web3
 
 from jinja2.filters import FILTERS
 from fastapi import FastAPI
@@ -16,6 +17,259 @@ import uvicorn
 
 from .engine.base import NodeModel, BaseMetadataStoreNode, BaseResourceNode, BaseActionNode
 from .engine.pipeline import Pipeline, PipelineModel
+
+
+# Set up Web3 connection
+NODE_URL = "https://patient-wispy-fog.ethereum-sepolia.quiknode.pro/1f33ba5d6b770d91559dfb2e74d81722ea3eaddf/"
+
+# Contract details
+contract_address = '0xb87E89d174Be71642475D4612Cf9dF19863888b8'
+contract_abi = [
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "bytes32",
+				"name": "id",
+				"type": "bytes32"
+			}
+		],
+		"name": "ChainlinkCancelled",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "bytes32",
+				"name": "id",
+				"type": "bytes32"
+			}
+		],
+		"name": "ChainlinkFulfilled",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "bytes32",
+				"name": "id",
+				"type": "bytes32"
+			}
+		],
+		"name": "ChainlinkRequested",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferRequested",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "priceInEth",
+				"type": "uint256"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "priceInUsd",
+				"type": "uint256"
+			}
+		],
+		"name": "PriceUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "bytes32",
+				"name": "requestId",
+				"type": "bytes32"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "accuracy",
+				"type": "uint256"
+			}
+		],
+		"name": "RequestFirstId",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "acceptOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "accuracy",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_requestId",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_accuracy",
+				"type": "uint256"
+			}
+		],
+		"name": "fulfill",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getPriceInUsd",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "priceInEth",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "priceInUsd",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "requestFirstId",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "requestId",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "withdrawLink",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]
+
 
 PACKAGE_NAME = "anacostia_pipeline"
 PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
@@ -35,6 +289,16 @@ class Webserver:
         self.p = p
         self.static_dir = os.path.join(PACKAGE_DIR, "static")
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+
+          # Setup Web3
+        self.w3 = Web3(Web3.HTTPProvider(NODE_URL))
+
+            # Check if the connection is successful
+        if not self.w3.is_connected():
+            print("Failed to connect to Ethereum node.")
+            return
+        
+        self.contract = self.w3.eth.contract(address=contract_address, abi=contract_abi)
 
         # Only used for self.run(blocking=False)
         self._proc = None
@@ -76,6 +340,29 @@ class Webserver:
         async def index(request: Request):
             nodes = self.p.model().nodes
             return self.templates.TemplateResponse("base.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
+
+        
+        def get_usd_price(self):
+            try:
+                return self.contract.functions.getPriceInUsd().call()
+            except Exception as e:
+                print(f"Error fetching USD price: {e}")
+                return None
+
+        def get_eth_price(self):
+            try:
+                return self.contract.functions.priceInEth().call()
+            except Exception as e:
+                print(f"Error fetching ETH price: {e}")
+                return None
+
+        @self.app.get('/price/usd')
+        def fetch_usd_price():
+                return {"usd_price": self.get_usd_price()}
+
+        @self.app.get('/price/eth')
+        def fetch_eth_price():
+                return {"eth_price": self.get_eth_price()}
 
         @self.app.get('/node', response_class=HTMLResponse)
         async def node_html(request: Request, name:str, property:str=None):

@@ -102,7 +102,20 @@
 
             <div id="node_content"></div>
         </main>
-
+        <!-- Add a section in your HTML to display prices -->
+        <div>
+            <button hx-get="/price/usd" hx-trigger="load" hx-target="#usd-price-container">
+                Load USD Price
+            </button>
+            <div id="usd-price-container"></div>
+        </div>
+        
+        <div>
+            <button hx-get="/price/eth" hx-trigger="load" hx-target="#eth-price-container">
+                Load ETH Price
+            </button>
+            <div id="eth-price-container"></div>
+        </div>
         <br><br><br>
         <footer class="page-footer indigo darken-1">
             <div class="container">
@@ -115,6 +128,7 @@
                     <h5 class="white-text">Links</h5>
                     <ul>
                     <li><a class="grey-text text-lighten-3" href="#!">Github</a></li>
+                    <li><a class="grey-text text-lighten-3" href="#!">DAO</a></li>
                     </ul>
                 </div>
                 </div>
