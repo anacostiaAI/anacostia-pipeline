@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List
+from typing import Any, List
 import unittest
 import logging
 import sys
@@ -10,6 +10,7 @@ import random
 import time
 import traceback
 import subprocess
+import requests
 import threading
 from dotenv import load_dotenv
 
@@ -60,7 +61,7 @@ max_iters = 2500 #usually 2500
 eval_interval = 500
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-eval_iters = 200
+eval_iters = 50
 n_embd = 384
 n_head = 6
 n_layer = 6
@@ -298,7 +299,7 @@ def generate_from_model(model, max_new_tokens=5000, output_path = f'{karpathy_te
     print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
     open(output_path, 'w').write(decode(m.generate(context, max_new_tokens=max_new_tokens)[0].tolist()))
 
-def train_model(train_data_file, model, max_iters=max_iters):
+def train_model(train_data_file, model: torch.nn.Module, train_plot_path: str, val_plot_path: str, max_iters=max_iters):
     #training_data_file = f"{haiku_data_path}/input.txt"
     with open(train_data_file, 'r', encoding='utf-8') as f:
         text = f.read()
@@ -327,19 +328,225 @@ def train_model(train_data_file, model, max_iters=max_iters):
         loss.backward()
         optimizer.step()
 
+    """
     # Create and start a separate thread for plotting
     plot_thread_train = threading.Thread(
-        target=generate_and_save_line_plot, args=(epochs, train_loss, "Train Loss", f"{karpathy_tests_path}/train_plot.html")
+        target=generate_and_save_line_plot, args=(epochs, train_loss, "Train Loss", train_plot_path)
     )
     plot_thread_train.daemon = True  # The thread will exit when the main program exits
     plot_thread_train.start()
     
     plot_thread_val = threading.Thread(
-        target=generate_and_save_line_plot, args=(epochs, val_loss, "Val Loss", f"{karpathy_tests_path}/val_plot.html")
+        target=generate_and_save_line_plot, args=(epochs, val_loss, "Val Loss", val_plot_path)
     )
     plot_thread_val.daemon = True  # The thread will exit when the main program exits
     plot_thread_val.start()
+    """
 
+
+# ---------------------- defining the pipeline -------------------------------
+class MonitoringDataStoreNode(ArtifactStoreNode):
+    def __init__(
+        self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
+        init_state: str = "new", max_old_samples: int = None
+    ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
+    
+    def trigger_condition(self) -> bool:
+        num_new = self.get_num_artifacts("new")
+        return num_new >= 1
+
+
+class ModelRegistryNode(ArtifactStoreNode):
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+    
+    def create_filename(self, filename: str) -> str:
+        return f"{filename}_{self.get_num_artifacts('all')}.txt"
+
+    def save_artifact(self, model: torch.nn.Module) -> None:
+        filename = self.create_filename()
+        filepath = os.path.join(self.path, filename)
+
+        # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
+        # that way, the Observer can see the file is already logged and ignore it
+        self.record_current(filepath)
+        torch.save(model.state_dict(), filepath)
+
+    def load_artifact(self, artifact_path: str) -> torch.nn.Module:
+        model = GPTLanguageModel()
+        model.load_state_dict(torch.load(artifact_path))
+        return model
+
+
+class PlotsStoreNode(ArtifactStoreNode):
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+
+    def create_filename(self, filename: str) -> str:
+        return f"{filename}_{self.get_num_artifacts('all')}"
+
+class ModelRetrainingNode(BaseActionNode):
+    def __init__(
+        self, name: str, 
+        data_store: MonitoringDataStoreNode, plots_store: PlotsStoreNode,
+        model_registry: ModelRegistryNode, metadata_store: BaseMetadataStoreNode
+    ) -> None:
+        self.data_store = data_store
+        self.model_registry = model_registry
+        self.plots_store = plots_store
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors=[data_store, plots_store, model_registry])
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log(f"Executing node '{self.name}'")
+
+        old_models = self.model_registry.list_artifacts(state="old")
+        if len(old_models) != 0:
+            base_model_path = old_models[-1]
+        else:
+            base_model_path = "./testing_artifacts/shakespeare.pth"
+
+        model = self.model_registry.load_artifact(base_model_path)
+        model.to(device)
+        
+        train_plot_path = self.plots_store.create_filename("train_plot")
+        val_plot_path = self.plots_store.create_filename("val_plot")
+        for filepath in self.data_store.list_artifacts("current"):
+            train_model(filepath, model, train_plot_path, val_plot_path, max_iters=2)
+            self.log(f"Trained {base_model_path} on {filepath}")
+
+        self.metadata_store.log_metrics(acc=1.00)
+        
+        self.metadata_store.log_params(
+            batch_size = batch_size, # how many independent sequences will we process in parallel?
+            block_size = block_size, # what is the maximum context length for predictions?
+            max_iters = max_iters,
+            eval_interval = eval_interval,
+            learning_rate = learning_rate,
+            eval_iters = eval_iters,
+            n_embd = n_embd,
+            n_head = n_head,
+            n_layer = n_layer,
+            dropout = dropout,
+            seed = seed,
+            split_ratio = split_ratio    # first 90% will be train, rest val
+        )
+
+        self.metadata_store.set_tags(test_name="Karpathy LLM test")
+
+        self.log(f"Node '{self.name}' executed successfully.")
+        return True
+
+
+class ShakespeareEvalNode(BaseActionNode):
+    def __init__(
+        self, name: str, predecessors: List[BaseNode], 
+        metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log("Evaluating LLM on Shakespeare validation dataset")
+        self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        return True
+
+class HaikuEvalNode(BaseActionNode):
+    def __init__(
+        self, name: str, predecessors: List[BaseNode], 
+        metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log("Evaluating LLM on Haiku validation dataset")
+        self.metadata_store.log_metrics(haiku_test_loss=2.43)
+        return True
+
+class BlockchainNode(BaseActionNode):
+    def __init__(self, name: str, metadata_store: JsonMetadataStoreNode, 
+        predecessors: List[BaseNode], loggers: Logger | List[Logger] = None
+    ) -> None:
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors, loggers)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        """
+        logic to upload to IPFS
+        """
+
+        url = "https://api.quicknode.com/ipfs/rest/v1/s3/put-object"
+
+        tracker_dir = self.metadata_store.tracker_dir
+        files_paths = [os.path.join(tracker_dir, json_file_path) for json_file_path in os.listdir(tracker_dir)]
+
+        def send_file(path: str):
+            payload = {
+                'Key': path,
+                'ContentType': 'text'
+            }
+            files=[
+                ('Body', (path, open(path,'rb'),'text/json'))
+            ]
+            headers = {
+                'x-api-key': os.getenv("API_KEY")
+            }
+            response = requests.request("POST", url, headers=headers, data=payload, files=files)
+            self.log(response.text)
+        
+        for path in files_paths:
+            send_file(path)
+
+        return True
+
+path = f"{karpathy_tests_path}"
+metadata_store_path = f"{path}/metadata_store"
+haiku_data_store_path = f"{path}/haiku"
+model_registry_path = f"{path}/model_registry"
+plots_path = f"{path}/plots"
+
+metadata_store = JsonMetadataStoreNode(
+    name="metadata_store", 
+    tracker_dir=metadata_store_path
+)
+model_registry = ModelRegistryNode(
+    "model_registry", 
+    model_registry_path, 
+    metadata_store
+)
+plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
+haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
+retraining = ModelRetrainingNode("retraining 1", haiku_data_store, plots_store, model_registry, metadata_store)
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[retraining], metadata_store=metadata_store)
+haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[retraining], metadata_store=metadata_store)
+blockchain = BlockchainNode("blockchain", metadata_store, predecessors=[shakespeare_eval, haiku_eval])
+pipeline = Pipeline(
+    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, shakespeare_eval, haiku_eval, retraining, blockchain], 
+    loggers=logger
+)
+
+print('launching nodes')
+pipeline.launch_nodes()
+time.sleep(2)
+
+haiku_partitions_dir = "./testing_artifacts/haiku"
+haiku_files = os.listdir(haiku_partitions_dir)
+haiku_files.remove("haiku.csv")
+haiku_files.remove("testing.txt")
+max_files = 2
+for i, filename in enumerate(haiku_files):
+    if i < max_files:
+        shutil.copy(
+            src=os.path.join(haiku_partitions_dir, filename),
+            dst=haiku_data_store_path
+        )
+        time.sleep(3)
+
+time.sleep(180)
+pipeline.terminate_nodes()
+print('pipeline terminated')
 
 """
 # Train on Shakespeare
@@ -355,7 +562,6 @@ model.eval()
 
 # generate from Shakespeare
 generate_from_model(model)
-"""
 
 # train on haiku
 # we should have 20 training files. test on 2 for now
@@ -369,3 +575,4 @@ for i in range(1):
     generate_from_model(model)
     print(f"Haiku value = {evaluate_haiku(model)}")
     print(f"Shakespeare value = {evaluate_shakespeare(model)}")
+"""
