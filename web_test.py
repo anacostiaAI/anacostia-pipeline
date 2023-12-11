@@ -214,8 +214,8 @@ pipeline = Pipeline(
     loggers=logger
 )
 
-#w = Webserver(pipeline)
-#w.run()
+w = Webserver(pipeline)
+w.run()
 
 print('launching nodes')
 pipeline.launch_nodes()

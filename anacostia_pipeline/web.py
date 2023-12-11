@@ -356,13 +356,25 @@ class Webserver:
                 print(f"Error fetching ETH price: {e}")
                 return None
 
-        @self.app.get('/price/usd')
-        def fetch_usd_price():
-                return {"usd_price": self.get_usd_price()}
+        @self.app.get('/price/usd', response_class=HTMLResponse)
+        def fetch_usd_price(request: Request):
+            context = {'request': request}
+            return self.templates.TemplateResponse("price_eth.html", 
+                {
+                    'request': request, 
+                    'eth_price': self.contract.functions.priceInEth().call()
+                }
+            )
 
-        @self.app.get('/price/eth')
-        def fetch_eth_price():
-                return {"eth_price": self.get_eth_price()}
+        @self.app.get('/price/eth', response_class=HTMLResponse)
+        def fetch_eth_price(request: Request):
+            return self.templates.TemplateResponse(
+                "price_eth.html", 
+                {
+                    'request': request, 
+                    'eth_price': self.contract.functions.getPriceInUsd().call()
+                }
+            )
 
         @self.app.get('/node', response_class=HTMLResponse)
         async def node_html(request: Request, name:str, property:str=None):
