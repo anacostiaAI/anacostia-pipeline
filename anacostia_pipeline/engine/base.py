@@ -559,6 +559,8 @@ class BaseActionNode(BaseNode):
         data.update(self.model().dict())
 
         # TODO dynamically include ActionNode's output
+        # Note: extract the path of train_plot.html and val_plot.html from the plot store
+        # Note: this is a base action node, move chart rendering code somewhere else
         train_plot = "./train_plot.html"
         if os.path.exists(train_plot):
             with open(train_plot, 'r') as f:
