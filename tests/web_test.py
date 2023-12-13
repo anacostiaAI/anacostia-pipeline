@@ -12,7 +12,7 @@ from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.web import Webserver
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
-from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
+from anacostia_pipeline.metadata.json_metadata_store import JsonMetadataStoreNode
 
 
 # Make sure that the .env file is in the same directory as this Python script

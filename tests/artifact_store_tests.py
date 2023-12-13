@@ -6,7 +6,7 @@ import random
 import time
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
-from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
+from anacostia_pipeline.metadata.json_metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.engine.base import Result
