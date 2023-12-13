@@ -11,7 +11,7 @@ from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadat
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.web import Webserver
 
-from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
+from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 
 
@@ -32,7 +32,7 @@ def run_computational_task(node: BaseNode, duration_seconds: int):
     node.log(f"Node {node.name} completed the computationally intensive task.")
 """
 
-class MonitoringDataStoreNode(ArtifactStoreNode):
+class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
@@ -43,7 +43,7 @@ class MonitoringDataStoreNode(ArtifactStoreNode):
         num_new = self.get_num_artifacts("new")
         return num_new >= 1
 
-class ModelRegistryNode(ArtifactStoreNode):
+class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
@@ -62,7 +62,7 @@ class ModelRegistryNode(ArtifactStoreNode):
         self.log(f"Saved preprocessed {filepath}")
 
 
-class PlotsStoreNode(ArtifactStoreNode):
+class PlotsStoreNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     

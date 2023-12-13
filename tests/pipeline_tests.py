@@ -36,7 +36,7 @@ class FeatureStoreNode(BaseResourceNode):
         time.sleep(1)
         print(f"Finished updating state of {self.name}")
 
-class ArtifactStoreNode(BaseResourceNode):
+class FilesystemStoreNode(BaseResourceNode):
     def __init__(self, name: str, uri: str) -> None:
         super().__init__(name, uri)
 
@@ -133,7 +133,7 @@ class ModelEvaluationNode(BaseActionNode):
         return True
 
 class ReportingNode(BaseActionNode):
-    def __init__(self, name: str, artifact_store: ArtifactStoreNode, retraining_node: RetrainingNode, and_node: AndNode) -> None:
+    def __init__(self, name: str, artifact_store: FilesystemStoreNode, retraining_node: RetrainingNode, and_node: AndNode) -> None:
         super().__init__(name, predecessors=[artifact_store, retraining_node, and_node])
 
     def setup(self) -> None:
@@ -151,7 +151,7 @@ class ReportingNode(BaseActionNode):
 if __name__ == "__main__":
     data_store_node = DataStoreNode("data store", "http://localhost:8080")
     feature_store_node = FeatureStoreNode("feature store", "http://localhost:8080")
-    artifact_store_node = ArtifactStoreNode("artifact store", "http://localhost:8080")
+    artifact_store_node = FilesystemStoreNode("artifact store", "http://localhost:8080")
     model_registry_node = ModelRegistryNode("model registry", "http://localhost:8080")
     and_node1 = AndNode("AND node 1", [data_store_node, feature_store_node, artifact_store_node, model_registry_node])
     #and_node2 = AndNode("AND node 2", [and_node1])

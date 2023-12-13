@@ -7,7 +7,7 @@ import random
 import time
 import sys
 
-from anacostia_pipeline.resources.artifact_store import ArtifactStoreNode
+from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.resources.metadata_store import JsonMetadataStoreNode
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 
-class MonitoringDataStoreNode(ArtifactStoreNode):
+class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
@@ -56,7 +56,7 @@ class MonitoringDataStoreNode(ArtifactStoreNode):
         return f"data_file{self.get_num_artifacts('all')}.txt"
 
 
-class NonMonitoringDataStoreNode(ArtifactStoreNode):
+class NonMonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
@@ -74,7 +74,7 @@ class NonMonitoringDataStoreNode(ArtifactStoreNode):
         self.log(f"Saved preprocessed {filepath}")
     
 
-class ModelRegistryNode(ArtifactStoreNode):
+class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, path: str, init_state: str = "new", max_old_samples: int = None) -> None:
         super().__init__(name, path, init_state, "model_registry.json", max_old_samples)
 

@@ -10,7 +10,7 @@ from watchdog.events import FileSystemEventHandler
 
 
 
-class ArtifactStoreNode(BaseResourceNode, FileSystemEventHandler):
+class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None, loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
