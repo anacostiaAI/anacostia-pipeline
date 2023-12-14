@@ -4,7 +4,6 @@ import json
 import signal
 from importlib import metadata
 from multiprocessing import Process
-from web3 import Web3
 
 from jinja2.filters import FILTERS
 from fastapi import FastAPI
