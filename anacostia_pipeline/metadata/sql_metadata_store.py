@@ -29,7 +29,7 @@ class Param(Base):
     id = Column(Integer, primary_key=True)
     run_id = Column(Integer)
     key = Column(String)
-    value = Column(String)
+    value = Column(Float)
 
 class Tag(Base):
     __tablename__ = 'tags'
@@ -38,6 +38,23 @@ class Tag(Base):
     key = Column(String)
     value = Column(String)
 
+class Sample(Base):
+    __tablename__ = 'samples'
+    id = Column(Integer, primary_key=True)
+    run_id = Column(Integer)
+    node_id = Column(Integer)
+    location = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Node(Base):
+    __tablename__ = 'nodes'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    type = Column(String)
+    state = Column(String, default="new")
+    init_time = Column(DateTime, default=datetime.utcnow)
+
+
 
 class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
@@ -45,6 +62,8 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         self.session = None
     
     def setup(self) -> None:
+        self.log(f"Setting up node '{self.name}'")
+
         # Create an engine that stores data in the local directory's sqlite.db file.
         engine = create_engine(f'{self.uri}', echo=True)
 
@@ -54,7 +73,15 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         # Create a sessionmaker, binding it to the engine
         Session = sessionmaker(bind=engine)
         self.session = Session()
+        self.log(f"Node '{self.name}' setup complete.")
     
+    def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
+        resource_name = resource_node.name
+        type_name = type(resource_node).__name__
+        node = Node(name=resource_name, type=type_name)
+        self.session.add(node)
+        self.session.commit()
+
     def on_exit(self):
         self.session.close()
 

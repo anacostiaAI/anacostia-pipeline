@@ -6,7 +6,7 @@ from logging import Logger
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
-from .base import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel
+from .base import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel, BaseActionNode
 from .constants import Status
 
 
@@ -108,29 +108,47 @@ class Pipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
 
-    def launch_nodes(self):
+    def setup_nodes(self, nodes: List[BaseNode]):
         """
-        Lanches all the registered nodes in topological order.
+        Sets up all the nodes in the pipeline.
         """
 
-        # set up nodes
         threads = []
-        for node in self.nodes:
+        for node in nodes:
             node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
             thread = Thread(target=node.setup)
             node.status = Status.INIT
             thread.start()
             threads.append(thread)
-        
-        for thread, node in zip(threads, self.nodes):
+
+        for thread, node in zip(threads, nodes):
             thread.join()
-            node.status = Status.RUNNING
             node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
 
+    def launch_nodes(self):
+        """
+        Lanches all the registered nodes in topological order.
+        """
+
+        # set up metadata store nodes
+        metadata_stores = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
+        self.setup_nodes(metadata_stores)
+
+        # set up resource nodes
+        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
+        self.setup_nodes(resource_nodes)
+        
+        # set up action nodes
+        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
+        self.setup_nodes(action_nodes)
+
+        """
         # start nodes
         for node in self.nodes:
             # Note: since node is a subclass of Thread, calling start() will run the run() method
+            node.status = Status.RUNNING
             node.start()
+        """
 
     def terminate_nodes(self) -> None:
         # terminating nodes need to be done in reverse order so that the successor nodes are terminated before the predecessor nodes
