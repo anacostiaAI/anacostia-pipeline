@@ -104,20 +104,16 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         pass
 
     def start_run(self) -> None:
-        """
         run = Run()
         self.session.add(run)
         self.session.commit()
-        """
-        pass
+        self.log(f"--------------------------- started run {run.id} at {datetime.now()}")
     
     def end_run(self) -> None:
-        """
         run = self.session.query(Run).filter_by(end_time=None).first()
         run.end_time = datetime.utcnow()
         self.session.commit()
-        """
-        pass
+        self.log(f"--------------------------- ended run {run.id} at {datetime.now()}")
 
     def on_exit(self):
         self.session.close()
