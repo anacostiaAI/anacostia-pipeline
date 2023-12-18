@@ -142,13 +142,11 @@ class Pipeline:
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         self.setup_nodes(action_nodes)
 
-        """
         # start nodes
         for node in self.nodes:
             # Note: since node is a subclass of Thread, calling start() will run the run() method
             node.status = Status.RUNNING
             node.start()
-        """
 
     def terminate_nodes(self) -> None:
         # terminating nodes need to be done in reverse order so that the successor nodes are terminated before the predecessor nodes

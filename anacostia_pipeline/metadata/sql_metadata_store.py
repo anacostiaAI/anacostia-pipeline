@@ -44,6 +44,8 @@ class Sample(Base):
     run_id = Column(Integer)
     node_id = Column(Integer)
     location = Column(String)
+    state = Column(String, default="new")
+    end_time = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Node(Base):
@@ -51,7 +53,6 @@ class Node(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     type = Column(String)
-    state = Column(String, default="new")
     init_time = Column(DateTime, default=datetime.utcnow)
 
 
@@ -81,6 +82,42 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         node = Node(name=resource_name, type=type_name)
         self.session.add(node)
         self.session.commit()
+
+    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
+        node_id = self.session.query(Node).filter_by(name=resource_node.name).first().id
+        sample = Sample(node_id=node_id, location=filepath, state=state, run_id=run_id)
+        self.session.add(sample)
+        self.session.commit()
+    
+    def add_run_id(self) -> None:
+        """
+        for successor in self.successors:
+            if isinstance(successor, BaseResourceNode):
+                node_id = self.session.query(Node).filter_by(name=successor.name).first().id
+                sample = Sample(node_id=node_id, run_id=self.get_run_id())
+                self.session.add(sample)
+                self.session.commit()
+        """
+        pass
+
+    def add_end_time(self) -> None:
+        pass
+
+    def start_run(self) -> None:
+        """
+        run = Run()
+        self.session.add(run)
+        self.session.commit()
+        """
+        pass
+    
+    def end_run(self) -> None:
+        """
+        run = self.session.query(Run).filter_by(end_time=None).first()
+        run.end_time = datetime.utcnow()
+        self.session.commit()
+        """
+        pass
 
     def on_exit(self):
         self.session.close()
