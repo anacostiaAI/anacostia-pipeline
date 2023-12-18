@@ -63,8 +63,6 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         self.session = None
     
     def setup(self) -> None:
-        self.log(f"Setting up node '{self.name}'")
-
         # Create an engine that stores data in the local directory's sqlite.db file.
         engine = create_engine(f'{self.uri}', echo=True)
 
@@ -74,7 +72,6 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         # Create a sessionmaker, binding it to the engine
         Session = sessionmaker(bind=engine)
         self.session = Session()
-        self.log(f"Node '{self.name}' setup complete.")
     
     def get_run_id(self) -> int:
         run = self.session.query(Run).filter_by(end_time=None).first()
@@ -105,6 +102,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 samples = self.session.query(Sample).filter_by(node_id=node_id, run_id=None).all()
                 for sample in samples:
                     sample.run_id = self.get_run_id()
+                    sample.state = "current"
                     self.session.commit()
 
     def add_end_time(self) -> None:
@@ -115,6 +113,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 samples = self.session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
                 for sample in samples:
                     sample.end_time = datetime.utcnow()
+                    sample.state = "old"
                     self.session.commit()
 
     def start_run(self) -> None:
