@@ -90,7 +90,7 @@ class TestSQLiteMetadataStore(unittest.TestCase):
 
         for i in range(10):
             create_file(f"{self.data_path}/test_file{i}.txt", f"test file {i}")
-            time.sleep(1)
+            time.sleep(1.5)
         
         time.sleep(20)
         pipeline.terminate_nodes()

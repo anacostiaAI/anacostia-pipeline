@@ -76,6 +76,14 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         self.session = Session()
         self.log(f"Node '{self.name}' setup complete.")
     
+    def get_run_id(self) -> int:
+        run = self.session.query(Run).filter_by(end_time=None).first()
+        return run.id
+    
+    def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
+        node_id = self.session.query(Node).filter_by(name=resource_node.name).first().id
+        return self.session.query(Sample).filter_by(node_id=node_id, state=state).count()
+    
     def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
         resource_name = resource_node.name
         type_name = type(resource_node).__name__
@@ -84,24 +92,30 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         self.session.commit()
 
     def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
+        # in the future, refactor this by changing filepath to uri 
         node_id = self.session.query(Node).filter_by(name=resource_node.name).first().id
         sample = Sample(node_id=node_id, location=filepath, state=state, run_id=run_id)
         self.session.add(sample)
         self.session.commit()
     
     def add_run_id(self) -> None:
-        """
         for successor in self.successors:
             if isinstance(successor, BaseResourceNode):
                 node_id = self.session.query(Node).filter_by(name=successor.name).first().id
-                sample = Sample(node_id=node_id, run_id=self.get_run_id())
-                self.session.add(sample)
-                self.session.commit()
-        """
-        pass
+                samples = self.session.query(Sample).filter_by(node_id=node_id, run_id=None).all()
+                for sample in samples:
+                    sample.run_id = self.get_run_id()
+                    self.session.commit()
 
     def add_end_time(self) -> None:
-        pass
+        run_id = self.get_run_id()
+        for successor in self.successors:
+            if isinstance(successor, BaseResourceNode):
+                node_id = self.session.query(Node).filter_by(name=successor.name).first().id
+                samples = self.session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
+                for sample in samples:
+                    sample.end_time = datetime.utcnow()
+                    self.session.commit()
 
     def start_run(self) -> None:
         run = Run()
