@@ -64,7 +64,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
     
     def setup(self) -> None:
         # Create an engine that stores data in the local directory's sqlite.db file.
-        engine = create_engine(f'{self.uri}', echo=True)
+        engine = create_engine(f'{self.uri}', connect_args={"check_same_thread": False})
 
         # Create all tables in the engine (this is equivalent to "Create Table" statements in raw SQL).
         Base.metadata.create_all(engine)
