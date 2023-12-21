@@ -78,7 +78,6 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
-        self.session = None
     
     def setup(self) -> None:
         path = self.uri.strip('sqlite:///')
@@ -134,28 +133,27 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                         session.commit()
 
     def add_end_time(self) -> None:
-        run_id = self.get_run_id()
-        for successor in self.successors:
-            if isinstance(successor, BaseResourceNode):
-                node_id = self.session.query(Node).filter_by(name=successor.name).first().id
-                samples = self.session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
-                for sample in samples:
-                    sample.end_time = datetime.utcnow()
-                    sample.state = "old"
-                    self.session.commit()
+        with scoped_session_manager(self.session_factory, self) as session:
+            run_id = self.get_run_id()
+            for successor in self.successors:
+                if isinstance(successor, BaseResourceNode):
+                    node_id = session.query(Node).filter_by(name=successor.name).first().id
+                    samples = session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
+                    for sample in samples:
+                        sample.end_time = datetime.utcnow()
+                        sample.state = "old"
+                        session.commit()
 
     def start_run(self) -> None:
-        run = Run()
-        self.session.add(run)
-        self.session.commit()
-        self.log(f"--------------------------- started run {run.id} at {datetime.now()}")
+        with scoped_session_manager(self.session_factory, self) as session:
+            run = Run()
+            session.add(run)
+            session.commit()
+            self.log(f"--------------------------- started run {run.id} at {datetime.now()}")
     
     def end_run(self) -> None:
-        run = self.session.query(Run).filter_by(end_time=None).first()
-        run.end_time = datetime.utcnow()
-        self.session.commit()
-        self.log(f"--------------------------- ended run {run.id} at {datetime.now()}")
-
-    def on_exit(self):
-        self.session.close()
-
+        with scoped_session_manager(self.session_factory, self) as session:
+            run: Run = session.query(Run).filter_by(end_time=None).first()
+            run.end_time = datetime.utcnow()
+            session.commit()
+            self.log(f"--------------------------- ended run {run.id} at {datetime.now()}")
