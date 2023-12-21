@@ -82,10 +82,21 @@ class BaseNode(Thread):
         else:
             self.loggers.extend(loggers)
 
-    def log(self, message: str) -> None:
+    def log(self, message: str, level="DEBUG") -> None:
         if len(self.loggers) > 0:
             for logger in self.loggers:
-                logger.info(message)
+                if level == "DEBUG":
+                    logger.debug(message)
+                elif level == "INFO":
+                    logger.info(message)
+                elif level == "WARNING":
+                    logger.warning(message)
+                elif level == "ERROR":
+                    logger.error(message)
+                elif level == "CRITICAL":
+                    logger.critical(message)
+                else:
+                    raise ValueError(f"Invalid log level: {level}")
         else:
             print(message)
 

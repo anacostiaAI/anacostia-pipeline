@@ -25,7 +25,7 @@ if os.path.exists(sqlite_tests_path) is True:
 os.makedirs(sqlite_tests_path)
 log_path = f"{sqlite_tests_path}/anacostia.log"
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     filename=log_path,
@@ -48,15 +48,30 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     def create_filename(self) -> str:
         return f"data_file{self.get_num_artifacts('all')}.txt"
 
+class NonMonitoringDataStoreNode(FilesystemStoreNode):
+    def __init__(
+        self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
+        init_state: str = "new", max_old_samples: int = None
+    ) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state, max_old_samples, monitoring=False)
+    
+    def trigger_condition(self) -> bool:
+        return True
+    
+    def create_filename(self) -> str:
+        return f"data_file{self.get_num_artifacts('all')}.txt"
+
 class DataPreparationNode(BaseActionNode):
     def __init__(
         self, 
         name: str, 
         data_store: MonitoringDataStoreNode,
+        deposit_store: NonMonitoringDataStoreNode,
         metadata_store: BaseMetadataStoreNode = None
     ) -> None:
         super().__init__(name, predecessors=[
             data_store,
+            deposit_store
         ])
         self.data_store = data_store
         self.metadata_store = metadata_store
@@ -77,15 +92,18 @@ class TestSQLiteMetadataStore(unittest.TestCase):
     def setUp(self) -> None:
         self.path = f"{sqlite_tests_path}/{self._testMethodName}"
         self.data_path = f"{sqlite_tests_path}/data"
+        self.deposit_path = f"{sqlite_tests_path}/deposit"
         os.makedirs(self.path)
 
     def test_empty_pipeline(self):
         sqlite_store = SqliteMetadataStore("sqlite_metata_store", f"sqlite:///{self.path}/test.db")
         data_store = MonitoringDataStoreNode("data_store", self.data_path, sqlite_store)
-        data_prep = DataPreparationNode("data_prep", data_store, sqlite_store)
+        deposit_store = NonMonitoringDataStoreNode("deposit_store", self.deposit_path, sqlite_store)
+        data_prep = DataPreparationNode("data_prep", data_store, deposit_store, sqlite_store)
 
-        pipeline = Pipeline([sqlite_store, data_store, data_prep], loggers=logger)
+        pipeline = Pipeline([sqlite_store, data_store, deposit_store, data_prep], loggers=logger)
         pipeline.launch_nodes()
+        
         time.sleep(2)
 
         for i in range(10):
