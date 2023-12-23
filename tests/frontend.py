@@ -13,6 +13,7 @@ from anacostia_pipeline.frontend import run_background_webserver
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.json_metadata_store import JsonMetadataStoreNode
+from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
 
 from utils import *
 
@@ -48,7 +49,7 @@ class ModelRegistryNode(FilesystemStoreNode):
         self.record_current(filepath)
         with open(filepath, 'w') as f:
             f.write(content)
-        self.log(f"Saved preprocessed {filepath}")
+        self.log(f"Saved preprocessed {filepath}", level="INFO")
 
 
 class PlotsStoreNode(FilesystemStoreNode):
@@ -69,11 +70,14 @@ class ModelRetrainingNode(BaseActionNode):
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
     def execute(self, *args, **kwargs) -> bool:
-        self.log(f"Executing node '{self.name}'")
+        self.log(f"Executing node '{self.name}'", level="INFO")
 
         for filepath in self.data_store.list_artifacts("current"):
             with open(filepath, 'r') as f:
-                self.log(f"Trained on {filepath}")
+                self.log(f"Trained on {filepath}", level="INFO")
+        
+        for filepath in self.data_store.list_artifacts("old"):
+            self.log(f"Already trained on {filepath}", level="INFO")
         
         self.metadata_store.log_metrics(acc=1.00)
         
@@ -94,7 +98,7 @@ class ModelRetrainingNode(BaseActionNode):
 
         self.metadata_store.set_tags(test_name="Karpathy LLM test")
 
-        self.log(f"Node '{self.name}' executed successfully.")
+        self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         return True
 
 
@@ -107,7 +111,7 @@ class ShakespeareEvalNode(BaseActionNode):
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        self.log("Evaluating LLM on Shakespeare validation dataset")
+        self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
         return True
 
@@ -120,7 +124,7 @@ class HaikuEvalNode(BaseActionNode):
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        self.log("Evaluating LLM on Haiku validation dataset")
+        self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(haiku_test_loss=2.43)
         return True
 
@@ -129,11 +133,11 @@ class HaikuEvalNode(BaseActionNode):
 web_tests_path = "./testing_artifacts/frontend"
 if os.path.exists(web_tests_path) is True:
     shutil.rmtree(web_tests_path)
-
 os.makedirs(web_tests_path)
+
 log_path = f"{web_tests_path}/anacostia.log"
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     filename=log_path,
@@ -148,9 +152,9 @@ haiku_data_store_path = f"{path}/haiku"
 model_registry_path = f"{path}/model_registry"
 plots_path = f"{path}/plots"
 
-metadata_store = JsonMetadataStoreNode(
+metadata_store = SqliteMetadataStore(
     name="metadata_store", 
-    tracker_dir=metadata_store_path
+    uri=f"sqlite:///{metadata_store_path}/metadata.db"
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
@@ -175,12 +179,12 @@ if __name__ == "__main__":
 
     pipeline.launch_nodes()
 
-    time.sleep(2)
+    time.sleep(6)
     for i in range(10):
         create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
         time.sleep(1.5)
 
-    time.sleep(25)
+    time.sleep(40)
     pipeline.terminate_nodes()
     print('pipeline terminated')
     

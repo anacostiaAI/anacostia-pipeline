@@ -27,6 +27,7 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
             os.makedirs(self.path, exist_ok=True)
         
         self.observer = Observer()
+        self.observer.name = f"{name}_observer"
         
         if init_state not in ("new", "old"):
             raise ValueError(f"init_state argument of DataStoreNode must be either 'new' or 'old', not '{init_state}'.")
@@ -44,7 +45,7 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
     def start_monitoring(self) -> None:
         self.observer.schedule(event_handler=self, path=self.path, recursive=True)
         self.observer.start()
-        self.log(f"Observer started for node '{self.name}' monitoring path '{self.path}'")
+        self.log(f"Observer started for node '{self.name}' (thread name: {self.observer.name}) monitoring path '{self.path}'")
     
     @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> None:
@@ -79,7 +80,8 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
         entries = self.metadata_store.get_entries(self, state)
-        artifacts = [entry["filepath"] for entry in entries]
+        entries = [entry.__dict__ for entry in entries]
+        artifacts = [entry["location"] for entry in entries]
         return artifacts
     
     @BaseResourceNode.log_exception

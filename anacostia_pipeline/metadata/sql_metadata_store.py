@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List, Union
+from typing import List, Dict
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -51,6 +51,9 @@ class Sample(Base):
     end_time = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 class Node(Base):
     __tablename__ = 'nodes'
     id = Column(Integer, primary_key=True)
@@ -101,9 +104,13 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             return run.id
     
     def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
+        # add some assertion statements here to check if state is "new", "current", "old", or "all"
         with scoped_session_manager(self.session_factory, resource_node) as session:
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            return session.query(Sample).filter_by(node_id=node_id, state=state).count()
+            if state == "all":
+                return session.query(Sample).filter_by(node_id=node_id).count()
+            else:
+                return session.query(Sample).filter_by(node_id=node_id, state=state).count()
     
     def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
         with scoped_session_manager(self.session_factory, resource_node) as session:
@@ -112,6 +119,11 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             node = Node(name=resource_name, type=type_name)
             session.add(node)
             session.commit()
+
+    def get_entries(self, resource_node: BaseResourceNode, state: str) -> Dict[str, Sample]:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+            return session.query(Sample).filter_by(node_id=node_id, state=state).all()
 
     def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
         with scoped_session_manager(self.session_factory, resource_node) as session:
