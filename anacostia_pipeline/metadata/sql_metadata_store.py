@@ -8,7 +8,7 @@ import os
 from contextlib import contextmanager
 import traceback
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode
 
 
 
@@ -118,6 +118,30 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             type_name = type(resource_node).__name__
             node = Node(name=resource_name, type=type_name)
             session.add(node)
+            session.commit()
+
+    def log_metrics(self, **kwargs) -> None:
+        with scoped_session_manager(self.session_factory, self) as session:
+            run_id = self.get_run_id()
+            for key, value in kwargs.items():
+                metric = Metric(run_id=run_id, key=key, value=value)
+                session.add(metric)
+            session.commit()
+    
+    def log_params(self, **kwargs) -> None:
+        with scoped_session_manager(self.session_factory, self) as session:
+            run_id = self.get_run_id()
+            for key, value in kwargs.items():
+                param = Param(run_id=run_id, key=key, value=value)
+                session.add(param)
+            session.commit()
+    
+    def set_tags(self, **kwargs) -> None:
+        with scoped_session_manager(self.session_factory, self) as session:
+            run_id = self.get_run_id()
+            for key, value in kwargs.items():
+                tag = Tag(run_id=run_id, key=key, value=value)
+                session.add(tag)
             session.commit()
 
     def get_entries(self, resource_node: BaseResourceNode, state: str) -> Dict[str, Sample]:
