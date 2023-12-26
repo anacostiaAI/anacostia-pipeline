@@ -2,15 +2,14 @@ import os
 from typing import List, Any, Union
 from datetime import datetime
 from logging import Logger
+from threading import Thread
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
-
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from ..engine.constants import Status
 
 
 
-class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
+class FilesystemStoreNode(BaseResourceNode):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None, loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
@@ -26,8 +25,7 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
         if os.path.exists(self.path) is False:
             os.makedirs(self.path, exist_ok=True)
         
-        self.observer = Observer()
-        self.observer.name = f"{name}_observer"
+        self.observer_thread = None
         
         if init_state not in ("new", "old"):
             raise ValueError(f"init_state argument of DataStoreNode must be either 'new' or 'old', not '{init_state}'.")
@@ -42,11 +40,6 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
         self.metadata_store.create_resource_tracker(self)
         self.log(f"Node '{self.name}' setup complete.")
     
-    def start_monitoring(self) -> None:
-        self.observer.schedule(event_handler=self, path=self.path, recursive=True)
-        self.observer.start()
-        self.log(f"Observer started for node '{self.name}' (thread name: {self.observer.name}) monitoring path '{self.path}'")
-    
     @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> None:
         self.metadata_store.create_entry(self, filepath=filepath, state="new")
@@ -54,12 +47,21 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
     @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
         self.metadata_store.create_entry(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+    
+    def start_monitoring(self) -> None:
 
-    @BaseResourceNode.resource_accessor
-    def on_modified(self, event):
-        if not event.is_directory:
-            self.log(f"'{self.name}' detected file: {event.src_path}")
-            self.record_new(event.src_path) 
+        def _monitor_thread_func():
+            self.log(f"Starting observer thread for node '{self.name}'")
+            while self.status == Status.RUNNING:
+                with self.resource_lock:
+                    for filename in os.listdir(self.path):
+                        filepath = os.path.join(self.path, filename)
+                        if self.metadata_store.entry_exists(self, filepath) is False:
+                            self.log(f"'{self.name}' detected file: {filepath}")
+                            self.record_new(filepath)
+
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
+        self.observer_thread.start()
 
     @BaseResourceNode.resource_accessor
     def trigger_condition(self) -> bool:
@@ -96,6 +98,5 @@ class FilesystemStoreNode(BaseResourceNode, FileSystemEventHandler):
 
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
-        self.observer.stop()
-        self.observer.join()
+        self.observer_thread.join()
         self.log(f"Observer stopped for node '{self.name}'")

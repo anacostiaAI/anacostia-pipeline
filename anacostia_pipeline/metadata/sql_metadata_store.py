@@ -149,6 +149,11 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
             return session.query(Sample).filter_by(node_id=node_id, state=state).all()
 
+    def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+            return session.query(Sample).filter_by(node_id=node_id, location=filepath).count() > 0
+
     def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             # in the future, refactor this by changing filepath to uri 
