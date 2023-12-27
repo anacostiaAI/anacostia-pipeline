@@ -295,11 +295,8 @@ class BaseMetadataStoreNode(BaseNode):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
-                # this delay is used to allow the json file to be updated before the next iteration
-                # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
                 with self.resource_lock:
                     result = func(self, *args, **kwargs)
-                    time.sleep(0.2)
                     return result
         return wrapper
     
@@ -433,11 +430,8 @@ class BaseResourceNode(BaseNode):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
-                # this delay is used to allow the json file to be updated before the next iteration
-                # in the future, remove this delay and use a thread-safe key-value store (e.g., redis) to store the state of the resource
                 with self.resource_lock:
                     result = func(self, *args, **kwargs)
-                    time.sleep(0.2)
                     return result
         return wrapper
     
