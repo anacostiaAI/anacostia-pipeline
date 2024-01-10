@@ -141,7 +141,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     filename=log_path,
-    filemode='w'
+    filemode='a'
 )
 logger = logging.getLogger(__name__)
 
@@ -174,10 +174,7 @@ pipeline = Pipeline(
 
 
 if __name__ == "__main__":
-    # as soon as the server starts running, it deletes the log file and the metadata store??
-    #run_background_webserver(pipeline, host="127.0.0.1", port=8000)
-
-    pipeline.launch_nodes()
+    run_background_webserver(pipeline, host="127.0.0.1", port=8000)
 
     time.sleep(6)
     for i in range(10):
