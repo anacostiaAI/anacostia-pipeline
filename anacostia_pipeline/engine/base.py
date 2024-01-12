@@ -16,29 +16,37 @@ from bs4 import BeautifulSoup
 from .constants import Status, Result
 from .utils import Signal, SignalTable
 
+
+
 class NodeModel(BaseModel):
     '''
     A Pydantic Model for validation and serialization of a BaseNode
     '''
     model_config = ConfigDict(from_attributes=True)
 
-    name:str
-    type:Optional[str]
-    status:Union[Status, str]
+    name: str
+    type: Optional[str]
+    status: Union[Status, str]
     predecessors: List[str]
     successors: List[str]
+    url: Optional[str] = None
+    enpoint: Optional[str] = None
+    progress_enpoint: Optional[str] = None
     
-
-    def endpoint(self):
-        return f"/node?name={self.name}"
-
+    # remove this method once we create the sub-application for each node
+    # the sub-application will have its own endpoint() method and will render its own html
     def view(self, templates, request):
-        data = self.dict()
+        data = self.model_dump()
         data["request"] = request
         return templates.TemplateResponse("node.html", data)
 
+
+
 class BaseNode(Thread):
-    def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
+    def __init__(
+        self, name: str, predecessors: List[BaseNode] = None, 
+        loggers: Union[Logger, List[Logger]] = None, endpoint: str = None
+    ) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
         self.work_list = set()
@@ -54,6 +62,8 @@ class BaseNode(Thread):
         # TODO: replace list with tuple
         if predecessors is None:
             predecessors = list()
+        
+        self.endpoint = endpoint
             
         self.predecessors = predecessors
         self.predecessors_signals = SignalTable()
@@ -72,6 +82,8 @@ class BaseNode(Thread):
             name = self.name,
             type = type(self).__name__,
             status = self.status.name,
+            endpoint = self.endpoint,
+            progress_enpoint=f"/progress/{self.name}",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )
