@@ -58,33 +58,9 @@ class Webserver(FastAPI):
 
         @self.get('/', response_class=HTMLResponse)
         async def hello(request: Request):
-            #self.pipeline.launch_nodes()
-            nodes = self.pipeline.model().nodes
-            return self.templates.TemplateResponse("base.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
-
-        @self.get('/node', response_class=HTMLResponse)
-        async def node_html(request: Request, name: str, property: str=None):
-            node = self.pipeline[name]
-            if node is None:
-                return "<h1>Node Not Found</h1>"
-            
-            if property is not None:
-                n = node.model().dict()
-                return n.get(property, "")
-
-            # TODO update this so all node types have a .model() that
-            # returns a pydantic BaseModel Type to streamlize serialization of nodes
-            if isinstance(node, BaseMetadataStoreNode):
-                return node.html(self.templates, request)
-
-            if isinstance(node, BaseResourceNode):
-                return node.html(self.templates, request)
-
-            if isinstance(node, BaseActionNode):
-                return node.html(self.templates, request)
-
-            n = node.model()
-            return n.view(self.templates, request)
+            frontend_json = self.pipeline.frontend_json()
+            nodes = frontend_json["nodes"]
+            return self.templates.TemplateResponse("index.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
 
 
     

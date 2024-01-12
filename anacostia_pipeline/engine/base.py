@@ -30,8 +30,8 @@ class NodeModel(BaseModel):
     predecessors: List[str]
     successors: List[str]
     url: Optional[str] = None
-    enpoint: Optional[str] = None
-    progress_enpoint: Optional[str] = None
+    endpoint: Optional[str] = None
+    progress_endpoint: Optional[str] = None
     
     # remove this method once we create the sub-application for each node
     # the sub-application will have its own endpoint() method and will render its own html
@@ -82,8 +82,8 @@ class BaseNode(Thread):
             name = self.name,
             type = type(self).__name__,
             status = self.status.name,
-            endpoint = self.endpoint,
-            progress_enpoint=f"/progress/{self.name}",
+            endpoint = f"/node/{self.name}",
+            progress_endpoint=f"/progress/{self.name}",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )
