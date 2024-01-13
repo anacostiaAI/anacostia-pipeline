@@ -66,9 +66,12 @@ class Webserver(FastAPI):
     
 def run_background_webserver(pipeline: Pipeline, **kwargs):
     app = Webserver(pipeline)
-    
+
     for node in pipeline.nodes:
-        app.include_router(node.get_router(), prefix=f"/node/{node.name}")
+        # Note: we can also use app.mount() to mount the router of each node like so:
+        # this might be important if we want to allow the user to specify an app instead of a router
+        app.mount(f"/node/{node.name}", node.get_router())
+        # app.include_router(node.get_router(), prefix=f"/node/{node.name}")
 
     config = uvicorn.Config(app, **kwargs)
     server = uvicorn.Server(config)

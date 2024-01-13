@@ -90,12 +90,10 @@
     const node_container = inner.selectAll(".node");
 
     // apply HTMX attributes to the entire node container
-    /*
     node_container.attr("hx-get", (v) => { return g.node(v).endpoint; })
                   .attr("hx-trigger", "click")
                   .attr("hx-target", "#graph")
                   .attr("hx-swap", "outerHTML");
-    */
     
     // apply SVG attributes to the rect element
     const rect = inner.selectAll("rect");
