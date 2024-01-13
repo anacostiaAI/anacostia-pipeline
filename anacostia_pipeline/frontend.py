@@ -66,6 +66,10 @@ class Webserver(FastAPI):
     
 def run_background_webserver(pipeline: Pipeline, **kwargs):
     app = Webserver(pipeline)
+    
+    for node in pipeline.nodes:
+        app.include_router(node.get_router(), prefix=f"/node/{node.name}")
+
     config = uvicorn.Config(app, **kwargs)
     server = uvicorn.Server(config)
     fastapi_thread = Thread(target=server.run)

@@ -4,6 +4,10 @@ from datetime import datetime
 from logging import Logger
 from threading import Thread
 
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi import Request, APIRouter
+
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 from ..engine.constants import Status
 
@@ -34,6 +38,12 @@ class FilesystemStoreNode(BaseResourceNode):
         
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
     
+        self.router = APIRouter()
+
+        @self.router.get("/home", response_class=HTMLResponse)
+        async def endpoint(request: Request):
+            return f"<p>hello from node {name}</p>"
+
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")

@@ -8,6 +8,10 @@ import os
 from contextlib import contextmanager
 import traceback
 
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi import Request, APIRouter
+
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode
 
 
@@ -81,7 +85,18 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
-    
+
+        # to override the default router, create a new router and assign routes to it
+        # Note: declare the router after the super().__init__() call
+        # Note: routes must be assigned in the __init__() method
+        # Note: if we don't declare a new router, the default router 
+        # (and all the routes associated with the default router) in BaseNode will be used
+        self.router = APIRouter()
+
+        @self.router.get("/home", response_class=HTMLResponse)
+        async def endpoint(request: Request):
+            return f"<p>hello from node {name}</p>"
+
     def setup(self) -> None:
         path = self.uri.strip('sqlite:///')
         path = path.split('/')[0:-1]

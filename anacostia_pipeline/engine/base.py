@@ -10,6 +10,13 @@ import traceback
 import sys
 import json
 
+from jinja2.filters import FILTERS
+from fastapi import APIRouter
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi import Request
+
 from pydantic import BaseModel, ConfigDict
 from bs4 import BeautifulSoup
 
@@ -63,14 +70,22 @@ class BaseNode(Thread):
         if predecessors is None:
             predecessors = list()
         
-        self.endpoint = endpoint
-            
         self.predecessors = predecessors
         self.predecessors_signals = SignalTable()
         self.successors: List[BaseNode] = list()
         self.successors_signals = SignalTable()
+
+        self.router = APIRouter()
+            
+        @self.router.get("/home", response_class=HTMLResponse)
+        async def endpoint(request: Request):
+            return f"<p>There is no graphical user interface for this node!</p>"
+    
         super().__init__(name=name)
     
+    def get_router(self):
+        return self.router
+
     def __hash__(self) -> int:
         return hash(self.name)
 
@@ -82,7 +97,7 @@ class BaseNode(Thread):
             name = self.name,
             type = type(self).__name__,
             status = self.status.name,
-            endpoint = f"/node/{self.name}",
+            endpoint = f"/node/{self.name}/home",
             progress_endpoint=f"/progress/{self.name}",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
