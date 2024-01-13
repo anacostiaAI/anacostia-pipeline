@@ -44,7 +44,6 @@ class NodeModel(BaseModel):
 
 
 class NodeUIModel(NodeModel):
-    node_model: NodeModel
     url: Optional[str] = None
     endpoint: Optional[str] = None
     progress_endpoint: Optional[str] = None
@@ -53,18 +52,18 @@ class NodeUIModel(NodeModel):
 
 
 class BaseNodeRouter(APIRouter):
-    def __init__(self, node: BaseNode, header_elements: List[str] = None, *args, **kwargs):
+    def __init__(self, node: BaseNode, header_elements: List[str] = None, use_default_route=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
         self.header_elements = header_elements
 
-        @self.get("/home", response_class=HTMLResponse)
-        async def endpoint(request: Request):
-            return f"<p>There is no graphical user interface for this node!</p>"
+        if use_default_route is True:
+            @self.get("/home", response_class=HTMLResponse)
+            async def endpoint(request: Request):
+                return f"<p>There is no graphical user interface for this node!</p>"
 
     def model(self):
         return NodeUIModel(
-            node_model = self.node.model(),
             url = self.get_url(),
             endpoint = self.get_endpoint(),
             progress_endpoint = self.get_progress_endpoint(),
@@ -76,6 +75,9 @@ class BaseNodeRouter(APIRouter):
     def get_url(self):
         return "127.0.0.1:8000"
     
+    def get_prefix(self):
+        return f"/node/{self.node.name}"
+
     def get_endpoint(self):
         return f"/node/{self.node.name}/home"
     
@@ -110,17 +112,10 @@ class BaseNode(Thread):
         self.successors: List[BaseNode] = list()
         self.successors_signals = SignalTable()
 
-        self.router = APIRouter()
-            
-        @self.router.get("/home", response_class=HTMLResponse)
-        async def endpoint(request: Request):
-            return f"<p>There is no graphical user interface for this node!</p>"
-    
         super().__init__(name=name)
     
     def get_router(self):
-        # return BaseNodeRouter(self)
-        return self.router
+        return BaseNodeRouter(self)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -133,8 +128,6 @@ class BaseNode(Thread):
             name = self.name,
             type = type(self).__name__,
             status = self.status.name,
-            endpoint = f"/node/{self.name}/home",
-            progress_endpoint=f"/progress/{self.name}",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )

@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request, APIRouter, Response
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode, BaseNodeRouter
 
 
 
@@ -83,27 +83,34 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
         ScopedSession.close()
 
 
-class SqliteMetadataStore(BaseMetadataStoreNode):
-    def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
-        super().__init__(name, uri, loggers)
 
-        # to override the default router, create a new router and assign routes to it
-        # Note: declare the router after the super().__init__() call
-        # Note: routes must be assigned in the __init__() method
-        # Note: if we don't declare a new router, the default router 
-        # (and all the routes associated with the default router) in BaseNode will be used
-        self.router = APIRouter()
+class SqliteMetadataStoreRouter(BaseNodeRouter):
+    def __init__(self, node: 'SqliteMetadataStore', header_elements: List[str] = None, *args, **kwargs):
+        # to override the default router, inherit the BaseNodeRouter and assign routes to it
+        # Note: set use_default_route=False to prevent the default routes from being used
+        super().__init__(node, header_elements, use_default_route=False, *args, **kwargs)
 
         PACKAGE_NAME = "anacostia_pipeline"
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
         self.templates = Jinja2Templates(directory=self.templates_dir)
 
-        @self.router.get("/home", response_class=HTMLResponse)
+        # Note: assign routes after the super().__init__() call
+        # Note: routes must be assigned in the __init__() method
+        @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
             response = self.templates.TemplateResponse("sqlmetadatastore.html", {"request": request})
-            response.headers["HX-Redirect"] = f"/node/{self.name}/home"
+            response.headers["HX-Redirect"] = self.get_endpoint()
             return response
+
+
+
+class SqliteMetadataStore(BaseMetadataStoreNode):
+    def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
+        super().__init__(name, uri, loggers)
+
+    def get_router(self) -> SqliteMetadataStoreRouter:
+        return SqliteMetadataStoreRouter(self)
 
     def setup(self) -> None:
         path = self.uri.strip('sqlite:///')

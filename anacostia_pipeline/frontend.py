@@ -65,18 +65,19 @@ class Webserver(FastAPI):
     def frontend_json(self):
         model = self.pipeline.model().model_dump()
         edges = []
-        for node in model["nodes"]:
-            node["id"] = node["name"]
-            node["label"] = node.pop("name")
+        for node_model, node in zip(model["nodes"], self.pipeline.nodes):
+            node_model["id"] = node_model["name"]
+            node_model["endpoint"] = node.get_router().get_endpoint()
+            node_model["progress_endpoint"] = node.get_router().get_progress_endpoint()
+            node_model["label"] = node_model.pop("name")
 
             edges_from_node = [
-                { "source": node["id"], "target": successor, "endpoint": f"/edge/{node['id']}/{successor}" } 
-                for successor in node["successors"]
+                { "source": node_model["id"], "target": successor, "endpoint": f"/edge/{node_model['id']}/{successor}" } 
+                for successor in node_model["successors"]
             ]
             edges.extend(edges_from_node)
 
         model["edges"] = edges
-
         return model
 
 
@@ -85,10 +86,11 @@ def run_background_webserver(pipeline: Pipeline, **kwargs):
     app = Webserver(pipeline)
 
     for node in pipeline.nodes:
+        node_router = node.get_router()
         # Note: we can also use app.mount() to mount the router of each node like so:
         # this might be important if we want to allow the user to specify an app instead of a router
-        app.mount(f"/node/{node.name}", node.get_router())
-        # app.include_router(node.get_router(), prefix=f"/node/{node.name}")
+        app.mount(node_router.get_prefix(), node_router)
+        # app.include_router(node_router, prefix=node_router.get_prefix())
 
     config = uvicorn.Config(app, **kwargs)
     server = uvicorn.Server(config)
