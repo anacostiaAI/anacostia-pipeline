@@ -60,7 +60,7 @@ class Webserver(FastAPI):
         async def hello(request: Request):
             frontend_json = self.pipeline.frontend_json()
             nodes = frontend_json["nodes"]
-            return self.templates.TemplateResponse("index.html", {"request": request, "nodes": nodes, "title": "Anacostia Pipeline"})
+            return self.templates.TemplateResponse("dag.html", {"request": request, "nodes": nodes, "json_data": frontend_json})
 
 
     
