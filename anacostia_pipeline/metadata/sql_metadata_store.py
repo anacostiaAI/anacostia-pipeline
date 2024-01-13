@@ -7,10 +7,11 @@ from datetime import datetime
 import os
 from contextlib import contextmanager
 import traceback
+import sys
 
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request, APIRouter
+from fastapi import Request, APIRouter, Response
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode
 
@@ -93,9 +94,16 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         # (and all the routes associated with the default router) in BaseNode will be used
         self.router = APIRouter()
 
+        PACKAGE_NAME = "anacostia_pipeline"
+        PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
+        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+        self.templates = Jinja2Templates(directory=self.templates_dir)
+
         @self.router.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            return f"<p>hello from node {name}</p>"
+            response = self.templates.TemplateResponse("sqlmetadatastore.html", {"request": request})
+            response.headers["HX-Redirect"] = f"/node/{self.name}/home"
+            return response
 
     def setup(self) -> None:
         path = self.uri.strip('sqlite:///')

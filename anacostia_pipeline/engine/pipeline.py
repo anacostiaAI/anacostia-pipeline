@@ -108,26 +108,6 @@ class Pipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
     
-    def frontend_json(self):
-        model = self.model().model_dump()
-        edges = []
-        for node in model["nodes"]:
-            node["id"] = node["name"]
-            node["label"] = node.pop("name")
-
-            edges_from_node = [
-                {
-                    "source": node["id"], "target": successor, 
-                    "arrowhead": "vee", "endpoint": f"/edge/{node['id']}/{successor}"
-                } 
-                for successor in node["successors"]
-            ]
-            edges.extend(edges_from_node)
-
-        model["edges"] = edges
-
-        return model
-
     def setup_nodes(self, nodes: List[BaseNode]):
         """
         Sets up all the nodes in the pipeline.

@@ -58,9 +58,26 @@ class Webserver(FastAPI):
 
         @self.get('/', response_class=HTMLResponse)
         async def hello(request: Request):
-            frontend_json = self.pipeline.frontend_json()
+            frontend_json = self.frontend_json()
             nodes = frontend_json["nodes"]
             return self.templates.TemplateResponse("dag.html", {"request": request, "nodes": nodes, "json_data": frontend_json})
+
+    def frontend_json(self):
+        model = self.pipeline.model().model_dump()
+        edges = []
+        for node in model["nodes"]:
+            node["id"] = node["name"]
+            node["label"] = node.pop("name")
+
+            edges_from_node = [
+                { "source": node["id"], "target": successor, "endpoint": f"/edge/{node['id']}/{successor}" } 
+                for successor in node["successors"]
+            ]
+            edges.extend(edges_from_node)
+
+        model["edges"] = edges
+
+        return model
 
 
     

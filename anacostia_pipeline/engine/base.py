@@ -39,13 +39,48 @@ class NodeModel(BaseModel):
     url: Optional[str] = None
     endpoint: Optional[str] = None
     progress_endpoint: Optional[str] = None
+    header_elements: Optional[List[str]] = None
+
+
+
+class NodeUIModel(NodeModel):
+    node_model: NodeModel
+    url: Optional[str] = None
+    endpoint: Optional[str] = None
+    progress_endpoint: Optional[str] = None
+    header_elements: Optional[List[str]] = None
+
+
+
+class BaseNodeRouter(APIRouter):
+    def __init__(self, node: BaseNode, header_elements: List[str] = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node = node
+        self.header_elements = header_elements
+
+        @self.get("/home", response_class=HTMLResponse)
+        async def endpoint(request: Request):
+            return f"<p>There is no graphical user interface for this node!</p>"
+
+    def model(self):
+        return NodeUIModel(
+            node_model = self.node.model(),
+            url = self.get_url(),
+            endpoint = self.get_endpoint(),
+            progress_endpoint = self.get_progress_endpoint(),
+            predecessors = [n.name for n in self.node.predecessors],
+            successors = [n.name for n in self.node.successors],
+            header_elements = self.header_elements
+        )
     
-    # remove this method once we create the sub-application for each node
-    # the sub-application will have its own endpoint() method and will render its own html
-    def view(self, templates, request):
-        data = self.model_dump()
-        data["request"] = request
-        return templates.TemplateResponse("node.html", data)
+    def get_url(self):
+        return "127.0.0.1:8000"
+    
+    def get_endpoint(self):
+        return f"/node/{self.node.name}/home"
+    
+    def get_progress_endpoint(self):
+        return f"/progress/{self.node.name}"
 
 
 
@@ -84,6 +119,7 @@ class BaseNode(Thread):
         super().__init__(name=name)
     
     def get_router(self):
+        # return BaseNodeRouter(self)
         return self.router
 
     def __hash__(self) -> int:
