@@ -79,10 +79,13 @@ class BaseNodeRouter(APIRouter):
         return f"/node/{self.node.name}"
 
     def get_endpoint(self):
-        return f"/node/{self.node.name}/home"
+        return f"{self.get_prefix()}/home"
     
     def get_progress_endpoint(self):
         return f"/progress/{self.node.name}"
+    
+    def get_header_elements(self):
+        return self.header_elements
 
 
 

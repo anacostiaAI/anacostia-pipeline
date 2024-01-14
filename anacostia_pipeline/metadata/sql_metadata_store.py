@@ -109,6 +109,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
 
+    # Note: override the get_router() method to return the custom router
     def get_router(self) -> SqliteMetadataStoreRouter:
         return SqliteMetadataStoreRouter(self)
 

@@ -8,8 +8,18 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request, APIRouter
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNodeRouter
 from ..engine.constants import Status
+
+
+
+class FilesystemStoreNodeRouter(BaseNodeRouter):
+    def __init__(self, node: 'FilesystemStoreNode', header_elements: List[str] = None, *args, **kwargs):
+        super().__init__(node, header_elements, use_default_route=False, *args, **kwargs)
+
+        @self.get("/home", response_class=HTMLResponse)
+        async def endpoint(request: Request):
+            return f"<p>hello from node {self.node.name}</p>"
 
 
 
@@ -38,11 +48,8 @@ class FilesystemStoreNode(BaseResourceNode):
         
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
     
-        self.router = APIRouter()
-
-        @self.router.get("/home", response_class=HTMLResponse)
-        async def endpoint(request: Request):
-            return f"<p>hello from node {name}</p>"
+    def get_router(self) -> FilesystemStoreNodeRouter:
+        return FilesystemStoreNodeRouter(self)
 
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
