@@ -60,16 +60,21 @@ class Webserver(FastAPI):
         async def hello(request: Request):
             frontend_json = self.frontend_json()
             nodes = frontend_json["nodes"]
-            return self.templates.TemplateResponse("dag.html", {"request": request, "nodes": nodes, "json_data": frontend_json})
+            node_headers = [node["header_html"] for node in nodes if node["header_html"] is not None]
+            return self.templates.TemplateResponse(
+                "index.html", 
+                {"request": request, "nodes": nodes, "json_data": frontend_json, "node_headers": node_headers}
+            )
 
     def frontend_json(self):
         model = self.pipeline.model().model_dump()
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
             node_model["id"] = node_model["name"]
+            node_model["label"] = node_model.pop("name")
             node_model["endpoint"] = node.get_router().get_endpoint()
             node_model["progress_endpoint"] = node.get_router().get_progress_endpoint()
-            node_model["label"] = node_model.pop("name")
+            node_model["header_html"] = node.get_router().get_header_html()
 
             edges_from_node = [
                 { "source": node_model["id"], "target": successor, "endpoint": f"/edge/{node_model['id']}/{successor}" } 

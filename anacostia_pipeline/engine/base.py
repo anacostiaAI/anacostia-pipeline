@@ -36,10 +36,6 @@ class NodeModel(BaseModel):
     status: Union[Status, str]
     predecessors: List[str]
     successors: List[str]
-    url: Optional[str] = None
-    endpoint: Optional[str] = None
-    progress_endpoint: Optional[str] = None
-    header_elements: Optional[List[str]] = None
 
 
 
@@ -47,15 +43,15 @@ class NodeUIModel(NodeModel):
     url: Optional[str] = None
     endpoint: Optional[str] = None
     progress_endpoint: Optional[str] = None
-    header_elements: Optional[List[str]] = None
+    header_html: Optional[str] = None
 
 
 
 class BaseNodeRouter(APIRouter):
-    def __init__(self, node: BaseNode, header_elements: List[str] = None, use_default_route=True, *args, **kwargs):
+    def __init__(self, node: BaseNode, header_html: str = None, use_default_route=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.header_elements = header_elements
+        self.header_html = header_html
 
         if use_default_route is True:
             @self.get("/home", response_class=HTMLResponse)
@@ -69,7 +65,7 @@ class BaseNodeRouter(APIRouter):
             progress_endpoint = self.get_progress_endpoint(),
             predecessors = [n.name for n in self.node.predecessors],
             successors = [n.name for n in self.node.successors],
-            header_elements = self.header_elements
+            header_html = self.header_html
         )
     
     def get_url(self):
@@ -84,8 +80,8 @@ class BaseNodeRouter(APIRouter):
     def get_progress_endpoint(self):
         return f"/progress/{self.node.name}"
     
-    def get_header_elements(self):
-        return self.header_elements
+    def get_header_html(self):
+        return self.header_html
 
 
 
