@@ -15,7 +15,7 @@ from ..engine.constants import Status
 
 class FilesystemStoreNodeRouter(BaseNodeRouter):
     def __init__(self, node: 'FilesystemStoreNode', header_html: str = None, *args, **kwargs):
-        super().__init__(node, header_html, use_default_route=False, *args, **kwargs)
+        super().__init__(node, header_html, use_default_router=False, *args, **kwargs)
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):

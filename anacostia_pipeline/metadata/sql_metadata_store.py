@@ -86,20 +86,22 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 
 class SqliteMetadataStoreRouter(BaseNodeRouter):
     def __init__(self, node: 'SqliteMetadataStore', header_html: str = None, *args, **kwargs):
-        # to override the default router, inherit the BaseNodeRouter and assign routes to it
-        # Note: set use_default_route=False to prevent the default routes from being used
-        super().__init__(node, header_html, use_default_route=False, *args, **kwargs)
+        # Create backend server for node by inheriting the BaseNodeRouter (i.e., overriding the default router).
+        # IMPORTANT: set use_default_router=False to prevent the default routes from being used
+        # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
+        # after the super().__init__() call inside the constructor
+        super().__init__(node, header_html, use_default_router=False, *args, **kwargs)
 
         PACKAGE_NAME = "anacostia_pipeline"
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
         self.templates = Jinja2Templates(directory=self.templates_dir)
 
-        # Note: assign routes after the super().__init__() call
-        # Note: routes must be assigned in the __init__() method
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            response = self.templates.TemplateResponse("sqlmetadatastore.html", {"request": request})
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore.html", {"request": request, "node": self.node.model()}
+            )
             return response
     
 

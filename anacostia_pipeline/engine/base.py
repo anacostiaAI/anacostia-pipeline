@@ -48,15 +48,21 @@ class NodeUIModel(NodeModel):
 
 
 class BaseNodeRouter(APIRouter):
-    def __init__(self, node: BaseNode, header_html: str = None, use_default_route=True, *args, **kwargs):
+    def __init__(self, node: BaseNode, header_html: str = None, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
         self.header_html = header_html
 
-        if use_default_route is True:
+        PACKAGE_NAME = "anacostia_pipeline"
+        PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
+        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+        self.templates = Jinja2Templates(directory=self.templates_dir)
+
+        if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
             async def endpoint(request: Request):
-                return f"<p>There is no graphical user interface for this node!</p>"
+                response = self.templates.TemplateResponse("basenode.html", {"request": request, "node": self.node.model()})
+                return response
 
     def model(self):
         return NodeUIModel(
