@@ -59,10 +59,17 @@ class BaseNodeRouter(APIRouter):
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
         self.templates = Jinja2Templates(directory=self.templates_dir)
 
+        @self.get("/status", response_class=HTMLResponse)
+        async def status_endpoint(request: Request):
+            return f"Node status: {repr(self.node.status)}"
+
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
             async def endpoint(request: Request):
-                response = self.templates.TemplateResponse("basenode.html", {"request": request, "node": self.node.model()})
+                response = self.templates.TemplateResponse(
+                    "basenode.html", 
+                    {"request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint()}
+                )
                 return response
 
     def model(self):
@@ -86,10 +93,10 @@ class BaseNodeRouter(APIRouter):
         return f"{self.get_prefix()}/home"
     
     def get_status_endpoint(self):
-        return f"/status/{self.node.name}"
+        return f"{self.get_prefix()}/status"
     
     def get_work_endpoint(self):
-        return f"/work/{self.node.name}"
+        return f"{self.get_prefix()}/work"
     
     def get_header_template(self):
         return self.header_template

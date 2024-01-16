@@ -1,7 +1,7 @@
 <div id="container">
     <div>Node name: {{ node.name }}</div>
     <div>Node type: {{ node.type }}</div>
-    <div>Node status: {{ node.status }}</div>
+    <div hx-get="{{ status_endpoint }}" hx-trigger="load, every 1s"></div>
 </div>
 {% block content %}
 {% endblock %}

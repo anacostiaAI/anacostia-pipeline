@@ -100,7 +100,8 @@ class SqliteMetadataStoreRouter(BaseNodeRouter):
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
             response = self.templates.TemplateResponse(
-                "sqlmetadatastore/sqlmetadatastore.html", {"request": request, "node": self.node.model()}
+                "sqlmetadatastore/sqlmetadatastore.html", 
+                {"request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint()}
             )
             return response
     
