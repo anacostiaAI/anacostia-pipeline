@@ -34,9 +34,7 @@
         </style>
 
         <!-- Custom CSS for node pages -->
-        {% for header in node_headers %}
-        {{ header | safe }}
-        {% endfor %}
+        {% include header_templates %}
     </head>
     <body>
         <div class="toolbar">

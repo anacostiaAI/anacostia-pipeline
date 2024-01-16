@@ -12,7 +12,6 @@ import json
 
 from jinja2.filters import FILTERS
 from fastapi import APIRouter
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
@@ -43,15 +42,15 @@ class NodeUIModel(NodeModel):
     url: Optional[str] = None
     endpoint: Optional[str] = None
     progress_endpoint: Optional[str] = None
-    header_html: Optional[str] = None
+    header_template: Optional[str] = None
 
 
 
 class BaseNodeRouter(APIRouter):
-    def __init__(self, node: BaseNode, header_html: str = None, use_default_router=True, *args, **kwargs):
+    def __init__(self, node: BaseNode, header_template: str = None, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.header_html = header_html
+        self.header_template = header_template
 
         PACKAGE_NAME = "anacostia_pipeline"
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
@@ -71,7 +70,7 @@ class BaseNodeRouter(APIRouter):
             progress_endpoint = self.get_progress_endpoint(),
             predecessors = [n.name for n in self.node.predecessors],
             successors = [n.name for n in self.node.successors],
-            header_html = self.header_html
+            header_template = self.header_template
         )
     
     def get_url(self):
@@ -86,8 +85,8 @@ class BaseNodeRouter(APIRouter):
     def get_progress_endpoint(self):
         return f"/progress/{self.node.name}"
     
-    def get_header_html(self):
-        return self.header_html
+    def get_header_template(self):
+        return self.header_template
 
 
 
