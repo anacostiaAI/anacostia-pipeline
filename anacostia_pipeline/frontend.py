@@ -81,7 +81,8 @@ class Webserver(FastAPI):
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model.pop("name")
             node_model["endpoint"] = node.get_router().get_endpoint()
-            node_model["progress_endpoint"] = node.get_router().get_progress_endpoint()
+            node_model["status_endpoint"] = node.get_router().get_status_endpoint()
+            node_model["work_endpoint"] = node.get_router().get_work_endpoint()
 
             edges_from_node = [
                 { "source": node_model["id"], "target": successor, "endpoint": f"/edge/{node_model['id']}/{successor}" } 

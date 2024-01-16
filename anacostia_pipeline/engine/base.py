@@ -19,7 +19,7 @@ from fastapi import Request
 from pydantic import BaseModel, ConfigDict
 from bs4 import BeautifulSoup
 
-from .constants import Status, Result
+from .constants import Status, Result, Work
 from .utils import Signal, SignalTable
 
 
@@ -33,6 +33,7 @@ class NodeModel(BaseModel):
     name: str
     type: Optional[str]
     status: Union[Status, str]
+    work: List[Work]
     predecessors: List[str]
     successors: List[str]
 
@@ -41,7 +42,8 @@ class NodeModel(BaseModel):
 class NodeUIModel(NodeModel):
     url: Optional[str] = None
     endpoint: Optional[str] = None
-    progress_endpoint: Optional[str] = None
+    status_endpoint: Optional[str] = None
+    work_endpoint: Optional[str] = None
     header_template: Optional[str] = None
 
 
@@ -67,7 +69,8 @@ class BaseNodeRouter(APIRouter):
         return NodeUIModel(
             url = self.get_url(),
             endpoint = self.get_endpoint(),
-            progress_endpoint = self.get_progress_endpoint(),
+            status_endpoint = self.get_status_endpoint(),
+            work_endpoint = self.get_work_endpoint(),
             predecessors = [n.name for n in self.node.predecessors],
             successors = [n.name for n in self.node.successors],
             header_template = self.header_template
@@ -82,8 +85,11 @@ class BaseNodeRouter(APIRouter):
     def get_endpoint(self):
         return f"{self.get_prefix()}/home"
     
-    def get_progress_endpoint(self):
-        return f"/progress/{self.node.name}"
+    def get_status_endpoint(self):
+        return f"/status/{self.node.name}"
+    
+    def get_work_endpoint(self):
+        return f"/work/{self.node.name}"
     
     def get_header_template(self):
         return self.header_template
@@ -97,7 +103,7 @@ class BaseNode(Thread):
     ) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
-        self.work_list = set()
+        self.work_list = list()
         
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -132,6 +138,7 @@ class BaseNode(Thread):
             name = self.name,
             type = type(self).__name__,
             status = self.status.name,
+            work = self.work_list,
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )

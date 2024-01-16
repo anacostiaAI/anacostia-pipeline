@@ -85,7 +85,7 @@
                             width: 150, 
                             height: 100, 
                             endpoint: node.endpoint,
-                            progress_endpoint: node.progress_endpoint
+                            status_endpoint: node.status_endpoint
                         }
                     );
                 });
@@ -137,7 +137,7 @@
                     .attr("space", "preserve")
                     .attr("dy", "1em")
                     .attr("x", "1")
-                    .attr("hx-get", (v) => { return g.node(v).progress_endpoint; })
+                    .attr("hx-get", (v) => { return g.node(v).status_endpoint; })
                     .attr("hx-target", "this")
                     .attr("hx-trigger", "load, every 1s")
                     .attr("hx-swap", "innerHTML");
