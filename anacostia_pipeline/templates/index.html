@@ -37,7 +37,7 @@
         {% include header_templates %}
     </head>
     <body>
-        <div class="toolbar">
+        <div id="toolbar_div" class="toolbar">
             <a href="/" class="dag-icon"><img src="/static/img/dag-black.svg" alt="Home"></a>
             <h1 class="title">Anacostia Pipeline</h1>
             <div class="dropdown">
@@ -54,9 +54,9 @@
         <div id="page_content">
             <div id="graph">
                 <!-- container where graph will be rendered -->
-                <svg width="960" height="600"><g/></svg>
+                <svg width="960" height="700"><g/></svg>
             
-                <section>
+                <section id="footer">
                     <p>Potomac AI Inc.</p>
                 </section>
             </div>
@@ -66,6 +66,9 @@
                 var graph_data = {{ json_data | tojson | safe }};
                 var nodes = graph_data.nodes;
                 var edges = graph_data.edges;
+
+                var viewport_width = window.innerWidth;
+                var viewport_height = window.innerHeight;
             </script>
             
             <script>

@@ -99,9 +99,17 @@ class SqliteMetadataStoreRouter(BaseNodeRouter):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
+            # IMPORTANT: the context for the TemplateResponse object must include 
+            # the request object, the node model, and the status and work endpoints;
+            # otherwise, the template will not be able to access the information 
+            # and by default will respond with the entire page of the DAG
             response = self.templates.TemplateResponse(
                 "sqlmetadatastore/sqlmetadatastore.html", 
-                {"request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint()}
+                {
+                    "request": request, "node": self.node.model(), 
+                    "status_endpoint": self.get_status_endpoint(),
+                    "work_endpoint": self.get_work_endpoint()
+                }
             )
             return response
     
