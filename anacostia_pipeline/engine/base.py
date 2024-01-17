@@ -62,13 +62,24 @@ class BaseNodeRouter(APIRouter):
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):
             return f"Node status: {repr(self.node.status)}"
+        
+        @self.get("/work", response_class=HTMLResponse)
+        async def work_endpoint(request: Request):
+            return self.templates.TemplateResponse(
+                "work.html",
+                {"request": request, "work_list": [repr(work) for work in self.node.work_list]}
+            )
 
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
             async def endpoint(request: Request):
                 response = self.templates.TemplateResponse(
                     "basenode.html", 
-                    {"request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint()}
+                    {   
+                        "request": request, "node": self.node.model(), 
+                        "status_endpoint": self.get_status_endpoint(), 
+                        "work_endpoint": self.get_work_endpoint()
+                    }
                 )
                 return response
 
@@ -214,6 +225,19 @@ class BaseNode(Thread):
                 self.status = Status.ERROR
                 return
         return wrapper
+    
+    def update_work_list(work: Work):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(self, *args, **kwargs):
+                self.work_list.append(work)
+                self.log(f"Node '{self.name}' work_list = {self.work_list}")
+                result = func(self, *args, **kwargs)
+                self.work_list.remove(work)
+                self.log(f"Node '{self.name}' work_list = {self.work_list}")
+                return result
+            return wrapper
+        return decorator
     
     def signal_successors(self, result: Result):
         for successor in self.successors:

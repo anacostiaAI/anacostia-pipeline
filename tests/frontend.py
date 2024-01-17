@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.frontend import run_background_webserver
+from anacostia_pipeline.engine.constants import Work
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.json_metadata_store import JsonMetadataStoreNode
@@ -69,6 +70,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
@@ -110,6 +112,7 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
@@ -123,6 +126,7 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(haiku_test_loss=2.43)
@@ -180,8 +184,3 @@ if __name__ == "__main__":
     for i in range(10):
         create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
         time.sleep(1.5)
-
-    time.sleep(40)
-    pipeline.terminate_nodes()
-    print('pipeline terminated')
-    
