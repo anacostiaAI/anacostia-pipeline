@@ -85,7 +85,7 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 
 
 class SqliteMetadataStoreRouter(BaseNodeRouter):
-    def __init__(self, node: 'SqliteMetadataStore', header_template: str = None, *args, **kwargs):
+    def __init__(self, node: 'SqliteMetadataStore', *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeRouter (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default routes from being used
         # IMPORTANT: declare the templates directory, declare the static directory, and declare routes

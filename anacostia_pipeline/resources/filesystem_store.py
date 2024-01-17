@@ -15,8 +15,8 @@ from ..engine.constants import Status
 
 
 class FilesystemStoreNodeRouter(BaseNodeRouter):
-    def __init__(self, node: 'FilesystemStoreNode', header_template: str = None, *args, **kwargs):
-        super().__init__(node, header_template, use_default_router=False, *args, **kwargs)
+    def __init__(self, node: 'FilesystemStoreNode', *args, **kwargs):
+        super().__init__(node, "filesystemstore/filesystemstore_header.html", use_default_router=False, *args, **kwargs)
 
         PACKAGE_NAME = "anacostia_pipeline"
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
@@ -26,7 +26,7 @@ class FilesystemStoreNodeRouter(BaseNodeRouter):
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
             response = self.templates.TemplateResponse(
-                "basenode.html", 
+                "filesystemstore/filesystemstore.html", 
                 {   
                     "request": request, "node": self.node.model(), 
                     "status_endpoint": self.get_status_endpoint(), 
