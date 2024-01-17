@@ -3,6 +3,7 @@ from typing import List, Any, Union
 from datetime import datetime
 from logging import Logger
 from threading import Thread
+import sys
 
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -17,10 +18,22 @@ class FilesystemStoreNodeRouter(BaseNodeRouter):
     def __init__(self, node: 'FilesystemStoreNode', header_template: str = None, *args, **kwargs):
         super().__init__(node, header_template, use_default_router=False, *args, **kwargs)
 
+        PACKAGE_NAME = "anacostia_pipeline"
+        PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
+        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
+        self.templates = Jinja2Templates(directory=self.templates_dir)
+
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            return f"<p>hello from node {self.node.name}</p>"
-
+            response = self.templates.TemplateResponse(
+                "basenode.html", 
+                {   
+                    "request": request, "node": self.node.model(), 
+                    "status_endpoint": self.get_status_endpoint(), 
+                    "work_endpoint": self.get_work_endpoint()
+                }
+            )
+            return response
 
 
 class FilesystemStoreNode(BaseResourceNode):
