@@ -61,9 +61,9 @@ Create the python virtual env (Windows)
 python -m venv venv
 venv\Scripts\activate
 ```
-2. pip install requiresments.txt
+2. pip install package locally
    
-```pip install -r requirements.txt```
+```pip install -e .```
 
 4. Update the requirements.txt if neccessary
 
