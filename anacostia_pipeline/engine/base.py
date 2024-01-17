@@ -306,7 +306,7 @@ class BaseNode(Thread):
         this is the main difference between setting up the node using setup() and __init__()
         therefore, it is best to the set up logic is not dependent on other nodes.
         """
-        pass
+        self.status = Status.INIT
 
     @log_exception
     def on_exit(self):

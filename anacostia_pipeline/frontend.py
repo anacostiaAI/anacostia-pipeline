@@ -128,11 +128,10 @@ def run_background_webserver(pipeline: Pipeline, **kwargs):
         signal.signal(signal.SIGINT, _kill_pipeline)
         print("Webserver Killed; press CTRL+C again to kill pipeline...")
 
-    # launch the pipeline
-    print("Launching Pipeline...")
-    pipeline.launch_nodes()
-
     # register the kill handler for the webserver
     signal.signal(signal.SIGINT, _kill_webserver)
     fastapi_thread.start()
 
+    # launch the pipeline
+    print("Launching Pipeline...")
+    pipeline.launch_nodes()
