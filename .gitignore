@@ -4,7 +4,6 @@ tests/testing_artifacts/
 *.egg-info/
 .vscode/
 anacostia_pipeline/engine/subexample.py
-anacostia_pipeline/static/js/
 testing_artifacts/
 .env
 venv
