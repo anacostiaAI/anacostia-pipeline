@@ -52,6 +52,7 @@ class Work(Enum):
     ON_FAILURE = 8,
     ON_ERROR = 9,
     WAITING_EXTERNAL_EVENT = 10,
+    MONITORING_RESOURCE = 11,
 
     def __repr__(self) -> str:
         status_words = {
@@ -59,6 +60,7 @@ class Work(Enum):
             Work.WAITING_SUCCESSORS: "WAITING_SUCCESSORS",
             Work.WAITING_PREDECESSORS: "WAITING_PREDECESSORS",
             Work.WAITING_EXTERNAL_EVENT: "WAITING_EXTERNAL_EVENT",
+            Work.MONITORING_RESOURCE: "MONITORING_RESOURCE",
             Work.UPDATING_STATE: "UPDATE_STATE",
             Work.BEFORE_EXECUTION: "BEFORE_EXECUTION",
             Work.EXECUTION: "EXECUTION",

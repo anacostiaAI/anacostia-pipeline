@@ -201,17 +201,6 @@ class BaseNode(Thread):
                 return
         return wrapper
     
-    def update_work_list(work: Work):
-        def decorator(func):
-            @wraps(func)
-            def wrapper(self, *args, **kwargs):
-                self.work_list.append(work)
-                result = func(self, *args, **kwargs)
-                self.work_list.remove(work)
-                return result
-            return wrapper
-        return decorator
-    
     def signal_successors(self, result: Result):
         for successor in self.successors:
             msg = Signal(
@@ -537,6 +526,7 @@ class BaseResourceNode(BaseNode):
     def on_exit(self):
         if self.monitoring is True:
             self.stop_monitoring()
+            self.work_list.remove(Work.MONITORING_RESOURCE)
 
     @BaseNode.log_exception
     @resource_accessor
@@ -562,13 +552,14 @@ class BaseResourceNode(BaseNode):
     def run(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
+            self.work_list.append(Work.MONITORING_RESOURCE)
             self.start_monitoring()
 
         while True:
             # if the node is not monitoring the resource, then we don't need to check for new files
             if self.monitoring is True:
-                # waiting for the trigger condition to be met (note: change status to Work.WAITING_RESOURCE)
                 self.trap_interrupts()
+                self.work_list.append(Work.WAITING_RESOURCE)
                 while True:
                     self.trap_interrupts()
                     try:
@@ -587,38 +578,45 @@ class BaseResourceNode(BaseNode):
                         # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
                         # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
                         # or just not move the file to current.
+                self.work_list.remove(Work.WAITING_RESOURCE)
                 
-            # signal to metadata store node that the resource is ready to be used; i.e., the resource is ready to be used for the next run
-            # (note: change status to Work.READY)
+            # signal to metadata store node that the resource is ready to be used for the next run
+            # i.e., tell the metadata store to create and start the next run
+            # e.g., there is enough new data to trigger the next run
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
 
-            # wait for metadata store node to finish creating the run before moving files to current
+            # wait for metadata store node to finish creating the run 
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_PREDECESSORS)
             while self.check_predecessors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
+            self.work_list.remove(Work.WAITING_PREDECESSORS)
 
-            # signalling to all successors that the resource is ready to be used
+            # signalling to all successors that the resource is ready to be used for the current run
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS)
 
-            # waiting for all successors to finish using the current state before updating the state of the resource
-            # (note: change status to Work.WAITING_SUCCESSORS)
+            # waiting for all successors to finish using the the resource for the current run
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
+            self.work_list.remove(Work.WAITING_SUCCESSORS)
 
-            # signal the metadata store node that the resource has been used for the current run
+            # signal the metadata store node that the action nodes have finish using the resource for the current run
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_PREDECESSORS)
             while self.check_predecessors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
+            self.work_list.remove(Work.WAITING_PREDECESSORS)
             
 
 
