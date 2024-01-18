@@ -70,7 +70,6 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
-    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
@@ -112,7 +111,6 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
@@ -126,7 +124,6 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(haiku_test_loss=2.43)

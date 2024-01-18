@@ -704,31 +704,48 @@ class BaseActionNode(BaseNode):
     def run(self) -> None:
         while True:
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_PREDECESSORS)
             while self.check_predecessors_signals() is False:
                 time.sleep(0.2)
                 self.trap_interrupts()
+            self.work_list.remove(Work.WAITING_PREDECESSORS)
             
             self.trap_interrupts()
+            self.work_list.append(Work.BEFORE_EXECUTION)
             self.before_execution()
+            self.work_list.remove(Work.BEFORE_EXECUTION)
+
             ret = None
             try:
                 self.trap_interrupts()
+                self.work_list.append(Work.EXECUTION)
                 ret = self.execute()
+                self.work_list.remove(Work.EXECUTION)
+                
                 if ret:
                     self.trap_interrupts()
+                    self.work_list.append(Work.ON_SUCCESS)
                     self.on_success()
+                    self.work_list.remove(Work.ON_SUCCESS)
+
                 else:
+                    self.work_list.append(Work.ON_FAILURE)
                     self.trap_interrupts()
                     self.on_failure()
+                    self.work_list.remove(Work.ON_FAILURE)
 
             except Exception as e:
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
                 self.trap_interrupts()
+                self.work_list.append(Work.ON_ERROR)
                 self.on_error(e)
+                self.work_list.remove(Work.ON_ERROR)
 
             finally:
                 self.trap_interrupts()
+                self.work_list.append(Work.AFTER_EXECUTION)
                 self.after_execution()
+                self.work_list.remove(Work.AFTER_EXECUTION)
 
             self.trap_interrupts()
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
@@ -736,9 +753,11 @@ class BaseActionNode(BaseNode):
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the current state
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
                 time.sleep(0.2)
                 self.trap_interrupts()
+            self.work_list.remove(Work.WAITING_SUCCESSORS)
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
