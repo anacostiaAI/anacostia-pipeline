@@ -10,8 +10,7 @@ import traceback
 import sys
 import json
 
-from jinja2.filters import FILTERS
-from fastapi import APIRouter
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
@@ -32,23 +31,12 @@ class NodeModel(BaseModel):
 
     name: str
     type: Optional[str]
-    status: Union[Status, str]
-    work: List[Work]
     predecessors: List[str]
     successors: List[str]
 
 
 
-class NodeUIModel(NodeModel):
-    url: Optional[str] = None
-    endpoint: Optional[str] = None
-    status_endpoint: Optional[str] = None
-    work_endpoint: Optional[str] = None
-    header_template: Optional[str] = None
-
-
-
-class BaseNodeRouter(APIRouter):
+class BaseNodeRouter(FastAPI):
     def __init__(self, node: BaseNode, header_template: str = None, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
@@ -83,17 +71,6 @@ class BaseNodeRouter(APIRouter):
                 )
                 return response
 
-    def model(self):
-        return NodeUIModel(
-            url = self.get_url(),
-            endpoint = self.get_endpoint(),
-            status_endpoint = self.get_status_endpoint(),
-            work_endpoint = self.get_work_endpoint(),
-            predecessors = [n.name for n in self.node.predecessors],
-            successors = [n.name for n in self.node.successors],
-            header_template = self.header_template
-        )
-    
     def get_url(self):
         return "127.0.0.1:8000"
     
@@ -155,8 +132,6 @@ class BaseNode(Thread):
         return NodeModel(
             name = self.name,
             type = type(self).__name__,
-            status = self.status.name,
-            work = self.work_list,
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )
@@ -231,10 +206,8 @@ class BaseNode(Thread):
             @wraps(func)
             def wrapper(self, *args, **kwargs):
                 self.work_list.append(work)
-                self.log(f"Node '{self.name}' work_list = {self.work_list}")
                 result = func(self, *args, **kwargs)
                 self.work_list.remove(work)
-                self.log(f"Node '{self.name}' work_list = {self.work_list}")
                 return result
             return wrapper
         return decorator
