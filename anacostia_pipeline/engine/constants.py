@@ -53,6 +53,8 @@ class Work(Enum):
     ON_ERROR = 9,
     WAITING_EXTERNAL_EVENT = 10,
     MONITORING_RESOURCE = 11,
+    STARTING_RUN = 12,
+    ENDING_RUN = 13,
 
     def __repr__(self) -> str:
         status_words = {
@@ -68,6 +70,8 @@ class Work(Enum):
             Work.ON_SUCCESS: "ON_SUCCESS",
             Work.ON_FAILURE: "ON_FAILURE",
             Work.ON_ERROR: "ON_ERROR",
+            Work.STARTING_RUN: "STARTING_RUN",
+            Work.ENDING_RUN: "ENDING_RUN",
         }
         return status_words[self]
     

@@ -428,14 +428,20 @@ class BaseMetadataStoreNode(BaseNode):
         while True:
             # waiting for all resource nodes to signal their resources are ready to be used
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
+            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            # note: since the UI polls the work_list every 500ms, the UI will always display WAITING_SUCCESSORS 
+            # because it doesn't (and possibly can never) poll fast enough to catch the work_list without WAITING_SUCCESSORS
 
             # creating a new run
             self.trap_interrupts()
+            self.work_list.append(Work.STARTING_RUN)
             self.start_run()
             self.add_run_id()
+            self.work_list.remove(Work.STARTING_RUN)
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             self.trap_interrupts()
@@ -443,14 +449,18 @@ class BaseMetadataStoreNode(BaseNode):
 
             # waiting for all resource nodes to signal they are done using the current state
             self.trap_interrupts()
+            self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
                 self.trap_interrupts()
                 time.sleep(0.2)
+            self.work_list.remove(Work.WAITING_SUCCESSORS)
             
             # ending the run
             self.trap_interrupts()
+            self.work_list.append(Work.ENDING_RUN)
             self.add_end_time()
             self.end_run()
+            self.work_list.remove(Work.ENDING_RUN)
 
             self.run_id += 1
             
