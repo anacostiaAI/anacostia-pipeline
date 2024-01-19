@@ -4,20 +4,17 @@ import time
 import logging
 import shutil
 from typing import List, Union
-from dotenv import load_dotenv
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.frontend import run_background_webserver
-from anacostia_pipeline.engine.constants import Work
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
+from anacostia_pipeline.engine.constants import Work
 
 from utils import *
 
-# Make sure that the .env file is in the same directory as this Python script
-load_dotenv()
 
 
 class MonitoringDataStoreNode(FilesystemStoreNode):
@@ -27,6 +24,10 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
     def trigger_condition(self) -> bool:
         num_new = self.get_num_artifacts("new")
         return num_new >= 1
@@ -36,6 +37,10 @@ class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
     def create_filename(self) -> str:
         return f"processed_data_file{self.get_num_artifacts('all')}.txt"
 
@@ -55,6 +60,10 @@ class PlotsStoreNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
 
 class ModelRetrainingNode(BaseActionNode):
     def __init__(
@@ -68,6 +77,11 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
@@ -109,6 +123,11 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
@@ -122,6 +141,11 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
+    def setup(self) -> None:
+        super().setup()
+        time.sleep(2)
+
+    @BaseNode.update_work_list(Work.EXECUTION)
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(haiku_test_loss=2.43)
@@ -173,9 +197,5 @@ pipeline = Pipeline(
 
 
 if __name__ == "__main__":
-    run_background_webserver(pipeline, host="127.0.0.1", port=8000)
-
-    time.sleep(6)
-    for i in range(10):
-        create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
-        time.sleep(1.5)
+    #print(pipeline.frontend_json())
+    run_background_webserver(pipeline, host="127.0.0.1", port=8000, reload=True)

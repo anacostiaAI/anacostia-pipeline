@@ -99,10 +99,10 @@ def run_background_webserver(pipeline: Pipeline, **kwargs):
     app = Webserver(pipeline)
 
     for node in pipeline.nodes:
-        node_router = node.get_app()
+        node_subapp = node.get_app()
         # Note: we can also use app.mount() to mount the router of each node like so:
         # this might be important if we want to allow the user to specify an app instead of a router
-        app.mount(node_router.get_prefix(), node_router)
+        app.mount(node_subapp.get_prefix(), node_subapp)
         # app.include_router(node_router, prefix=node_router.get_prefix())
 
     config = uvicorn.Config(app, **kwargs)
