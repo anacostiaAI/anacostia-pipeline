@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode, BaseNodeRouter
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode, BaseNodeApp
 
 
 
@@ -84,9 +84,9 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 
 
 
-class SqliteMetadataStoreRouter(BaseNodeRouter):
+class SqliteMetadataStoreRouter(BaseNodeApp):
     def __init__(self, node: 'SqliteMetadataStore', *args, **kwargs):
-        # Create backend server for node by inheriting the BaseNodeRouter (i.e., overriding the default router).
+        # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default routes from being used
         # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
         # after the super().__init__() call inside the constructor
@@ -119,8 +119,8 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
 
-    # Note: override the get_router() method to return the custom router
-    def get_router(self) -> SqliteMetadataStoreRouter:
+    # Note: override the get_app() method to return the custom router
+    def get_app(self) -> SqliteMetadataStoreRouter:
         return SqliteMetadataStoreRouter(self)
 
     def setup(self) -> None:

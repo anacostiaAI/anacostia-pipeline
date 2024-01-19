@@ -69,7 +69,7 @@ class Webserver(FastAPI):
     def __headers(self):
         node_headers = []
         for node in self.pipeline.nodes:
-            header_template = node.get_router().get_header_template()
+            header_template = node.get_app().get_header_template()
             if header_template is not None:
                 node_headers.append(header_template)
         return node_headers
@@ -80,9 +80,9 @@ class Webserver(FastAPI):
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model.pop("name")
-            node_model["endpoint"] = node.get_router().get_endpoint()
-            node_model["status_endpoint"] = node.get_router().get_status_endpoint()
-            node_model["work_endpoint"] = node.get_router().get_work_endpoint()
+            node_model["endpoint"] = node.get_app().get_endpoint()
+            node_model["status_endpoint"] = node.get_app().get_status_endpoint()
+            node_model["work_endpoint"] = node.get_app().get_work_endpoint()
 
             edges_from_node = [
                 { "source": node_model["id"], "target": successor, "endpoint": f"/edge/{node_model['id']}/{successor}" } 
@@ -99,7 +99,7 @@ def run_background_webserver(pipeline: Pipeline, **kwargs):
     app = Webserver(pipeline)
 
     for node in pipeline.nodes:
-        node_router = node.get_router()
+        node_router = node.get_app()
         # Note: we can also use app.mount() to mount the router of each node like so:
         # this might be important if we want to allow the user to specify an app instead of a router
         app.mount(node_router.get_prefix(), node_router)

@@ -9,12 +9,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request, APIRouter
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNodeRouter
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNodeApp
 from ..engine.constants import Status
 
 
 
-class FilesystemStoreNodeRouter(BaseNodeRouter):
+class FilesystemStoreNodeRouter(BaseNodeApp):
     def __init__(self, node: 'FilesystemStoreNode', *args, **kwargs):
         super().__init__(node, "filesystemstore/filesystemstore_header.html", use_default_router=False, *args, **kwargs)
 
@@ -61,7 +61,7 @@ class FilesystemStoreNode(BaseResourceNode):
         
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
     
-    def get_router(self) -> FilesystemStoreNodeRouter:
+    def get_app(self) -> FilesystemStoreNodeRouter:
         return FilesystemStoreNodeRouter(self)
 
     @BaseResourceNode.resource_accessor

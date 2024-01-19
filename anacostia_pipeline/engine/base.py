@@ -36,7 +36,7 @@ class NodeModel(BaseModel):
 
 
 
-class BaseNodeRouter(FastAPI):
+class BaseNodeApp(FastAPI):
     def __init__(self, node: BaseNode, header_template: str = None, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
@@ -71,7 +71,7 @@ class BaseNodeRouter(FastAPI):
                 )
                 return response
 
-    def get_url(self):
+    def get_ip_address(self):
         return "127.0.0.1:8000"
     
     def get_prefix(self):
@@ -119,8 +119,8 @@ class BaseNode(Thread):
 
         super().__init__(name=name)
     
-    def get_router(self):
-        return BaseNodeRouter(self)
+    def get_app(self):
+        return BaseNodeApp(self)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -759,7 +759,7 @@ class BaseActionNode(BaseNode):
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
-            # ensure all action nodes have finished using the current state
+            # ensure all action nodes have finished using the resource for current run
             self.trap_interrupts()
             self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
