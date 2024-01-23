@@ -85,7 +85,10 @@ class Webserver(FastAPI):
             node_model["work_endpoint"] = node.get_app().get_work_endpoint()
 
             edges_from_node = [
-                { "source": node_model["id"], "target": successor, "endpoint": f"/edge/{node_model['id']}/{successor}" } 
+                { 
+                    "source": node_model["id"], "target": successor, 
+                    "endpoint": node.get_app().get_edge_endpoint(node_model["id"], successor) 
+                } 
                 for successor in node_model["successors"]
             ]
             edges.extend(edges_from_node)

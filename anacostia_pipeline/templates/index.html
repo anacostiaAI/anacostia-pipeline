@@ -4,6 +4,9 @@
         <meta charset="UTF-8">
         <title>Anacostia Console</title>
 
+        <!-- Custom CSS for node pages -->
+        {% include header_templates %}
+
         <!-- custom CSS for Anacostia landing page -->
         <link rel="stylesheet" type="text/css" href="/static/css/home.css">
         <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
@@ -32,9 +35,6 @@
             stroke-width: 1.5px;
             }
         </style>
-
-        <!-- Custom CSS for node pages -->
-        {% include header_templates %}
     </head>
     <body hx-ext="sse">
         <div id="toolbar_div" class="toolbar">
@@ -146,7 +146,6 @@
                 
                 const edge = inner.selectAll(".edgePath path.path");
                 edge.attr("stroke", "#333");
-                /*
                 edge.attr("_", (e) => { 
                     return `
                     on load repeat forever 
@@ -155,11 +154,9 @@
                         wait 500ms
                     end`; 
                 });
-                */
             
                 const arrowhead = inner.selectAll(".edgePath defs marker");
                 arrowhead.attr("fill", "#333");
-                /*
                 arrowhead.attr("_", (e) => { 
                     return `
                     on load repeat forever 
@@ -168,7 +165,6 @@
                         wait 500ms
                     end`; 
                 });
-                */
             
                 var initialScale = 1;
             

@@ -49,7 +49,7 @@ class BaseNodeApp(FastAPI):
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):
-            return f"Node status: {repr(self.node.status)}"
+            return f"{repr(self.node.status)}"
         
         @self.get("/work", response_class=HTMLResponse)
         async def work_endpoint(request: Request):
@@ -57,6 +57,13 @@ class BaseNodeApp(FastAPI):
                 "work.html",
                 {"request": request, "work_list": [repr(work) for work in self.node.work_list]}
             )
+        
+        @self.get("/edge/{source}/{target}", response_class=HTMLResponse)
+        async def edge_endpoint(request: Request, source: str, target: str):
+            if source == self.node.name:
+                if Work.WAITING_SUCCESSORS in self.node.work_list:
+                    return "#90EE90"
+            return "#333"
 
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
@@ -85,6 +92,9 @@ class BaseNodeApp(FastAPI):
     
     def get_work_endpoint(self):
         return f"{self.get_prefix()}/work"
+    
+    def get_edge_endpoint(self, source: str, target: str):
+        return f"{self.get_prefix()}/edge/{source}/{target}"
     
     def get_header_template(self):
         return self.header_template

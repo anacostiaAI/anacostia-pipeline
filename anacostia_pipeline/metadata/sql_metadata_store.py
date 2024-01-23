@@ -99,6 +99,22 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
+            samples = self.node.get_entries(resource_node="all", state="all")
+            samples = [sample.as_dict() for sample in samples]
+            for sample in samples:
+                sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                if sample['end_time'] is not None:
+                    sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            """
+            metrics = self.node.get_entries(resource_node="all", state="all")
+            metrics = [metric.as_dict() for metric in metrics]
+            params = self.node.get_entries(resource_node="all", state="all")
+            params = [param.as_dict() for param in params]
+            tags = self.node.get_entries(resource_node="all", state="all")
+            tags = [tag.as_dict() for tag in tags]
+            """
+
             # IMPORTANT: the context for the TemplateResponse object must include 
             # the request object, the node model, and the status and work endpoints;
             # otherwise, the template will not be able to access the information 
@@ -106,9 +122,11 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
             response = self.templates.TemplateResponse(
                 "sqlmetadatastore/sqlmetadatastore.html", 
                 {
-                    "request": request, "node": self.node.model(), 
+                    "request": request,
+                    "node": self.node.model(), 
                     "status_endpoint": self.get_status_endpoint(),
-                    "work_endpoint": self.get_work_endpoint()
+                    "work_endpoint": self.get_work_endpoint(),
+                    "samples": samples
                 }
             )
             return response
@@ -185,10 +203,21 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(tag)
             session.commit()
 
-    def get_entries(self, resource_node: BaseResourceNode, state: str) -> Dict[str, Sample]:
+    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
-            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            return session.query(Sample).filter_by(node_id=node_id, state=state).all()
+            if (resource_node != "all") and (state != "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Sample).filter_by(node_id=node_id, state=state).all()
+
+            elif (resource_node == "all") and (state == "all"):
+                return session.query(Sample).all()
+        
+            elif (resource_node == "all") and (state != "all"):
+                return session.query(Sample).filter_by(state=state).all()
+        
+            elif (resource_node != "all") and (state == "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Sample).filter_by(node_id=node_id).all()
 
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
         with scoped_session_manager(self.session_factory, resource_node) as session:
