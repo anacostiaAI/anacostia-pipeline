@@ -7,6 +7,13 @@
     align-items: center;
     border-bottom: 1px solid #333;
     margin-bottom: 10px;
+    margin-right: 10px;
+}
+
+.navbar {
+    padding: 0px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 10px;
 }
 
 .title {
@@ -16,16 +23,41 @@
     color: #333;
 }
 
+.navbar-item img {
+    max-height: 50px;
+    max-width: 50px;
+    border-right: 1px solid #333;
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+.navbar-item.dag-icon {
+    padding-top: 0px;
+    padding-bottom: 0px;
+
+}
+
+/*
 .dag-icon img {
     width: 50px;
     height: 50px;
     border-right: 1px solid #333;
 }
 
-.dropdown {
+div.dropdown {
+    margin-right: 10px;
+}
+
+#toolbar_div {
     position: relative;
     display: inline-block;
 }
+
+.dropdown-menu-right { 
+    right: 0; 
+    left: auto; 
+}
+
 
 .dropbtn {
     background-color: #333;
@@ -56,8 +88,10 @@
 .dropdown-content div:hover {
     background-color: #444;
 }
+*/
 
 /* display the dropdown on hover*/
+/*
 .dropdown:hover .dropdown-content {
     display: block;
 }
@@ -65,6 +99,7 @@
 .dropdown:hover .dropbtn {
     background-color: #444;
 }
+*/
 
 body {
     background-color: #fbfbfb;
