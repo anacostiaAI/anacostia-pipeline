@@ -104,7 +104,8 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
             "runs": f"{self.get_prefix()}/runs",
             "metrics": f"{self.get_prefix()}/metrics",
             "params": f"{self.get_prefix()}/params",
-            "tags": f"{self.get_prefix()}/tags"
+            "tags": f"{self.get_prefix()}/tags",
+            "samples": f"{self.get_prefix()}/samples"
         }
 
         @self.get("/home", response_class=HTMLResponse)
@@ -130,12 +131,12 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                     "header_bar_endpoint": self.get_header_bar_endpoint(),
                     "data_options": self.data_options,
                     "samples": samples,
-                    "runs_endpoint": self.data_options["runs"]
+                    "samples_endpoint": self.data_options["samples"]
                 }
             )
             return response
         
-        @self.get("/runs", response_class=HTMLResponse)
+        @self.get("/samples", response_class=HTMLResponse)
         async def runs(request: Request):
             samples = self.node.get_entries(resource_node="all", state="all")
             samples = [sample.as_dict() for sample in samples]
@@ -145,8 +146,8 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                     sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
             response = self.templates.TemplateResponse(
-                "sqlmetadatastore/sqlmetadatastore_runs.html", 
-                {"request": request, "samples": samples, "runs_endpoint": self.data_options["runs"]}
+                "sqlmetadatastore/sqlmetadatastore_samples.html", 
+                {"request": request, "samples": samples, "samples_endpoint": self.data_options["samples"]}
             )
             return response
         
