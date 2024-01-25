@@ -91,11 +91,10 @@ class BaseNodeApp(FastAPI):
             @self.get("/home", response_class=HTMLResponse)
             async def endpoint(request: Request):
                 response = self.templates.TemplateResponse(
-                    "basenode.html", 
+                    "default.html", 
                     {   
-                        "request": request, "node": self.node.model(), 
-                        "status_endpoint": self.get_status_endpoint(), 
-                        "work_endpoint": self.get_work_endpoint()
+                        "request": request, 
+                        "header_bar_endpoint": self.get_header_bar_endpoint()
                     }
                 )
                 return response
