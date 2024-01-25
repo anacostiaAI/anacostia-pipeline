@@ -1,0 +1,19 @@
+<table class="table is-bordered is-striped is-hoverable"
+    hx-get="{{ runs_endpoint }}" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+    <thead>
+        <tr>
+            <th>Run ID</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for run in runs %}
+        <tr>
+            <th>{{ run.id }}</th>
+            <td>{{ run.start_time }}</td>
+            <td>{{ run.end_time }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

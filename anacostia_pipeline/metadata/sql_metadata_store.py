@@ -25,6 +25,9 @@ class Run(Base):
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime)
 
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 class Metric(Base):
     __tablename__ = 'metrics'
     id = Column(Integer, primary_key=True)
@@ -42,12 +45,18 @@ class Param(Base):
     key = Column(String)
     value = Column(Float)
 
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 class Tag(Base):
     __tablename__ = 'tags'
     id = Column(Integer, primary_key=True)
     run_id = Column(Integer)
     key = Column(String)
     value = Column(String)
+
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 class Sample(Base):
     __tablename__ = 'samples'
@@ -68,6 +77,9 @@ class Node(Base):
     name = Column(String)
     type = Column(String)
     init_time = Column(DateTime, default=datetime.utcnow)
+
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 @contextmanager
@@ -110,12 +122,12 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            samples = self.node.get_entries(resource_node="all", state="all")
-            samples = [sample.as_dict() for sample in samples]
-            for sample in samples:
-                sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                if sample['end_time'] is not None:
-                    sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            runs = self.node.get_runs()
+            runs = [run.as_dict() for run in runs]
+            for run in runs:
+                run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
+                if run['end_time'] is not None:
+                    run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
             # IMPORTANT: the context for the TemplateResponse object must include 
             # the request object, the node model, and the status, work, and header bar endpoints;
@@ -130,14 +142,29 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                     "work_endpoint": self.get_work_endpoint(),
                     "header_bar_endpoint": self.get_header_bar_endpoint(),
                     "data_options": self.data_options,
-                    "samples": samples,
-                    "samples_endpoint": self.data_options["samples"]
+                    "runs": runs,
+                    "runs_endpoint": self.data_options["runs"]
                 }
             )
             return response
         
-        @self.get("/samples", response_class=HTMLResponse)
+        @self.get("/runs", response_class=HTMLResponse)
         async def runs(request: Request):
+            runs = self.node.get_runs()
+            runs = [run.as_dict() for run in runs]
+            for run in runs:
+                run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
+                if run['end_time'] is not None:
+                    run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore_runs.html", 
+                {"request": request, "runs": runs, "runs_endpoint": self.data_options["runs"]}
+            )
+            return response
+        
+        @self.get("/samples", response_class=HTMLResponse)
+        async def samples(request: Request):
             samples = self.node.get_entries(resource_node="all", state="all")
             samples = [sample.as_dict() for sample in samples]
             for sample in samples:
@@ -191,6 +218,10 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         with scoped_session_manager(self.session_factory, self) as session:
             run = session.query(Run).filter_by(end_time=None).first()
             return run.id
+    
+    def get_runs(self) -> List[Run]:
+        with scoped_session_manager(self.session_factory, self) as session:
+            return session.query(Run).all()
     
     def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
         # add some assertion statements here to check if state is "new", "current", "old", or "all"
