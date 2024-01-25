@@ -32,6 +32,9 @@ class Metric(Base):
     key = Column(String)
     value = Column(Float)
 
+    def as_dict(self):
+       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 class Param(Base):
     __tablename__ = 'params'
     id = Column(Integer, primary_key=True)
@@ -146,7 +149,17 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 {"request": request, "samples": samples, "runs_endpoint": self.data_options["runs"]}
             )
             return response
+        
+        @self.get("/metrics", response_class=HTMLResponse)
+        async def metrics(request: Request):
+            rows = self.node.get_metrics(resource_node="all", state="all")
+            rows = [sample.as_dict() for sample in rows]
 
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore_metrics.html", 
+                {"request": request, "rows": rows, "metrics_endpoint": self.data_options["metrics"]}
+            )
+            return response
 
 
 class SqliteMetadataStore(BaseMetadataStoreNode):
