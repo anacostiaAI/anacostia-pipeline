@@ -71,7 +71,7 @@ class BaseNodeApp(FastAPI):
             if self.div_closed is True:
                 self.div_closed = False
                 return self.templates.TemplateResponse(
-                    "header_bar_closed.html",
+                    "node_bar_closed.html",
                     {
                         "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
                         "header_bar_endpoint": self.get_header_bar_endpoint(), "work_endpoint": self.get_work_endpoint()
@@ -80,7 +80,7 @@ class BaseNodeApp(FastAPI):
             else:
                 self.div_closed = True
                 return self.templates.TemplateResponse(
-                    "header_bar_open.html",
+                    "node_bar_open.html",
                     {
                         "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
                         "header_bar_endpoint": self.get_header_bar_endpoint(), "work_endpoint": self.get_work_endpoint()
