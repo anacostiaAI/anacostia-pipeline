@@ -1,0 +1,25 @@
+<table class="table is-bordered is-striped is-hoverable"
+    hx-get="{{ runs_endpoint }}" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+    <thead>
+        <tr>
+            <th>Sample ID</th>
+            <th>Run ID</th>
+            <th>Created At</th>
+            <th>End Time</th>
+            <th>Location</th>
+            <th>State</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sample in samples %}
+        <tr>
+            <th>{{ sample.id }}</th>
+            <td>{{ sample.run_id }}</td>
+            <td>{{ sample.created_at }}</td>
+            <td>{{ sample.end_time }}</td>
+            <td>{{ sample.location }}</td>
+            <td>{{ sample.state }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

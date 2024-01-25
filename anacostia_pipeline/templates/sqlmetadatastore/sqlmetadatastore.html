@@ -1,30 +1,27 @@
 {% extends "basenode.html" %}
 
 {% block content %}
-<div class="container">
-    <table class="table is-bordered is-striped is-hoverable">
-        <thead>
-          <tr>
-              <th>Sample ID</th>
-              <th>Run ID</th>
-              <th>Created At</th>
-              <th>End Time</th>
-              <th>Location</th>
-              <th>State</th>
-          </tr>
-        </thead>
-        <tbody>
-            {% for sample in samples %}
-            <tr>
-                <th>{{ sample.id }}</th>
-                <td>{{ sample.run_id }}</td>
-                <td>{{ sample.created_at }}</td>
-                <td>{{ sample.end_time }}</td>
-                <td>{{ sample.location }}</td>
-                <td>{{ sample.state }}</td>
-            </tr>
+<div id="data_type_menu" class="dropdown is-hoverable">
+    <div class="dropdown-trigger">
+        <button class="button" aria-haspopup="true" aria-controls="dropdown-menu3">
+            <span>Click me</span>
+            <span class="icon is-small">
+                <i class="fas fa-angle-down" aria-hidden="true"></i>
+            </span>
+        </button>
+    </div>
+    <div class="dropdown-menu" id="dropdown-menu3" role="menu">
+        <div class="dropdown-content">
+            {% for data_type, endpoint in data_options.items() %}
+            <a href="{{ endpoint }}" class="dropdown-item" 
+                hx-get="{{ endpoint }}" hx-target="#table_container" hx-swap="innerHTML" hx-trigger="click">
+                {{ data_type }}
+            </a>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
+</div>
+<div id="table_container" class="container">
+    {% include "sqlmetadatastore/sqlmetadatastore_runs.html" %}
 </div>
 {% endblock %}

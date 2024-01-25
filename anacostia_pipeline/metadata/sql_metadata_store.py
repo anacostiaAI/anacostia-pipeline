@@ -87,7 +87,7 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 class SqliteMetadataStoreRouter(BaseNodeApp):
     def __init__(self, node: 'SqliteMetadataStore', *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
-        # IMPORTANT: set use_default_router=False to prevent the default routes from being used
+        # IMPORTANT: set use_default_router=False to prevent the default /home route from being used
         # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
         # after the super().__init__() call inside the constructor
         super().__init__(node, "sqlmetadatastore/sqlmetadatastore_header.html", use_default_router=False, *args, **kwargs)
@@ -96,6 +96,13 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
         self.templates = Jinja2Templates(directory=self.templates_dir)
+
+        self.data_options = {
+            "runs": f"{self.get_prefix()}/runs",
+            "metrics": f"{self.get_prefix()}/metrics",
+            "params": f"{self.get_prefix()}/params",
+            "tags": f"{self.get_prefix()}/tags"
+        }
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
@@ -106,15 +113,6 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 if sample['end_time'] is not None:
                     sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            """
-            metrics = self.node.get_entries(resource_node="all", state="all")
-            metrics = [metric.as_dict() for metric in metrics]
-            params = self.node.get_entries(resource_node="all", state="all")
-            params = [param.as_dict() for param in params]
-            tags = self.node.get_entries(resource_node="all", state="all")
-            tags = [tag.as_dict() for tag in tags]
-            """
-
             # IMPORTANT: the context for the TemplateResponse object must include 
             # the request object, the node model, and the status, work, and header bar endpoints;
             # otherwise, the template will not be able to access the information 
@@ -127,11 +125,28 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                     "status_endpoint": self.get_status_endpoint(),
                     "work_endpoint": self.get_work_endpoint(),
                     "header_bar_endpoint": self.get_header_bar_endpoint(),
-                    "samples": samples
+                    "data_options": self.data_options,
+                    "samples": samples,
+                    "runs_endpoint": self.data_options["runs"]
                 }
             )
             return response
-    
+        
+        @self.get("/runs", response_class=HTMLResponse)
+        async def runs(request: Request):
+            samples = self.node.get_entries(resource_node="all", state="all")
+            samples = [sample.as_dict() for sample in samples]
+            for sample in samples:
+                sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                if sample['end_time'] is not None:
+                    sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore_runs.html", 
+                {"request": request, "samples": samples, "runs_endpoint": self.data_options["runs"]}
+            )
+            return response
+
 
 
 class SqliteMetadataStore(BaseMetadataStoreNode):
@@ -188,6 +203,22 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(metric)
             session.commit()
     
+    def get_metrics(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            if (resource_node != "all") and (state != "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Metric).filter_by(node_id=node_id, state=state).all()
+        
+            elif (resource_node != "all") and (state == "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Metric).filter_by(node_id=node_id).all()
+
+            elif (resource_node == "all") and (state == "all"):
+                return session.query(Metric).all()
+        
+            elif (resource_node == "all") and (state != "all"):
+                return session.query(Metric).filter_by(state=state).all()
+    
     def log_params(self, **kwargs) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
             run_id = self.get_run_id()
@@ -210,16 +241,16 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
                 return session.query(Sample).filter_by(node_id=node_id, state=state).all()
 
+            elif (resource_node != "all") and (state == "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Sample).filter_by(node_id=node_id).all()
+
             elif (resource_node == "all") and (state == "all"):
                 return session.query(Sample).all()
         
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Sample).filter_by(state=state).all()
         
-            elif (resource_node != "all") and (state == "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Sample).filter_by(node_id=node_id).all()
-
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
