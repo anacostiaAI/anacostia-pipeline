@@ -116,7 +116,7 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
             """
 
             # IMPORTANT: the context for the TemplateResponse object must include 
-            # the request object, the node model, and the status and work endpoints;
+            # the request object, the node model, and the status, work, and header bar endpoints;
             # otherwise, the template will not be able to access the information 
             # and by default will respond with the entire page of the DAG
             response = self.templates.TemplateResponse(
@@ -126,6 +126,7 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                     "node": self.node.model(), 
                     "status_endpoint": self.get_status_endpoint(),
                     "work_endpoint": self.get_work_endpoint(),
+                    "header_bar_endpoint": self.get_header_bar_endpoint(),
                     "samples": samples
                 }
             )

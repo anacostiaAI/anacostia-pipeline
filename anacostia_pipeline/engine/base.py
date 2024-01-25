@@ -41,6 +41,7 @@ class BaseNodeApp(FastAPI):
         super().__init__(*args, **kwargs)
         self.node = node
         self.header_template = header_template
+        self.div_closed = True
 
         PACKAGE_NAME = "anacostia_pipeline"
         PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
@@ -64,6 +65,27 @@ class BaseNodeApp(FastAPI):
                 if Work.WAITING_SUCCESSORS in self.node.work_list:
                     return "#90EE90"
             return "#333"
+        
+        @self.get("/header_bar", response_class=HTMLResponse)
+        async def header_bar_endpoint(request: Request):
+            if self.div_closed is True:
+                self.div_closed = False
+                return self.templates.TemplateResponse(
+                    "header_bar_closed.html",
+                    {
+                        "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
+                        "header_bar_endpoint": self.get_header_bar_endpoint(), "work_endpoint": self.get_work_endpoint()
+                    }
+                )
+            else:
+                self.div_closed = True
+                return self.templates.TemplateResponse(
+                    "header_bar_open.html",
+                    {
+                        "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
+                        "header_bar_endpoint": self.get_header_bar_endpoint(), "work_endpoint": self.get_work_endpoint()
+                    }
+                )
 
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
@@ -83,6 +105,9 @@ class BaseNodeApp(FastAPI):
     
     def get_prefix(self):
         return f"/node/{self.node.name}"
+    
+    def get_header_bar_endpoint(self):
+        return f"{self.get_prefix()}/header_bar"
 
     def get_endpoint(self):
         return f"{self.get_prefix()}/home"

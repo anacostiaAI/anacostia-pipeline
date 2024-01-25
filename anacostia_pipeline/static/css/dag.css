@@ -1,27 +1,28 @@
 #graph {
     width: 960px;
     margin: 0 auto;
+    margin-top: 10px;
     color: #333;
     font-weight: 300;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
-  }
-  
-  h1 {
+}
+
+h1 {
     font-size: 3em;
     font-weight: 300;
-  }
-  
-  section {
+}
+
+section {
     margin-bottom: 3em;
-  }
-  
-  section p {
+}
+
+section p {
     text-align: justify;
-  }
-  
-  svg {
+}
+
+svg {
     border: 1px solid #ccc; 
     border-radius: 7px;
     overflow: hidden;
     margin: 0 auto;
-  }
+}
