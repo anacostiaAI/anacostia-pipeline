@@ -188,6 +188,29 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 {"request": request, "rows": rows, "metrics_endpoint": self.data_options["metrics"]}
             )
             return response
+        
+        @self.get("/params", response_class=HTMLResponse)
+        async def params(request: Request):
+            rows = self.node.get_params(resource_node="all", state="all")
+            rows = [sample.as_dict() for sample in rows]
+
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore_params.html", 
+                {"request": request, "rows": rows, "params_endpoint": self.data_options["params"]}
+            )
+            return response
+
+        @self.get("/tags", response_class=HTMLResponse)
+        async def tags(request: Request):
+            rows = self.node.get_tags(resource_node="all", state="all")
+            rows = [sample.as_dict() for sample in rows]
+
+            response = self.templates.TemplateResponse(
+                "sqlmetadatastore/sqlmetadatastore_tags.html", 
+                {"request": request, "rows": rows, "tags_endpoint": self.data_options["tags"]}
+            )
+            return response
+
 
 
 class SqliteMetadataStore(BaseMetadataStoreNode):
@@ -264,6 +287,38 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Metric).filter_by(state=state).all()
     
+    def get_params(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            if (resource_node != "all") and (state != "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Param).filter_by(node_id=node_id, state=state).all()
+        
+            elif (resource_node != "all") and (state == "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Param).filter_by(node_id=node_id).all()
+
+            elif (resource_node == "all") and (state == "all"):
+                return session.query(Param).all()
+        
+            elif (resource_node == "all") and (state != "all"):
+                return session.query(Param).filter_by(state=state).all()
+    
+    def get_tags(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            if (resource_node != "all") and (state != "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Tag).filter_by(node_id=node_id, state=state).all()
+        
+            elif (resource_node != "all") and (state == "all"):
+                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+                return session.query(Tag).filter_by(node_id=node_id).all()
+
+            elif (resource_node == "all") and (state == "all"):
+                return session.query(Tag).all()
+        
+            elif (resource_node == "all") and (state != "all"):
+                return session.query(Tag).filter_by(state=state).all()
+
     def log_params(self, **kwargs) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
             run_id = self.get_run_id()
