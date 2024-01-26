@@ -71,19 +71,16 @@ class BaseNodeApp(FastAPI):
                 return self.templates.TemplateResponse(
                     "node_bar_open.html",
                     {
-                        "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
-                        "header_bar_endpoint": f"{self.get_header_bar_endpoint()}?visibility=false", 
-                        "work_endpoint": self.get_work_endpoint()
+                        "request": request, "node": self.node.model(),
+                        "status_endpoint": self.get_status_endpoint(),
+                        "work_endpoint": self.get_work_endpoint(),
+                        "header_bar_endpoint": f"{self.get_header_bar_endpoint()}?visibility=false"
                     }
                 )
             else:
                 return self.templates.TemplateResponse(
                     "node_bar_closed.html",
-                    {
-                        "request": request, "node": self.node.model(), "status_endpoint": self.get_status_endpoint(), 
-                        "header_bar_endpoint": f"{self.get_header_bar_endpoint()}/?visibility=true", 
-                        "work_endpoint": self.get_work_endpoint()
-                    }
+                    {"request": request, "header_bar_endpoint": f"{self.get_header_bar_endpoint()}/?visibility=true"}
                 )
 
         if use_default_router is True:
