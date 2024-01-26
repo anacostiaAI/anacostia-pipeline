@@ -8,7 +8,6 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import sys
-import json
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -16,7 +15,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
 from pydantic import BaseModel, ConfigDict
-from bs4 import BeautifulSoup
 
 from .constants import Status, Result, Work
 from .utils import Signal, SignalTable
@@ -360,19 +358,6 @@ class BaseMetadataStoreNode(BaseNode):
         self.run_id = 0
         self.resource_lock = RLock()
     
-    # TODO 
-    # TEMPORARY SHORTERM SOLUTION
-    # Replace with proper model() implementation that returns a BaseModel
-    def html(self, templates, request):       
-        data = dict()
-        data["request"] = request
-        data.update(self.model().dict())
-        with open(self.uri, "r") as json_file:
-            data.update(json.load(json_file))
-
-        metadata_html = templates.TemplateResponse("metadatastore.html", data)
-        return metadata_html
-
     def resource_uri(self, r_node: BaseResourceNode):
         raise NotImplementedError
 
@@ -509,20 +494,6 @@ class BaseResourceNode(BaseNode):
         self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
-
-    # TODO 
-    # TEMPORARY SHORTERM SOLUTION
-    # Replace with proper model() implementation that returns a BaseModel
-    def html(self, templates, request):       
-        data = dict()
-        data["request"] = request
-        data.update(self.model().dict())
-        artifact_path = self.metadata_store.resource_uri(self)
-        
-        with open(artifact_path, "r") as json_file:
-            data.update(json.load(json_file))
-
-        return templates.TemplateResponse("resourcenode.html", data)
 
     def resource_accessor(func):
         @wraps(func)
@@ -663,34 +634,6 @@ class BaseResourceNode(BaseNode):
 class BaseActionNode(BaseNode):
     def __init__(self, name: str, predecessors: List[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
         super().__init__(name, predecessors, loggers=loggers)
-
-    # TODO 
-    # TEMPORARY SHORTERM SOLUTION
-    # Replace with proper model() implementation that returns a BaseModel
-    def html(self, templates, request):       
-        data = dict()
-        data["request"] = request
-        data.update(self.model().dict())
-
-        # TODO dynamically include ActionNode's output
-        # Note: extract the path of train_plot.html and val_plot.html from the plot store
-        # Note: this is a base action node, move chart rendering code somewhere else
-        train_plot = "./train_plot.html"
-        if os.path.exists(train_plot):
-            with open(train_plot, 'r') as f:
-                soup = BeautifulSoup(f.read(), 'html.parser')
-            chart = soup.find('div')
-            data['train_chart'] = chart
-
-        validation_plot = "./val_plot.html"
-        if os.path.exists(validation_plot):
-            with open(validation_plot, 'r') as f:
-                soup = BeautifulSoup(f.read(), 'html.parser')
-            chart = soup.find('div')
-            data['validation_chart'] = chart
-        
-        return templates.TemplateResponse("actionnode.html", data)
-
 
     @BaseNode.log_exception
     def before_execution(self) -> None:
