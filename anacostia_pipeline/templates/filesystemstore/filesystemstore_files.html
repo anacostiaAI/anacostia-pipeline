@@ -1,0 +1,25 @@
+<table class="table is-bordered is-striped is-hoverable"
+    hx-get="{{ file_entries_endpoint }}" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+    <thead>
+        <tr>
+            <th>file_entry ID</th>
+            <th>Run ID</th>
+            <th>Created At</th>
+            <th>End Time</th>
+            <th>Location</th>
+            <th>State</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file_entry in file_entries %}
+        <tr hx-get="{{ file_entry.file_display_endpoint }}" hx-trigger="click" hx-target="#table_container" hx-swap="innerHTML">
+            <th>{{ file_entry.id }}</th>
+            <td>{{ file_entry.run_id }}</td>
+            <td>{{ file_entry.created_at }}</td>
+            <td>{{ file_entry.end_time }}</td>
+            <td>{{ file_entry.location }}</td>
+            <td>{{ file_entry.state }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

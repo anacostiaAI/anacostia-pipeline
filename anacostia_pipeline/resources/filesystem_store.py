@@ -23,18 +23,56 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
         self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
         self.templates = Jinja2Templates(directory=self.templates_dir)
 
+        self.file_entries_endpoint = f"{self.get_prefix()}/file_entries"
+
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
+            file_entries = self.node.metadata_store.get_entries(node, "all")
+            file_entries = [sample.as_dict() for sample in file_entries]
+            for file_entry in file_entries:
+                file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file/{file_entry['id']}"
+                if file_entry['end_time'] is not None:
+                    file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
             response = self.templates.TemplateResponse(
                 "filesystemstore/filesystemstore.html", 
                 {   
-                    "request": request, "node": self.node.model(), 
-                    "status_endpoint": self.get_status_endpoint(), 
-                    "work_endpoint": self.get_work_endpoint()
+                    "request": request,
+                    "node": self.node.model(), 
+                    "status_endpoint": self.get_status_endpoint(),
+                    "work_endpoint": self.get_work_endpoint(),
+                    "header_bar_endpoint": self.get_header_bar_endpoint(),
+                    "file_entries": file_entries,
+                    "file_entries_endpoint": self.file_entries_endpoint 
                 }
             )
             return response
 
+        @self.get("/file_entries", response_class=HTMLResponse)
+        async def samples(request: Request):
+            file_entries = self.node.metadata_store.get_entries(node, "all")
+            file_entries = [sample.as_dict() for sample in file_entries]
+            for file_entry in file_entries:
+                file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/file_entries/{file_entry['id']}"
+                if file_entry['end_time'] is not None:
+                    file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            response = self.templates.TemplateResponse(
+                "filesystemstore/filesystemstore_files.html", 
+                {"request": request, "file_entries": file_entries, "file_entries_endpoint": self.file_entries_endpoint }
+            )
+            return response
+        
+        @self.get("/retrieve_file/file_id", response_class=HTMLResponse)
+        async def sample(request: Request, file_id: int):
+            return self.render_file(file_id)
+    
+    def render_file(self, file_id: int) -> str:
+        pass
+
+            
 
 class FilesystemStoreNode(BaseResourceNode):
     def __init__(

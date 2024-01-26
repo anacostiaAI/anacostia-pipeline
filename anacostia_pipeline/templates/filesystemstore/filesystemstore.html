@@ -1,17 +1,7 @@
 {% extends "basenode.html" %}
 
 {% block content %}
-<div class="container">
-    <table class="striped">
-        <thead>
-          <tr>
-              <th>Sample ID</th>
-              <th>Location</th>
-              <th>Run ID</th>
-              <th>Time Start</th>
-              <th>Time Created</th>
-          </tr>
-        </thead>
-    </table>
+<div id="table_container" class="container">
+    {% include "filesystemstore/filesystemstore_files.html" %}
 </div>
 {% endblock %}
