@@ -350,6 +350,11 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Sample).filter_by(state=state).all()
+    
+    def get_entry(self, resource_node: BaseResourceNode, id: int) -> Sample:
+        with scoped_session_manager(self.session_factory, resource_node) as session:
+            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
+            return session.query(Sample).filter_by(node_id=node_id, id=id).first()
         
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
         with scoped_session_manager(self.session_factory, resource_node) as session:

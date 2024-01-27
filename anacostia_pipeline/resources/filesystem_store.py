@@ -15,7 +15,7 @@ from ..engine.constants import Status
 
 
 class FilesystemStoreNodeRouter(BaseNodeApp):
-    def __init__(self, node: 'FilesystemStoreNode', *args, **kwargs):
+    def __init__(self, node: 'FilesystemStoreNode', use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(node, "filesystemstore/filesystemstore_header.html", use_default_router=False, *args, **kwargs)
 
         PACKAGE_NAME = "anacostia_pipeline"
@@ -55,7 +55,7 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             file_entries = [sample.as_dict() for sample in file_entries]
             for file_entry in file_entries:
                 file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/file_entries/{file_entry['id']}"
+                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file/{file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
@@ -65,12 +65,17 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             )
             return response
         
-        @self.get("/retrieve_file/file_id", response_class=HTMLResponse)
-        async def sample(request: Request, file_id: int):
-            return self.render_file(file_id)
-    
-    def render_file(self, file_id: int) -> str:
-        pass
+        if use_default_file_renderer:
+            @self.get("/retrieve_file/{file_id}", response_class=HTMLResponse)
+            async def sample(request: Request, file_id: int):
+                artifact_path = self.node.get_artifact(file_id)
+                content = self.node.load_artifact(artifact_path)
+
+                response = self.templates.TemplateResponse(
+                    "filesystemstore/filesystemstore_file_viewer.html", 
+                    {"request": request, "content": content, "box_header": f"Content of {artifact_path}"}
+                )
+                return response
 
             
 
@@ -156,13 +161,22 @@ class FilesystemStoreNode(BaseResourceNode):
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
+    def get_artifact(self, id: int) -> Any:
+        entry = self.metadata_store.get_entry(self, id)
+        entry = entry.__dict__
+        return entry["location"]
+    
+    @BaseResourceNode.log_exception
+    @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
         return self.metadata_store.get_num_entries(self, state)
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def load_artifact(self, artifact_path: str) -> Any:
-        pass
+        with open(artifact_path, "r") as f:
+            content = f.read()
+            return content
 
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
