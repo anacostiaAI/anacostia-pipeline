@@ -31,7 +31,7 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             file_entries = [sample.as_dict() for sample in file_entries]
             for file_entry in file_entries:
                 file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file/{file_entry['id']}"
+                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
@@ -55,7 +55,7 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             file_entries = [sample.as_dict() for sample in file_entries]
             for file_entry in file_entries:
                 file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file/{file_entry['id']}"
+                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
@@ -66,7 +66,7 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             return response
         
         if use_default_file_renderer:
-            @self.get("/retrieve_file/{file_id}", response_class=HTMLResponse)
+            @self.get("/retrieve_file", response_class=HTMLResponse)
             async def sample(request: Request, file_id: int):
                 artifact_path = self.node.get_artifact(file_id)
                 content = self.node.load_artifact(artifact_path)

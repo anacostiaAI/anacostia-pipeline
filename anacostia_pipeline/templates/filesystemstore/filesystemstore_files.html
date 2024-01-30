@@ -1,5 +1,10 @@
 <table class="table is-bordered is-striped is-hoverable"
-    hx-get="{{ file_entries_endpoint }}" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+    hx-get="{{ file_entries_endpoint }}" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this" hx-sync="tr:abort">
+    <!--
+    hx-sync="tr:abort" is used to ensure the file_entries_endpoint doesn't trigger when one of the rows is clicked on.
+    I believe this is due to the table considering the row to be part of the table, so it will trigger the file_entries_endpoint
+    when the row is clicked on.
+    -->
     <thead>
         <tr>
             <th>file_entry ID</th>
@@ -12,7 +17,8 @@
     </thead>
     <tbody>
         {% for file_entry in file_entries %}
-        <tr hx-get="{{ file_entry.file_display_endpoint }}" hx-trigger="click" hx-target="#table_container" hx-swap="innerHTML">
+        <tr hx-get="{{ file_entry.file_display_endpoint }}" hx-trigger="click" hx-target="#table_container" hx-swap="innerHTML" 
+            style="cursor: pointer;">
             <th>{{ file_entry.id }}</th>
             <td>{{ file_entry.run_id }}</td>
             <td>{{ file_entry.created_at }}</td>
