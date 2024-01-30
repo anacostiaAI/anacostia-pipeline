@@ -12,12 +12,10 @@ setup(
     },
     install_requires=[
         "networkx==3.1",
-        "numpy",
         "pydantic",
-        "rich",
-        "beautifulsoup4"
+        "rich" 
     ],
     extras_require={
-        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2', 'requests']
+        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2', 'requests', "beautifulsoup4"]
     }
 )
