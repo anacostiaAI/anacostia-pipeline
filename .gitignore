@@ -9,3 +9,5 @@ anacostia_pipeline/static/js/htmx.js
 .env
 venv
 .venv
+*/plugin-venv
+dist/

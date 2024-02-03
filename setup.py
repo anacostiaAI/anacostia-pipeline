@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages
 import os
 import fnmatch
+import pathlib
+import shutil
 
 
 def package_files(directory):
@@ -20,13 +22,22 @@ def package_files(directory):
 static_files = package_files("anacostia_pipeline/static")
 template_files = package_files("anacostia_pipeline/templates")
 
+# removing dist/ and anacostia_pipeline.egg-info/ directories
+shutil.rmtree("dist", ignore_errors=True)
+shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
+
+# note: the non-web version of the package is broken because it does not install the web dependencies
+# consider making the web version of the package the default
+# remove beautifulsoup4 from the web dependencies; it's only used to implement the UI for a plotting node
 setup(
     name="anacostia_pipeline",
-    version="0.0.1",
+    version="0.1.3",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
+    long_description=pathlib.Path("README.md").read_text(),
+    long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={
         'anacostia_pipeline': [*static_files, *template_files]
@@ -38,7 +49,8 @@ setup(
     install_requires=[
         "networkx==3.1",
         "pydantic",
-        "rich" 
+        "rich",
+        "sqlalchemy" 
     ],
     extras_require={
         "web": ['fastapi', 'uvicorn[standard]', 'Jinja2', 'requests', "beautifulsoup4"]
