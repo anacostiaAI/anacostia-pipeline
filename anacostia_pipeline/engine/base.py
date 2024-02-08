@@ -9,15 +9,18 @@ from functools import wraps
 import traceback
 import sys
 
+"""
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
+"""
 
 from pydantic import BaseModel, ConfigDict
 
 from .constants import Status, Result, Work
 from .utils import Signal, SignalTable
+from ..dashboard.subapps.basenode import BaseNodeApp
 
 
 
@@ -33,7 +36,7 @@ class NodeModel(BaseModel):
     successors: List[str]
 
 
-
+"""
 class BaseNodeApp(FastAPI):
     def __init__(self, node: BaseNode, header_template: str = None, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -116,6 +119,7 @@ class BaseNodeApp(FastAPI):
     
     def get_header_template(self):
         return self.header_template
+"""
 
 
 
