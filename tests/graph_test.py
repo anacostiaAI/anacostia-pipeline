@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
-from anacostia_pipeline.frontend import run_background_webserver
+from anacostia_pipeline.dashboard.webserver import run_background_webserver
 from anacostia_pipeline.engine.constants import Work
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
