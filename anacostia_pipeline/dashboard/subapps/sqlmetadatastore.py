@@ -6,7 +6,7 @@ from ..components.sqlmetadatastore import *
 
 
 
-class SqliteMetadataStoreRouter(BaseNodeApp):
+class SqliteMetadataStoreApp(BaseNodeApp):
     def __init__(self, node, *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used

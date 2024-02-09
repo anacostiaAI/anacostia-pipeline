@@ -1,27 +1,18 @@
-import os
-import sys
-
 from fastapi import Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from ..components.filesystemstore import filesystemstore_home, filesystemstore_table, filesystemstore_viewer
 
 
 
-class FilesystemStoreNodeRouter(BaseNodeApp):
+class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(
             node, 
             '<link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">',
             use_default_router=False, *args, **kwargs
         )
-
-        PACKAGE_NAME = "anacostia_pipeline"
-        PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
-        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
-        self.templates = Jinja2Templates(directory=self.templates_dir)
 
         self.file_entries_endpoint = f"{self.get_prefix()}/file_entries"
 

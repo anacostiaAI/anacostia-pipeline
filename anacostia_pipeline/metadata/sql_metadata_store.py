@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import traceback
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode
-from ..dashboard.subapps.sqlmetadatastore import SqliteMetadataStoreRouter
+from ..dashboard.subapps.sqlmetadatastore import SqliteMetadataStoreApp
 
 
 
@@ -100,8 +100,8 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         super().__init__(name, uri, loggers)
 
     # Note: override the get_app() method to return the custom router
-    def get_app(self) -> SqliteMetadataStoreRouter:
-        return SqliteMetadataStoreRouter(self)
+    def get_app(self) -> SqliteMetadataStoreApp:
+        return SqliteMetadataStoreApp(self)
 
     def setup(self) -> None:
         path = self.uri.strip('sqlite:///')

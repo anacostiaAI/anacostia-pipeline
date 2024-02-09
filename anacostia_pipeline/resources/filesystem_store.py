@@ -5,7 +5,7 @@ from logging import Logger
 from threading import Thread
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
-from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeRouter
+from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
 from ..engine.constants import Status
 
 
@@ -35,8 +35,8 @@ class FilesystemStoreNode(BaseResourceNode):
         
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
     
-    def get_app(self) -> FilesystemStoreNodeRouter:
-        return FilesystemStoreNodeRouter(self)
+    def get_app(self) -> FilesystemStoreNodeApp:
+        return FilesystemStoreNodeApp(self)
 
     @BaseResourceNode.resource_accessor
     def setup(self) -> None:
