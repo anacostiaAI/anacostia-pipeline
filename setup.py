@@ -19,8 +19,7 @@ def package_files(directory):
                 paths.append(pathname)
     return paths
 
-static_files = package_files("anacostia_pipeline/static")
-template_files = package_files("anacostia_pipeline/templates")
+static_files = package_files("anacostia_pipeline/dashboard/static")
 
 # removing dist/ and anacostia_pipeline.egg-info/ directories
 shutil.rmtree("dist", ignore_errors=True)
@@ -32,7 +31,7 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 # remove beautifulsoup4 from the web dependencies; it's only used to implement the UI for a plotting node
 setup(
     name="anacostia_pipeline",
-    version="0.1.3",
+    version="0.2.0",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
@@ -40,7 +39,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages(),
     package_data={
-        'anacostia_pipeline': [*static_files, *template_files]
+        'anacostia_pipeline': [*static_files]
     },
     include_package_data=True,
     exclude_package_data={
