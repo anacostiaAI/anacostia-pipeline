@@ -46,7 +46,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
             <link rel="stylesheet" type="text/css" href="/static/css/dag.css">
 
             <!-- node_headers -->
-            {newline.join([header for header in node_headers])}
+            { newline.join(list(set([header for header in node_headers]))) }
         </head>
         <body>
             <nav class="navbar" role="navigation" aria-label="main navigation">

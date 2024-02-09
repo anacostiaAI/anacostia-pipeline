@@ -37,7 +37,7 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 if run['end_time'] is not None:
                     run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return sqlmetadatastore_home_template(
+            return sqlmetadatastore_home(
                 header_bar_endpoint=self.get_header_bar_endpoint(), data_options=self.data_options, runs=runs
             )
         
@@ -50,7 +50,7 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 if run['end_time'] is not None:
                     run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return sqlmetadatastore_runs_template(runs, self.data_options["runs"])
+            return sqlmetadatastore_runs_table(runs, self.data_options["runs"])
         
         @self.get("/samples", response_class=HTMLResponse)
         async def samples(request: Request):
@@ -61,22 +61,22 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 if sample['end_time'] is not None:
                     sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return sqlmetadatastore_samples_template(samples, self.data_options["samples"])
+            return sqlmetadatastore_samples_table(samples, self.data_options["samples"])
         
         @self.get("/metrics", response_class=HTMLResponse)
         async def metrics(request: Request):
             rows = self.node.get_metrics(resource_node="all", state="all")
             rows = [sample.as_dict() for sample in rows]
-            return sqlmetadatastore_metrics_template(rows, self.data_options["metrics"])
+            return sqlmetadatastore_metrics_table(rows, self.data_options["metrics"])
         
         @self.get("/params", response_class=HTMLResponse)
         async def params(request: Request):
             rows = self.node.get_params(resource_node="all", state="all")
             rows = [sample.as_dict() for sample in rows]
-            return sqlmetadatastore_params_template(rows, self.data_options["params"])
+            return sqlmetadatastore_params_table(rows, self.data_options["params"])
 
         @self.get("/tags", response_class=HTMLResponse)
         async def tags(request: Request):
             rows = self.node.get_tags(resource_node="all", state="all")
             rows = [sample.as_dict() for sample in rows]
-            return sqlmetadatastore_tags_template(rows, self.data_options["tags"])
+            return sqlmetadatastore_tags_table(rows, self.data_options["tags"])

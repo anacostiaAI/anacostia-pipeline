@@ -6,7 +6,7 @@ from .node_bar import node_bar_closed
 
 newline = "\n"
 
-def sqlmetadatastore_runs_template(runs: List[Dict[str, str]], runs_endpoint: str):
+def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
     return f"""
         <table class="table is-bordered is-striped is-hoverable"
             hx-get="{ runs_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
@@ -34,7 +34,7 @@ def sqlmetadatastore_runs_template(runs: List[Dict[str, str]], runs_endpoint: st
     """
 
 
-def sqlmetadatastore_home_template(header_bar_endpoint: str, data_options: Dict[str, str], runs: List[Dict[str, str]]):
+def sqlmetadatastore_home(header_bar_endpoint: str, data_options: Dict[str, str], runs: List[Dict[str, str]]):
     return f"""
         {node_bar_closed(header_bar_endpoint)}
         <div id="data_type_menu" class="dropdown is-hoverable">
@@ -62,12 +62,12 @@ def sqlmetadatastore_home_template(header_bar_endpoint: str, data_options: Dict[
             </div>
         </div>
         <div id="table_container" class="container">
-            {sqlmetadatastore_runs_template(runs, data_options["runs"])}
+            {sqlmetadatastore_runs_table(runs, data_options["runs"])}
         </div>
     """
 
 
-def sqlmetadatastore_samples_template(samples: List[Dict[str, str]], samples_endpoint: str):
+def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoint: str):
     return f"""
         <table class="table is-bordered is-striped is-hoverable"
             hx-get="{ samples_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
@@ -101,7 +101,7 @@ def sqlmetadatastore_samples_template(samples: List[Dict[str, str]], samples_end
     """
 
 
-def sqlmetadatastore_metrics_template(metrics: List[Dict[str, str]], metrics_endpoint: str):
+def sqlmetadatastore_metrics_table(metrics: List[Dict[str, str]], metrics_endpoint: str):
     return f"""
         <table class="table is-bordered is-striped is-hoverable"
             hx-get="{ metrics_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
@@ -131,7 +131,7 @@ def sqlmetadatastore_metrics_template(metrics: List[Dict[str, str]], metrics_end
     """
 
 
-def sqlmetadatastore_params_template(params: List[Dict[str, str]], params_endpoint: str):
+def sqlmetadatastore_params_table(params: List[Dict[str, str]], params_endpoint: str):
     return f"""
         <table class="table is-bordered is-striped is-hoverable"
             hx-get="{ params_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
@@ -161,7 +161,7 @@ def sqlmetadatastore_params_template(params: List[Dict[str, str]], params_endpoi
     """
 
 
-def sqlmetadatastore_tags_template(tags: List[Dict[str, str]], tags_endpoint: str):
+def sqlmetadatastore_tags_table(tags: List[Dict[str, str]], tags_endpoint: str):
     return f"""
         <table class="table is-bordered is-striped is-hoverable"
             hx-get="{ tags_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">

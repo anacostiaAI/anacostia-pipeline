@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
-from ..components.filesystemstore import filesystemstore_home, filesystemstore_table
+from ..components.filesystemstore import filesystemstore_home, filesystemstore_table, filesystemstore_viewer
 
 
 
@@ -35,21 +35,6 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            """
-            response = self.templates.TemplateResponse(
-                "filesystemstore/filesystemstore.html", 
-                {   
-                    "request": request,
-                    "node": self.node.model(), 
-                    "status_endpoint": self.get_status_endpoint(),
-                    "work_endpoint": self.get_work_endpoint(),
-                    "header_bar_endpoint": self.get_header_bar_endpoint(),
-                    "file_entries": file_entries,
-                    "file_entries_endpoint": self.file_entries_endpoint 
-                }
-            )
-            return response
-            """
             return filesystemstore_home(
                 header_bar_endpoint = self.get_header_bar_endpoint(),
                 file_entries_endpoint = self.file_entries_endpoint, 
@@ -66,13 +51,6 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            """
-            response = self.templates.TemplateResponse(
-                "filesystemstore/filesystemstore_files.html", 
-                {"request": request, "file_entries": file_entries, "file_entries_endpoint": self.file_entries_endpoint }
-            )
-            return response
-            """
             return filesystemstore_table(self.file_entries_endpoint, file_entries)
         
         if use_default_file_renderer:
@@ -80,9 +58,4 @@ class FilesystemStoreNodeRouter(BaseNodeApp):
             async def sample(request: Request, file_id: int):
                 artifact_path = self.node.get_artifact(file_id)
                 content = self.node.load_artifact(artifact_path)
-
-                response = self.templates.TemplateResponse(
-                    "filesystemstore/filesystemstore_file_viewer.html", 
-                    {"request": request, "content": content, "box_header": f"Content of {artifact_path}"}
-                )
-                return response
+                return filesystemstore_viewer(content, f"Content of {artifact_path}")
