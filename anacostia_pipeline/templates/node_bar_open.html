@@ -1,9 +1,0 @@
-<div id="node_header_bar">
-    <div>Node name: {{ node.name }}</div>
-    <div>Node type: {{ node.type }}</div>
-    <div hx-get="{{ status_endpoint }}" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML"></div>
-    <div hx-get="{{ work_endpoint }}" hx-trigger="load, every 500ms" hx-target="this" hx-swap="innerHTML"></div>
-</div>
-<div class="node_header_bar_btn" hx-get="{{ header_bar_endpoint }}" hx-trigger="click" hx-target="#node_header_container" hx-swap="innerHTML">
-    <div class="collapse-btn">▲</div>
-</div>
