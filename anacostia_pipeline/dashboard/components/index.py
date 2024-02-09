@@ -47,7 +47,9 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
 
             <!-- node_headers 
             {newline.join([header for header in node_headers])}
+            <link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">
             -->
+            <link rel="stylesheet" type="text/css" href="/static/css/sqlmetadatastore.css">
         </head>
         <body>
             <nav class="navbar" role="navigation" aria-label="main navigation">

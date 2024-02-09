@@ -7,13 +7,16 @@ from datetime import datetime
 import os
 from contextlib import contextmanager
 import traceback
-import sys
 
+"""
+import sys
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
+"""
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode, BaseActionNode, BaseNodeApp
+from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode
+from ..dashboard.subapps.sqlmetadatastore import SqliteMetadataStoreRouter
 
 
 
@@ -83,7 +86,7 @@ class Node(Base):
 
 
 @contextmanager
-def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> scoped_session:
+def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> scoped_session: # type: ignore
     ScopedSession = scoped_session(session_factory)
     session = ScopedSession()
 
@@ -98,7 +101,7 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
         ScopedSession.close()
 
 
-
+"""
 class SqliteMetadataStoreRouter(BaseNodeApp):
     def __init__(self, node: 'SqliteMetadataStore', *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
@@ -210,6 +213,7 @@ class SqliteMetadataStoreRouter(BaseNodeApp):
                 {"request": request, "rows": rows, "tags_endpoint": self.data_options["tags"]}
             )
             return response
+"""
 
 
 
