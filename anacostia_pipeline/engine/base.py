@@ -8,14 +8,6 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import sys
-
-"""
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi import Request
-"""
-
 from pydantic import BaseModel, ConfigDict
 
 from .constants import Status, Result, Work
@@ -34,92 +26,6 @@ class NodeModel(BaseModel):
     type: Optional[str]
     predecessors: List[str]
     successors: List[str]
-
-
-"""
-class BaseNodeApp(FastAPI):
-    def __init__(self, node: BaseNode, header_template: str = None, use_default_router=True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.node = node
-        self.header_template = header_template
-
-        PACKAGE_NAME = "anacostia_pipeline"
-        PACKAGE_DIR = os.path.dirname(sys.modules[PACKAGE_NAME].__file__)
-        self.templates_dir = os.path.join(PACKAGE_DIR, "templates")
-        self.templates = Jinja2Templates(directory=self.templates_dir)
-
-        @self.get("/status", response_class=HTMLResponse)
-        async def status_endpoint(request: Request):
-            return f"{repr(self.node.status)}"
-        
-        @self.get("/work", response_class=HTMLResponse)
-        async def work_endpoint(request: Request):
-            return self.templates.TemplateResponse(
-                "work.html",
-                {"request": request, "work_list": [repr(work) for work in self.node.work_list]}
-            )
-        
-        @self.get("/edge/{source}/{target}", response_class=HTMLResponse)
-        async def edge_endpoint(request: Request, source: str, target: str):
-            if source == self.node.name:
-                if Work.WAITING_SUCCESSORS in self.node.work_list:
-                    return "#90EE90"
-            return "#333"
-        
-        @self.get("/header_bar", response_class=HTMLResponse)
-        async def header_bar_endpoint(request: Request, visibility: bool = False):
-            if visibility:
-                return self.templates.TemplateResponse(
-                    "node_bar_open.html",
-                    {
-                        "request": request, "node": self.node.model(),
-                        "status_endpoint": self.get_status_endpoint(),
-                        "work_endpoint": self.get_work_endpoint(),
-                        "header_bar_endpoint": f"{self.get_header_bar_endpoint()}?visibility=false"
-                    }
-                )
-            else:
-                return self.templates.TemplateResponse(
-                    "node_bar_closed.html",
-                    {"request": request, "header_bar_endpoint": f"{self.get_header_bar_endpoint()}/?visibility=true"}
-                )
-
-        if use_default_router is True:
-            @self.get("/home", response_class=HTMLResponse)
-            async def endpoint(request: Request):
-                response = self.templates.TemplateResponse(
-                    "default.html", 
-                    {   
-                        "request": request, 
-                        "header_bar_endpoint": self.get_header_bar_endpoint()
-                    }
-                )
-                return response
-
-    def get_ip_address(self):
-        return "127.0.0.1:8000"
-    
-    def get_prefix(self):
-        return f"/node/{self.node.name}"
-    
-    def get_header_bar_endpoint(self):
-        return f"{self.get_prefix()}/header_bar"
-
-    def get_endpoint(self):
-        return f"{self.get_prefix()}/home"
-    
-    def get_status_endpoint(self):
-        return f"{self.get_prefix()}/status"
-    
-    def get_work_endpoint(self):
-        return f"{self.get_prefix()}/work"
-    
-    def get_edge_endpoint(self, source: str, target: str):
-        return f"{self.get_prefix()}/edge/{source}/{target}"
-    
-    def get_header_template(self):
-        return self.header_template
-"""
 
 
 
