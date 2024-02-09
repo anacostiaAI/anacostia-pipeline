@@ -99,3 +99,93 @@ def sqlmetadatastore_samples_template(samples: List[Dict[str, str]], samples_end
             </tbody>
         </table>
     """
+
+
+def sqlmetadatastore_metrics_template(metrics: List[Dict[str, str]], metrics_endpoint: str):
+    return f"""
+        <table class="table is-bordered is-striped is-hoverable"
+            hx-get="{ metrics_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+            <thead>
+                <tr>
+                    <th>Entry ID</th>
+                    <th>Run ID</th>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {
+                    newline.join([
+                        f'''
+                        <tr>
+                            <th>{ metric["id"] }</th>
+                            <td>{ metric["run_id"] }</td>
+                            <td>{ metric["key"] }</td>
+                            <td>{ metric["value"] }</td>
+                        </tr>
+                        ''' for metric in metrics
+                    ])
+                }
+            </tbody>
+        </table> 
+    """
+
+
+def sqlmetadatastore_params_template(params: List[Dict[str, str]], params_endpoint: str):
+    return f"""
+        <table class="table is-bordered is-striped is-hoverable"
+            hx-get="{ params_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+            <thead>
+                <tr>
+                    <th>Entry ID</th>
+                    <th>Run ID</th>
+                    <th>Param Name</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {
+                    newline.join([
+                        f'''
+                        <tr>
+                            <th>{ param["id"] }</th>
+                            <td>{ param["run_id"] }</td>
+                            <td>{ param["key"] }</td>
+                            <td>{ param["value"] }</td>
+                        </tr>
+                        ''' for param in params
+                    ])
+                }
+            </tbody>
+        </table>
+    """
+
+
+def sqlmetadatastore_tags_template(tags: List[Dict[str, str]], tags_endpoint: str):
+    return f"""
+        <table class="table is-bordered is-striped is-hoverable"
+            hx-get="{ tags_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+            <thead>
+                <tr>
+                    <th>Entry ID</th>
+                    <th>Run ID</th>
+                    <th>Tag Name</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {
+                    newline.join([
+                        f'''
+                        <tr>
+                            <th>{ tag["id"] }</th>
+                            <td>{ tag["run_id"] }</td>
+                            <td>{ tag["key"] }</td>
+                            <td>{ tag["value"] }</td>
+                        </tr>
+                        ''' for tag in tags
+                    ])
+                }
+            </tbody>
+        </table>
+    """
