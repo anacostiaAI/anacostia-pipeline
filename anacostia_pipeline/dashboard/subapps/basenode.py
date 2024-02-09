@@ -38,7 +38,7 @@ class BaseNodeApp(FastAPI):
             return "#333"
         
         @self.get("/header_bar", response_class=HTMLResponse)
-        async def header_bar_endpoint(request: Request, visibility: bool = False):
+        async def header_bar_endpoint(request: Request, visibility: bool = True):
             if visibility:
                 return node_bar_open(
                     node_name = self.node.name, 
