@@ -1,6 +1,10 @@
 # Anacostia
 Welcome to Anacostia. Anacostia is a framework for creating machine learning operations (MLOps) pipelines. I believe the process of creating MLOps pipelines today are too difficult; thus, this is my attempt at simplifying the entire process. 
 
+## Notes for contributors and developers
+If you are interested in contributing to Anacostia, please see CONTRIBUTORS.md. 
+If you are interested in building your own plugins for Anacostia and contributing to the Anacostia ecosystem, please see DEVELOPERS.md. 
+
 ## Basic Anacostia Concepts & Terminology:
 Anacostia works by allowing you to define a pipeline as a directed acyclic graph (DAG). Each node in the DAG is nothing more than a continuously running thread that does the following:
 1. Waits for enough data to become available in a resource or waits for signals recieved from other nodes.
