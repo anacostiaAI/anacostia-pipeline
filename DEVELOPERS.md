@@ -1,6 +1,6 @@
-Tips on building your own:
+## Tips on building your own plugins for Anacostia
 
-Metadata Store
+### Metadata Store
 1. Inherit the ```BaseMetadataStoreNode``` class 
 2. Override all base methods that raise ```NotImplementedError``` with some default code
 3. Start by implementing setup() method
@@ -13,8 +13,7 @@ Metadata Store
 6. Implement ```start_run()``` and ```end_run()``` methods
 7. Implement ```add_run_id()``` and ```add_end_time()``` methods
 
-
-Resource Node
+### Resource Node
 1. Figure out a way to monitor your resource for incoming changes
 2. Inherit the ```BaseResourceNode``` class 
 3. Override all base methods that raise ```NotImplementedError``` with some default code
@@ -28,6 +27,6 @@ Resource Node
 8. Implement the ```record_current()``` method
 9. Implement the ```trigger_condition()``` method
 
-Action Node
+### Action Node
 1. Inherit the ```BaseActionNode``` class 
 2. Override the ```execute()``` method in ```BaseActionNode```
