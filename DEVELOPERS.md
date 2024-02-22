@@ -13,6 +13,8 @@
 6. Implement ```start_run()``` and ```end_run()``` methods
 7. Implement ```add_run_id()``` and ```add_end_time()``` methods
 
+Note: See sql_metadata_store.py for an example of how to create your own metadata store node.
+
 ### Resource Node
 1. Figure out a way to monitor your resource for incoming changes
 2. Inherit the ```BaseResourceNode``` class 
@@ -26,6 +28,8 @@
 7. Implement the ```record_new()``` method
 8. Implement the ```record_current()``` method
 9. Implement the ```trigger_condition()``` method
+
+Note: See filesystem_store.py for an example of how to create your own resource node.
 
 ### Action Node
 1. Inherit the ```BaseActionNode``` class 
