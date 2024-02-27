@@ -36,7 +36,7 @@ A couple things that distinguish Anacostia from other MLOps solutions:
 
 ## Installation
 ```
-pip install anacostia-pipeline[web]
+pip install anacostia-pipeline
 ```
 
 ## Example Usage
