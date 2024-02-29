@@ -1,3 +1,4 @@
+import base64
 from logging import Logger
 import os
 import time
@@ -5,6 +6,8 @@ import logging
 import shutil
 from typing import List
 from dotenv import load_dotenv
+import requests
+from requests.auth import HTTPBasicAuth
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
@@ -169,6 +172,30 @@ pipeline = Pipeline(
     loggers=logger
 )
 
+class FireflyClient:
+    def __init__(self) -> None:
+        self.base_url = "https://u0khg0jvam-u0eaud4c02-firefly-os.us0-aws-ws.kaleido.io/api/v1"
+        self.username = os.getenv("USERNAME")
+        self.password = os.getenv("PASSWORD")
+        self.session = requests.Session()
+        self.session.auth = HTTPBasicAuth(self.username, self.password)
+        self.credentials = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
+        self.headers = {
+            "Authorization": f"Basic {self.credentials}",
+            "Content-Type": "application/json"
+        }
+
+    # Messaging API
+    def broadcast_message(self, message, metadata=None):
+        payload = {
+            "data": [
+                {
+                    "value": message
+                }
+            ]
+        }
+        response = requests.post(f"{self.base_url}/messages/broadcast", json=payload, headers=self.headers)
+        return response.json()
 
 
 if __name__ == "__main__":
