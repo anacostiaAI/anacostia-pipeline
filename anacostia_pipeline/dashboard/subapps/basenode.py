@@ -23,6 +23,7 @@ class BaseNodeApp(FastAPI):
         async def work_endpoint(request: Request):
             return work_template(self.node.work_list)
         
+        '''
         @self.get("/edge/", response_class=HTMLResponse)
         async def edge_endpoint(request: Request, source: str, target: str):
             """
@@ -47,20 +48,32 @@ class BaseNodeApp(FastAPI):
                 if Work.WAITING_SUCCESSORS in self.node.work_list:
                     return "#90EE90"
             return "#333"
+        '''
         
         @self.get("/events")
         async def sse_no_data(request: Request):
             async def event_stream():
+                black = "#333"
+                green = "#90EE90"
+                current_color = black
+
                 while True:
                     try:
-                        if Work.WAITING_SUCCESSORS in self.node.work_list:
+                        if (Work.WAITING_SUCCESSORS in self.node.work_list) and (current_color == black):
                             yield "event: alive\n"
-                            yield f"data: sse event {self.node.name}\n\n"
+                            yield f"data: {green}\n\n"
+                            current_color = green 
+
+                        elif (Work.WAITING_SUCCESSORS not in self.node.work_list) and (current_color == green):
+                            yield "event: alive\n"
+                            yield f"data: {black}\n\n"
+                            current_color = black
+
                         await asyncio.sleep(1)  
                     
                     except asyncio.CancelledError:
                         # Handle the cancellation of the SSE stream (e.g., client disconnected)
-                        print("SSE connection was closed by the client")
+                        print(f"{self.node.name} SSE connection was closed by the client")
                         break
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
