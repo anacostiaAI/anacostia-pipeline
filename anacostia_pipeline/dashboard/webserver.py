@@ -11,21 +11,12 @@ from fastapi.responses import HTMLResponse
 from fastapi import Request
 
 from .components.index import index_template
-
 from ..engine.pipeline import Pipeline, PipelineModel
 
 
 
 PACKAGE_NAME = "anacostia_pipeline"
 DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__file__)
-
-# Additional Filters for Jinja Templates
-def basename(value, attribute=None):
-    return os.path.basename(value)
-
-def type_name(value):
-    return type(value).__name__
-
 
 
 class Webserver(FastAPI):
