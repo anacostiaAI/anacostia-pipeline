@@ -31,7 +31,7 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 # remove beautifulsoup4 from the web dependencies; it's only used to implement the UI for a plotting node
 setup(
     name="anacostia_pipeline",
-    version="0.2.0",
+    version="0.2.2",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
@@ -49,9 +49,8 @@ setup(
         "networkx==3.1",
         "pydantic",
         "rich",
-        "sqlalchemy" 
+        "sqlalchemy",
+        "fastapi", 
+        "uvicorn[standard]" 
     ],
-    extras_require={
-        "web": ['fastapi', 'uvicorn[standard]', 'Jinja2', 'requests', "beautifulsoup4"]
-    }
 )

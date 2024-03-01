@@ -35,6 +35,7 @@ A couple things that distinguish Anacostia from other MLOps solutions:
 3. Because every node in the Anacostia ecosystem derives from one of the three base nodes, Anacostia provides a format for a common API; thus, allowing for users to swap one node out for another node. This is great for experimentation and evaluating different solutions for your pipeline (e.g., swap out a sqlite metadata store for a redis metadata store).
 
 ## Installation
+Requirements: Python 3.11 or greater, if you need to update Python, see CONTRIBUTORS.md
 ```
 pip install anacostia-pipeline
 ```

@@ -5,7 +5,6 @@ from importlib import metadata
 from threading import Thread
 import uvicorn
 
-from jinja2.filters import FILTERS
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -26,9 +25,6 @@ def basename(value, attribute=None):
 
 def type_name(value):
     return type(value).__name__
-
-FILTERS['basename'] = basename
-FILTERS['type'] = type_name
 
 
 
