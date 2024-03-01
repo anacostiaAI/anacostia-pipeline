@@ -7,6 +7,8 @@ from datetime import datetime
 import os
 from contextlib import contextmanager
 import traceback
+import json
+from typing import Union
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode, BaseNode
 from ..dashboard.subapps.sqlmetadatastore import SqliteMetadataStoreApp
@@ -94,6 +96,15 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
         ScopedSession.close()
 
 
+def query_to_json(rows: List):
+    
+    # Serialize the result to a list of dictionaries
+    result_data = [row.as_dict() for row in rows]
+    
+    # Convert the list of dictionaries to JSON and save to a file
+    with open('query_result.json', 'w', encoding='utf-8') as f:
+        json.dump(result_data, f, ensure_ascii=False, indent=4)
+
 
 class SqliteMetadataStore(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
@@ -128,6 +139,18 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         with scoped_session_manager(self.session_factory, self) as session:
             return session.query(Run).all()
     
+    def get_runs_json(self, path: str):
+        runs = self.get_runs()
+        runs = [run.as_dict() for run in runs]
+        
+        for run in runs:
+            run["start_time"] = str(run["start_time"])
+            if run["end_time"] != None:
+                run["end_time"] = str(run["end_time"])
+        
+        with open(path, "w") as f:
+            json.dump(runs, f, ensure_ascii=False, indent=4) 
+    
     def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
         # add some assertion statements here to check if state is "new", "current", "old", or "all"
         with scoped_session_manager(self.session_factory, resource_node) as session:
@@ -153,7 +176,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(metric)
             session.commit()
     
-    def get_metrics(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_metrics(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
@@ -169,7 +192,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Metric).filter_by(state=state).all()
     
-    def get_params(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_params(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
@@ -185,7 +208,7 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Param).filter_by(state=state).all()
     
-    def get_tags(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_tags(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
@@ -200,6 +223,21 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
         
             elif (resource_node == "all") and (state != "all"):
                 return session.query(Tag).filter_by(state=state).all()
+    
+    def get_metrics_json(self, path: str):
+        metrics = self.get_metrics()
+        with open(path, "w") as f:
+            json.dump(metrics, f, ensure_ascii=False, indent=4)  
+    
+    def get_params_json(self, path: str):
+        params = self.get_params()
+        with open(path, "w") as f:
+            json.dump(params, f, ensure_ascii=False, indent=4)  
+    
+    def get_tags_json(self, path: str):
+        tags = self.get_tags()
+        with open(path, "w") as f:
+            json.dump(tags, f, ensure_ascii=False, indent=4)  
 
     def log_params(self, **kwargs) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
