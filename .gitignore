@@ -11,4 +11,3 @@ venv
 .venv
 */plugin-venv
 dist/
-test

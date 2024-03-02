@@ -4,9 +4,6 @@ import time
 import logging
 import shutil
 from typing import List
-import json
-import requests
-import time
 from dotenv import load_dotenv
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
@@ -20,42 +17,6 @@ from utils import *
 
 # Make sure that the .env file is in the same directory as this Python script
 load_dotenv()
-
-
-class MetadataStore(SqliteMetadataStore):
-    def __init__(
-        self, name: str, uri: str, temp_dir: str, loggers: Logger | List[Logger] = None
-    ) -> None:
-        super().__init__(name, uri, loggers)
-        self.temp_dir = temp_dir
-        os.makedirs(self.temp_dir)
-    
-    def get_runs_json(self, path: str):
-        runs = self.get_runs()
-        runs = [run.as_dict() for run in runs]
-        
-        for run in runs:
-            run["start_time"] = str(run["start_time"])
-            if run["end_time"] != None:
-                run["end_time"] = str(run["end_time"])
-        
-        with open(path, "w") as f:
-            json.dump(runs, f, ensure_ascii=False, indent=4) 
-    
-    def get_metrics_json(self, path: str):
-        metrics = self.get_metrics()
-        with open(path, "w") as f:
-            json.dump(metrics, f, ensure_ascii=False, indent=4)  
-    
-    def get_params_json(self, path: str):
-        params = self.get_params()
-        with open(path, "w") as f:
-            json.dump(params, f, ensure_ascii=False, indent=4)  
-    
-    def get_tags_json(self, path: str):
-        tags = self.get_tags()
-        with open(path, "w") as f:
-            json.dump(tags, f, ensure_ascii=False, indent=4)  
 
 
 class MonitoringDataStoreNode(FilesystemStoreNode):
@@ -165,43 +126,6 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store.log_metrics(haiku_test_loss=2.43)
         return True
 
-class IpfsUpload(BaseActionNode):
-    def __init__(
-        self, name: str, predecessors: List[BaseNode], metadata_store: MetadataStore, loggers: Logger | List[Logger] = None
-    ) -> None: 
-        super().__init__(name, predecessors, loggers)
-        self.metadata_store = metadata_store
-        self.temp_dir = self.metadata_store.temp_dir
-        self.api_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDQxNzNjMUI0ODczZGM5RGY0NkVFZjQ1ZWQ1ZTIxZDliMzFjNTY0RUYiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTcwNjQ3MDI3ODIxMCwibmFtZSI6IldpbnRlcnNHYXJkZW5Db2xsZWN0aW9uIn0.bAhskZsIg3i0-1LT-OJ9nsxtIaWY_3VmKqlNE9BvsOs'  # Replace with your actual NFT.Storage API key
-
-    def execute(self, *args, **kwargs) -> bool:
-        url = 'https://api.nft.storage/upload'
-
-        self.metadata_store.get_runs_json(path=f"{self.metadata_store.temp_dir}/filename1.json")
-
-        time.sleep(1)
-
-        # Open the file in binary mode
-        with open(f"{self.temp_dir}/filename1.json", 'rb') as file:
-            headers = {
-                'Authorization': f'Bearer {self.api_key}',
-                'Content-Type': 'application/octet-stream'
-            }
-            # Make the POST request to upload the file within the 'with' block
-            response = requests.post(url, headers=headers, data=file)
-
-        # The rest of the code remains outside of the 'with' block
-        print("running")
-        if response.status_code == 200:
-            ipfs_hash = response.json()['value']['cid']
-            print(f'File uploaded to NFT.Storage with hash: {ipfs_hash}')
-            return True  # Return True if the upload was successful
-        else:
-            print(f'Error uploading file: {response.text}')
-            return False
-            
-
-    
 
 
 web_tests_path = "./testing_artifacts/frontend"
@@ -225,12 +149,10 @@ metadata_store_path = f"{path}/metadata_store"
 haiku_data_store_path = f"{path}/haiku"
 model_registry_path = f"{path}/model_registry"
 plots_path = f"{path}/plots"
-json_dir = f'{path}/ipfsjson'  # Adjust the file path if necessary
 
-metadata_store = MetadataStore(
+metadata_store = SqliteMetadataStore(
     name="metadata_store", 
-    uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    temp_dir=json_dir
+    uri=f"sqlite:///{metadata_store_path}/metadata.db"
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
@@ -242,9 +164,8 @@ haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_
 retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, model_registry, metadata_store)
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[retraining], metadata_store=metadata_store)
 haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[retraining], metadata_store=metadata_store)
-IpfsUploadnode = IpfsUpload("Ipfsnode", predecessors=[shakespeare_eval,haiku_eval], metadata_store=metadata_store)
 pipeline = Pipeline(
-    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, shakespeare_eval, haiku_eval, retraining,IpfsUploadnode], 
+    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, shakespeare_eval, haiku_eval, retraining], 
     loggers=logger
 )
 
