@@ -68,6 +68,11 @@ pip install -e .
 ```
 pip install requirements-test.txt
 ```
+4. Run test
+```
+cd tests
+python3 graph_test.py
+```
 
 Anacostia Pipeline Modules:
 1. Engine - defines the Anacostia Pipeline
