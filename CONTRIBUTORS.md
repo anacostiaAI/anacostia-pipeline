@@ -64,6 +64,10 @@ venv\Scripts\activate
 cd anacostia
 pip install -e .
 ```
+3. pip install packages for running tests
+```
+pip install requirements-test.txt
+```
 
 Anacostia Pipeline Modules:
 1. Engine - defines the Anacostia Pipeline
