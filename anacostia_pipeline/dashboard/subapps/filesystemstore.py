@@ -10,11 +10,14 @@ class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(
             node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">',
+            '''
+            <link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">
+            <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/sse.js"></script>''',
             use_default_router=False, *args, **kwargs
         )
 
         self.file_entries_endpoint = f"{self.get_prefix()}/file_entries"
+        self.file_entries_sse_endpoint = f"{self.get_prefix()}/events"
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
@@ -29,7 +32,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             return filesystemstore_home(
                 header_bar_endpoint = self.get_header_bar_endpoint(),
                 file_entries_endpoint = self.file_entries_endpoint, 
-                file_entries = file_entries
+                file_entries = file_entries,
+                file_entries_sse_endpoint = self.file_entries_sse_endpoint
             ) 
 
         @self.get("/file_entries", response_class=HTMLResponse)

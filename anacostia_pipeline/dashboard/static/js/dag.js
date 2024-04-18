@@ -159,20 +159,13 @@ edges.forEach(
         };
     }
 )
-*/
 
 nodes.forEach(
     (node) => {
         const eventSource = new EventSource(`/node/${node.id}/events`);
-
+        
         eventSource.addEventListener('alive', function(event) {
-            //console.log('SSE message:', event.data);
-            edge.attr("stroke", (e) => {
-                if (g.edge(e).source_name == node.id) {
-                    return event.data;
-                }
-                return "#333"
-            });
+            console.log('SSE message:', event.data);
         });
 
         eventSource.onopen = function() {
@@ -185,6 +178,7 @@ nodes.forEach(
         };
     }
 );
+*/
 
 /*
 const arrowhead = inner.selectAll(".edgePath defs marker");

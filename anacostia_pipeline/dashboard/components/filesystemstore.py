@@ -45,10 +45,10 @@ def filesystemstore_table(file_entries_endpoint: str, file_entries: List[Dict[st
         </table>
     """
 
-def filesystemstore_home(header_bar_endpoint: str, file_entries_endpoint: str, file_entries: List[Dict[str, str]]):
+def filesystemstore_home(header_bar_endpoint: str, file_entries_endpoint: str, file_entries: List[Dict[str, str]], file_entries_sse_endpoint: str):
     return f"""
         { node_bar_closed(header_bar_endpoint) }
-        <div id="table_container" class="container">
+        <div id="table_container" class="container" hx-ext="sse" sse-connect="{file_entries_sse_endpoint}">
             { filesystemstore_table(file_entries_endpoint, file_entries) }
         </div>
     """
