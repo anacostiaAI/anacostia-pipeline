@@ -18,6 +18,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
     newline = "\n"
 
     return f"""
+    <!DOCTYPE html>
     <html>
         <head>
             <meta charset="UTF-8">

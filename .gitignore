@@ -11,3 +11,4 @@ venv
 .venv
 */plugin-venv
 dist/
+**.DS_Store
