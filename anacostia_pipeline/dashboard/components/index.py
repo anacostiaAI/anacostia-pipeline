@@ -40,6 +40,9 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
             <!-- minified _Hyperscript (Whole 9 Yards version) -->
             <script src="/static/js/_hyperscript_w9y.min.js"></script>
 
+            <!-- htmx server-sent events extension -->
+            <script src="/static/js/sse.js"></script>
+
             <!-- Dependencies for DAG rendering (D3, Dagre, Dagre-D3) -->
             <script src="/static/js/d3.v6.min.js"></script>
             <script src="/static/js/dagre.min.js"></script>
