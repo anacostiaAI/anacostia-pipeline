@@ -2,7 +2,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
-from ..components.filesystemstore import filesystemstore_home, filesystemstore_table, filesystemstore_viewer
+from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows
 
 
 
@@ -17,7 +17,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         )
 
         self.file_entries_endpoint = f"{self.get_prefix()}/file_entries"
-        self.file_entries_sse_endpoint = f"{self.get_prefix()}/events"
+        self.event_source = f"{self.get_prefix()}/events"
+        self.event_name = "TableUpdate"
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
@@ -31,9 +32,9 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             
             return filesystemstore_home(
                 header_bar_endpoint = self.get_header_bar_endpoint(),
-                file_entries_endpoint = self.file_entries_endpoint, 
+                sse_endpoint = self.event_source,
+                event_name = self.event_name,
                 file_entries = file_entries,
-                file_entries_sse_endpoint = self.file_entries_sse_endpoint
             ) 
 
         @self.get("/file_entries", response_class=HTMLResponse)
@@ -46,7 +47,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return filesystemstore_table(self.file_entries_endpoint, file_entries)
+            #return filesystemstore_table(self.file_entries_endpoint, file_entries)
+            return "None"
         
         if use_default_file_renderer:
             @self.get("/retrieve_file", response_class=HTMLResponse)
