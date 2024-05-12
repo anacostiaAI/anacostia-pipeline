@@ -53,7 +53,6 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                 self.node.table_update_queue.task_done() 
 
             file_entries = self.node.metadata_store.get_entries()
-            file_entries = [file_entry.as_dict() for file_entry in file_entries]
             file_entries.reverse()
             file_entries = format_file_entries(file_entries)
 

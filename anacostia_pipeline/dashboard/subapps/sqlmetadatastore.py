@@ -55,7 +55,6 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         @self.get("/samples", response_class=HTMLResponse)
         async def samples(request: Request):
             samples = self.node.get_entries(resource_node="all", state="all")
-            samples = [sample.as_dict() for sample in samples]
             for sample in samples:
                 sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
                 if sample['end_time'] is not None:

@@ -217,21 +217,24 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(tag)
             session.commit()
 
-    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
+    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Sample).filter_by(node_id=node_id, state=state).all()
+                samples = session.query(Sample).filter_by(node_id=node_id, state=state).all()
 
             elif (resource_node != "all") and (state == "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Sample).filter_by(node_id=node_id).all()
+                samples = session.query(Sample).filter_by(node_id=node_id).all()
 
             elif (resource_node == "all") and (state == "all"):
-                return session.query(Sample).all()
+                samples = session.query(Sample).all()
         
             elif (resource_node == "all") and (state != "all"):
-                return session.query(Sample).filter_by(state=state).all()
+                samples = session.query(Sample).filter_by(state=state).all()
+
+            samples = [sample.as_dict() for sample in samples]
+            return samples
     
     def get_entry(self, resource_node: BaseResourceNode, id: int) -> Sample:
         with scoped_session_manager(self.session_factory, resource_node) as session:

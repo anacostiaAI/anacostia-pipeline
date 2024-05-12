@@ -90,7 +90,6 @@ class FilesystemStoreNode(BaseResourceNode):
     @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
         entries = self.metadata_store.get_entries(self, state)
-        entries = [entry.__dict__ for entry in entries]
         artifacts = [entry["location"] for entry in entries]
         return artifacts
     
