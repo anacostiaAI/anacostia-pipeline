@@ -48,7 +48,6 @@ class BaseNodeApp(FastAPI):
                 if Work.WAITING_SUCCESSORS in self.node.work_list:
                     return "#90EE90"
             return "#333"
-        '''
         
         @self.get("/events")
         async def sse_no_data(request: Request):
@@ -77,6 +76,7 @@ class BaseNodeApp(FastAPI):
                         break
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
+        '''
 
         
         @self.get("/header_bar", response_class=HTMLResponse)
