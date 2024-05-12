@@ -31,7 +31,6 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
             runs = self.node.get_runs()
-            runs = [run.as_dict() for run in runs]
             for run in runs:
                 run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 if run['end_time'] is not None:
@@ -44,7 +43,6 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         @self.get("/runs", response_class=HTMLResponse)
         async def runs(request: Request):
             runs = self.node.get_runs()
-            runs = [run.as_dict() for run in runs]
             for run in runs:
                 run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 if run['end_time'] is not None:
@@ -65,17 +63,14 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         @self.get("/metrics", response_class=HTMLResponse)
         async def metrics(request: Request):
             rows = self.node.get_metrics(resource_node="all", state="all")
-            rows = [sample.as_dict() for sample in rows]
             return sqlmetadatastore_metrics_table(rows, self.data_options["metrics"])
         
         @self.get("/params", response_class=HTMLResponse)
         async def params(request: Request):
             rows = self.node.get_params(resource_node="all", state="all")
-            rows = [sample.as_dict() for sample in rows]
             return sqlmetadatastore_params_table(rows, self.data_options["params"])
 
         @self.get("/tags", response_class=HTMLResponse)
         async def tags(request: Request):
             rows = self.node.get_tags(resource_node="all", state="all")
-            rows = [sample.as_dict() for sample in rows]
             return sqlmetadatastore_tags_table(rows, self.data_options["tags"])
