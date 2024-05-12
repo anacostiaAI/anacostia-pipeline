@@ -29,7 +29,12 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                 entry = self.node.table_update_queue.get()
                 file_entries.append(entry)
                 self.node.table_update_queue.task_done()
-
+            
+            # why are the items in the queue being pulled out in reverse (i.e., LIFO) order? 
+            file_entries.reverse()
+            return file_entries
+        
+        def format_file_entries(file_entries: List[Dict]) -> List[Dict]:
             # adding on file_display_endpoint to each entry to get the contents of the file when user clicks on row 
             # note: state_change_event_name is used to update the state of the file entry via SSEs
             for file_entry in file_entries:
@@ -38,12 +43,20 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                 file_entry["state_change_event_name"] = f"StateUpdate{file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
-            
             return file_entries
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            file_entries = get_table_update_events()
+            # clear out queue because we can just get all the rows from the metadata store
+            while self.node.table_update_queue.empty() is False:
+                entry = self.node.table_update_queue.get()
+                self.node.table_update_queue.task_done() 
+
+            file_entries = self.node.metadata_store.get_entries()
+            file_entries = [file_entry.as_dict() for file_entry in file_entries]
+            file_entries.reverse()
+            file_entries = format_file_entries(file_entries)
+
             return filesystemstore_home(
                 header_bar_endpoint = self.get_header_bar_endpoint(),
                 sse_endpoint = self.event_source,
@@ -61,6 +74,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                             continue
                         
                         file_entries = get_table_update_events()
+                        file_entries = format_file_entries(file_entries)
 
                         yield "event: TableUpdate\n"
                         yield format_html_for_sse(create_table_rows(file_entries))
