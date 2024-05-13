@@ -124,9 +124,11 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             run = session.query(Run).filter_by(end_time=None).first()
             return run.id
     
-    def get_runs(self) -> List[Run]:
+    def get_runs(self) -> List[Dict]:
         with scoped_session_manager(self.session_factory, self) as session:
-            return session.query(Run).all()
+            runs = session.query(Run).all()
+            runs = [run.as_dict() for run in runs]
+            return runs
     
     def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
         # add some assertion statements here to check if state is "new", "current", "old", or "all"
@@ -153,53 +155,62 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(metric)
             session.commit()
     
-    def get_metrics(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_metrics(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Metric).filter_by(node_id=node_id, state=state).all()
+                metrics = session.query(Metric).filter_by(node_id=node_id, state=state).all()
         
             elif (resource_node != "all") and (state == "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Metric).filter_by(node_id=node_id).all()
+                metrics = session.query(Metric).filter_by(node_id=node_id).all()
 
             elif (resource_node == "all") and (state == "all"):
-                return session.query(Metric).all()
+                metrics = session.query(Metric).all()
         
             elif (resource_node == "all") and (state != "all"):
-                return session.query(Metric).filter_by(state=state).all()
+                metrics = session.query(Metric).filter_by(state=state).all()
+            
+            metrics = [metric.as_dict() for metric in metrics]
+            return metrics
     
-    def get_params(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_params(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Param).filter_by(node_id=node_id, state=state).all()
+                params = session.query(Param).filter_by(node_id=node_id, state=state).all()
         
             elif (resource_node != "all") and (state == "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Param).filter_by(node_id=node_id).all()
+                params = session.query(Param).filter_by(node_id=node_id).all()
 
             elif (resource_node == "all") and (state == "all"):
-                return session.query(Param).all()
+                params = session.query(Param).all()
         
             elif (resource_node == "all") and (state != "all"):
-                return session.query(Param).filter_by(state=state).all()
+                params = session.query(Param).filter_by(state=state).all()
+            
+            params = [param.as_dict() for param in params]
+            return params
     
-    def get_tags(self, resource_node: BaseResourceNode, state: str = "all") -> Dict[str, Sample]:
+    def get_tags(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Tag).filter_by(node_id=node_id, state=state).all()
+                tags = session.query(Tag).filter_by(node_id=node_id, state=state).all()
         
             elif (resource_node != "all") and (state == "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Tag).filter_by(node_id=node_id).all()
+                tags = session.query(Tag).filter_by(node_id=node_id).all()
 
             elif (resource_node == "all") and (state == "all"):
-                return session.query(Tag).all()
+                tags = session.query(Tag).all()
         
             elif (resource_node == "all") and (state != "all"):
-                return session.query(Tag).filter_by(state=state).all()
+                tags = session.query(Tag).filter_by(state=state).all()
+            
+            tags = [tag.as_dict() for tag in tags]
+            return tags
 
     def log_params(self, **kwargs) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
@@ -217,21 +228,24 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
                 session.add(tag)
             session.commit()
 
-    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> Dict[str, Sample]:
+    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             if (resource_node != "all") and (state != "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Sample).filter_by(node_id=node_id, state=state).all()
+                samples = session.query(Sample).filter_by(node_id=node_id, state=state).all()
 
             elif (resource_node != "all") and (state == "all"):
                 node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                return session.query(Sample).filter_by(node_id=node_id).all()
+                samples = session.query(Sample).filter_by(node_id=node_id).all()
 
             elif (resource_node == "all") and (state == "all"):
-                return session.query(Sample).all()
+                samples = session.query(Sample).all()
         
             elif (resource_node == "all") and (state != "all"):
-                return session.query(Sample).filter_by(state=state).all()
+                samples = session.query(Sample).filter_by(state=state).all()
+
+            samples = [sample.as_dict() for sample in samples]
+            return samples
     
     def get_entry(self, resource_node: BaseResourceNode, id: int) -> Sample:
         with scoped_session_manager(self.session_factory, resource_node) as session:
@@ -243,13 +257,14 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
             return session.query(Sample).filter_by(node_id=node_id, location=filepath).count() > 0
 
-    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
+    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> Dict:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             # in the future, refactor this by changing filepath to uri 
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
             sample = Sample(node_id=node_id, location=filepath, state=state, run_id=run_id)
             session.add(sample)
             session.commit()
+            return sample.as_dict()
     
     def add_run_id(self) -> None:
         with scoped_session_manager(self.session_factory, self) as session:

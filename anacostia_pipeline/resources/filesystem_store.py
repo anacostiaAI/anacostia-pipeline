@@ -1,8 +1,9 @@
 import os
-from typing import List, Any, Union
+from typing import List, Any, Union, Dict
 from datetime import datetime
 from logging import Logger
 from threading import Thread
+from queue import Queue
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
@@ -27,6 +28,8 @@ class FilesystemStoreNode(BaseResourceNode):
             os.makedirs(self.path, exist_ok=True)
         
         self.observer_thread = None
+        self.table_update_queue = Queue()
+        self.row_update_queue = Queue()
         
         if init_state not in ("new", "old"):
             raise ValueError(f"init_state argument of DataStoreNode must be either 'new' or 'old', not '{init_state}'.")
@@ -45,8 +48,8 @@ class FilesystemStoreNode(BaseResourceNode):
         self.log(f"Node '{self.name}' setup complete.")
     
     @BaseResourceNode.resource_accessor
-    def record_new(self, filepath: str) -> None:
-        self.metadata_store.create_entry(self, filepath=filepath, state="new")
+    def record_new(self, filepath: str) -> Dict:
+        return self.metadata_store.create_entry(self, filepath=filepath, state="new")
 
     @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
@@ -62,7 +65,8 @@ class FilesystemStoreNode(BaseResourceNode):
                         filepath = os.path.join(self.path, filename)
                         if self.metadata_store.entry_exists(self, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}")
-                            self.record_new(filepath)
+                            new_entry = self.record_new(filepath)
+                            self.table_update_queue.put(new_entry)
 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
@@ -86,16 +90,13 @@ class FilesystemStoreNode(BaseResourceNode):
     @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
         entries = self.metadata_store.get_entries(self, state)
-        entries = [entry.__dict__ for entry in entries]
         artifacts = [entry["location"] for entry in entries]
         return artifacts
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def get_artifact(self, id: int) -> Any:
-        entry = self.metadata_store.get_entry(self, id)
-        entry = entry.__dict__
-        return entry["location"]
+        return self.metadata_store.get_entry(self, id)
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor

@@ -16,7 +16,7 @@ def create_table_rows(file_entries: List[Dict[str, str]]):
             <td>{ file_entry["created_at"] }</td>
             <td>{ file_entry["end_time"] }</td>
             <td>{ file_entry["location"] }</td>
-            <td>{ file_entry["state"] }</td>
+            <td sse-swap="{ file_entry["state_change_event_name"] }" hx-swap="innerHTML">{ file_entry["state"] }</td>
         </tr>
         ''' for file_entry in file_entries
     ])
