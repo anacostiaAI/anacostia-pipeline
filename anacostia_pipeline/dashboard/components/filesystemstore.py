@@ -6,9 +6,8 @@ from .node_bar import node_bar_closed
 
 newline = "\n"
 
-def create_table_rows(file_entries: List[Dict[str, str]]):
-    return newline.join([
-        f'''
+def table_row(file_entry: Dict[str, str]):
+    return f"""
         <tr hx-get="{ file_entry["file_display_endpoint"] }" hx-trigger="click" hx-target="#table_container" hx-swap="innerHTML" 
             style="cursor: pointer;">
             <th>{ file_entry["id"] }</th>
@@ -18,7 +17,11 @@ def create_table_rows(file_entries: List[Dict[str, str]]):
             <td>{ file_entry["location"] }</td>
             <td sse-swap="{ file_entry["state_change_event_name"] }" hx-swap="innerHTML">{ file_entry["state"] }</td>
         </tr>
-        ''' for file_entry in file_entries
+    """
+
+def create_table_rows(file_entries: List[Dict[str, str]]):
+    return newline.join([
+        table_row(file_entry) for file_entry in file_entries
     ])
 
 def filesystemstore_home(header_bar_endpoint: str, sse_endpoint: str, event_name: str, file_entries: List[Dict[str, str]]):
