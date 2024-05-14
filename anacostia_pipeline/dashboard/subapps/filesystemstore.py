@@ -1,10 +1,10 @@
 from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 import asyncio
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
-from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows
+from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
 from ..components.utils import format_html_for_sse
 import time
 
@@ -41,16 +41,26 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             
             return added_rows, state_changes
         
-        def format_file_entries(file_entries: List[Dict]) -> List[Dict]:
+        def format_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             # adding on file_display_endpoint to each entry to get the contents of the file when user clicks on row 
             # note: state_change_event_name is used to update the state of the file entry via SSEs
-            for file_entry in file_entries:
+            if type(file_entries) is list:
+                for file_entry in file_entries:
+                    file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                    file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
+                    file_entry["state_change_event_name"] = f"StateUpdate{file_entry['id']}"
+                    if file_entry['end_time'] is not None:
+                        file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
+                return file_entries
+
+            elif type(file_entries) is dict:
+                file_entry = file_entries
                 file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
                 file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
                 file_entry["state_change_event_name"] = f"StateUpdate{file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
-            return file_entries
+                return file_entry
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
@@ -77,14 +87,22 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                         
                         added_rows, state_changes = get_table_update_events()
 
-                        if len(added_rows) > 0:
-                            file_entries = format_file_entries(added_rows)
+                        if len(added_rows) > 0: 
+                            file_entries = format_file_entries(added_rows)      # add information into dictionaries to prepare for html conversion
+                            file_entries = create_table_rows(file_entries)      # convert dictionaries to html
+                            file_entries = format_html_for_sse(file_entries)    # convert html to SSE message
 
                             yield "event: TableUpdate\n"
-                            yield format_html_for_sse(create_table_rows(file_entries))
+                            yield file_entries
                         
                         if len(state_changes) > 0:
-                            pass
+                            for file_entry in state_changes:
+                                file_entry = format_file_entries(file_entry)    # add information into dictionary to prepare for html conversion
+                                file_entry = table_row(file_entry)              # convert dictionary to html
+                                file_entry = format_html_for_sse(file_entry)    # convert html to SSE message 
+
+                                yield f"event: StateUpdate{file_entry['id']}\n"
+                                yield file_entry
 
                         await asyncio.sleep(0.5)
                     
