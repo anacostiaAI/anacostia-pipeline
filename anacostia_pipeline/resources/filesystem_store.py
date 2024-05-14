@@ -3,7 +3,6 @@ from typing import List, Any, Union, Dict
 from datetime import datetime
 from logging import Logger
 from threading import Thread
-from queue import Queue
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
@@ -28,9 +27,7 @@ class FilesystemStoreNode(BaseResourceNode):
             os.makedirs(self.path, exist_ok=True)
         
         self.observer_thread = None
-        self.table_update_queue = Queue()
-        self.row_update_queue = Queue()
-        
+
         if init_state not in ("new", "old"):
             raise ValueError(f"init_state argument of DataStoreNode must be either 'new' or 'old', not '{init_state}'.")
         self.init_state = init_state
@@ -49,7 +46,7 @@ class FilesystemStoreNode(BaseResourceNode):
     
     @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> Dict:
-        return self.metadata_store.create_entry(self, filepath=filepath, state="new")
+        self.metadata_store.create_entry(self, filepath=filepath, state="new")
 
     @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
@@ -65,9 +62,8 @@ class FilesystemStoreNode(BaseResourceNode):
                         filepath = os.path.join(self.path, filename)
                         if self.metadata_store.entry_exists(self, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}")
-                            new_entry = self.record_new(filepath)
-                            self.table_update_queue.put(new_entry)
-
+                            self.record_new(filepath)
+                
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
 

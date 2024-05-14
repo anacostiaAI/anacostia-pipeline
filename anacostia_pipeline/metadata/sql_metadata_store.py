@@ -264,7 +264,6 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             sample = Sample(node_id=node_id, location=filepath, state=state, run_id=run_id)
             session.add(sample)
             session.commit()
-            return sample.as_dict()
     
     def add_run_id(self) -> None:
         with scoped_session_manager(self.session_factory, self) as session:

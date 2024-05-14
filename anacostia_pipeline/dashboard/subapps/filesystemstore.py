@@ -1,7 +1,7 @@
 from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 import asyncio
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows
@@ -21,18 +21,25 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         self.event_source = f"{self.get_prefix()}/table_update_events"
         self.event_name = "TableUpdate"
 
-        def get_table_update_events() -> List[Dict]:
-            # retrieving file ID, run ID, node ID (but we don't display this), location (i.e., filepath), state, 
-            # end time (i.e., when file was last used in a pipeline run), and time of creation
-            file_entries = []
-            while self.node.table_update_queue.empty() is False:
-                entry = self.node.table_update_queue.get()
-                file_entries.append(entry)
-                self.node.table_update_queue.task_done()
+        self.displayed_file_entries = None
+
+        def get_table_update_events() -> Tuple[List[Dict]]:
+            file_entries = self.node.metadata_store.get_entries()
+
+            added_rows = []
+            entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]
+            for retrieved_entry in file_entries:
+                if retrieved_entry["id"] not in entry_ids:
+                    added_rows.append(retrieved_entry)
+
+            state_changes = []
+            for displayed_entry, retrieved_entry in zip(self.displayed_file_entries, file_entries):
+                if displayed_entry["state"] != retrieved_entry["state"]:
+                    state_changes.append(retrieved_entry)
             
-            # why are the items in the queue being pulled out in reverse (i.e., LIFO) order? 
-            file_entries.reverse()
-            return file_entries
+            self.displayed_file_entries = file_entries
+            
+            return added_rows, state_changes
         
         def format_file_entries(file_entries: List[Dict]) -> List[Dict]:
             # adding on file_display_endpoint to each entry to get the contents of the file when user clicks on row 
@@ -47,12 +54,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            # clear out queue because we can just get all the rows from the metadata store
-            while self.node.table_update_queue.empty() is False:
-                entry = self.node.table_update_queue.get()
-                self.node.table_update_queue.task_done() 
-
             file_entries = self.node.metadata_store.get_entries()
+            self.displayed_file_entries = file_entries
             file_entries.reverse()
             file_entries = format_file_entries(file_entries)
 
@@ -72,11 +75,17 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                             print(f"{self.node.name} SSE disconnected")
                             continue
                         
-                        file_entries = get_table_update_events()
-                        file_entries = format_file_entries(file_entries)
+                        added_rows, state_changes = get_table_update_events()
 
-                        yield "event: TableUpdate\n"
-                        yield format_html_for_sse(create_table_rows(file_entries))
+                        if len(added_rows) > 0:
+                            file_entries = format_file_entries(added_rows)
+
+                            yield "event: TableUpdate\n"
+                            yield format_html_for_sse(create_table_rows(file_entries))
+                        
+                        if len(state_changes) > 0:
+                            pass
+
                         await asyncio.sleep(0.5)
                     
                     except asyncio.CancelledError:
