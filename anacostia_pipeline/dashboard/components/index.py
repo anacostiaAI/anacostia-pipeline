@@ -25,29 +25,29 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
             <title>Anacostia Console</title>
             
             <!-- Bulma CSS -->
-            <link rel="stylesheet" href="/static/css/bulma.css">
+            <link rel="stylesheet" href="/static/css/third_party/bulma.css">
             
             <!-- custom CSS for Anacostia landing page -->
-            <link rel="stylesheet" type="text/css" href="/static/css/home.css">
+            <link rel="stylesheet" type="text/css" href="/static/css/styles/home.css">
             <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
 
             <!-- custom CSS for node bar -->
-            <link rel="stylesheet" type="text/css" href="/static/css/node_bar.css">
+            <link rel="stylesheet" type="text/css" href="/static/css/styles/node_bar.css">
             
             <!-- non-minified Htmx -->
-            <script src="/static/js/htmx.js" type="text/javascript"></script>
+            <script src="/static/js/third_party/htmx.js" type="text/javascript"></script>
 
             <!-- minified _Hyperscript (Whole 9 Yards version) -->
-            <script src="/static/js/_hyperscript_w9y.min.js"></script>
+            <script src="/static/js/third_party/_hyperscript_w9y.min.js"></script>
 
             <!-- htmx server-sent events extension -->
-            <script src="/static/js/sse.js"></script>
+            <script src="/static/js/third_party/sse.js"></script>
 
             <!-- Dependencies for DAG rendering (D3, Dagre, Dagre-D3) -->
-            <script src="/static/js/d3.v6.min.js"></script>
-            <script src="/static/js/dagre.min.js"></script>
-            <script src="/static/js/dagre-d3.min.js"></script>
-            <link rel="stylesheet" type="text/css" href="/static/css/dag.css">
+            <script src="/static/js/third_party/d3.v6.min.js"></script>
+            <script src="/static/js/third_party/dagre.min.js"></script>
+            <script src="/static/js/third_party/dagre-d3.min.js"></script>
+            <link rel="stylesheet" type="text/css" href="/static/css/styles/dag.css">
 
             <!-- node_headers -->
             { newline.join(list(set([header for header in node_headers]))) }
@@ -79,7 +79,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
                         <p>Potomac AI Inc.</p>
                     </section>
                 </div>
-                <script src="/static/js/dag.js" graph-data="{json_data}"></script>
+                <script src="/static/js/src/dag.js" graph-data="{json_data}"></script>
             </div>
         </body>
     </html>

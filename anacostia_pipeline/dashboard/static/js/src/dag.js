@@ -1,4 +1,4 @@
-var scriptTag = document.querySelector('script[src="/static/js/dag.js"]');
+var scriptTag = document.querySelector('script[src="/static/js/src/dag.js"]');
 
 var graph_data = scriptTag.getAttribute('graph-data');
 graph_data = graph_data.replace(/'/g, '"');
