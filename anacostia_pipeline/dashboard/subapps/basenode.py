@@ -25,17 +25,19 @@ class BaseNodeApp(FastAPI):
         
         @self.get("/edge/", response_class=HTMLResponse)
         async def edge_endpoint(request: Request, source: str, target: str):
+            print(f"source = {source}, target = {target}")
+
             async def event_stream():
                 while True: 
-                    if source == self.node.name:
-                        if Work.WAITING_SUCCESSORS in self.node.work_list:
-                            yield "event: done\n"
-                            yield f"data: red\n\n"
-                        else:
-                            yield "event: done\n" 
-                            yield f"data: #333\n\n"
+                    yield "event: change_edge_color\n" 
+                    yield f"data: #333\n\n"
 
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(1)
+                    
+                    yield "event: change_edge_color\n"
+                    yield f"data: red\n\n"
+
+                    await asyncio.sleep(1)
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
         

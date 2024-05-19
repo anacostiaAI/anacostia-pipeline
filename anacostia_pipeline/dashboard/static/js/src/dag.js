@@ -102,9 +102,9 @@ edge.attr("_", (e) => {
         set global ${g.edge(e).source_name}_${g.edge(e).target_name}_path to me
         set global ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead to the next <marker/> 
 
-        -- listen for a 'done' event, change the color of the line and arrowhead to the color specified in the data packet
+        -- listen for a 'change_edge_color' event, change the color of the line and arrowhead to the color specified in the data packet
         eventsource event_stream from ${g.edge(e).endpoint} 
-            on done as string
+            on change_edge_color as string
                 set ${g.edge(e).source_name}_${g.edge(e).target_name}_path @stroke to it 
                 set ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead @fill to it
             end
