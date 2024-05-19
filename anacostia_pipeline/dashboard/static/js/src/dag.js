@@ -88,7 +88,7 @@ text.append("tspan")
     .attr("hx-trigger", "load, every 1s")
     .attr("hx-swap", "innerHTML");
 
-/*
+// setting color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
 arrowhead.attr("fill", "#333");
 
@@ -115,83 +115,6 @@ edge.attr("_", (e) => {
         end
     end`; 
 });
-
-const edge = inner.selectAll(".edgePath path.path");
-edge.attr("stroke", "#333");
-edge.attr("stroke-width", "1.5");
-edge.attr("id", (e) => { 
-    return `${g.edge(e).source_name}-${g.edge(e).target_name}`; 
-});
-edge.attr("_", (e) => { 
-    return `
-    on load 
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_path to me
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead to the next <marker/>
-    repeat forever 
-        fetch ${g.edge(e).endpoint} 
-        set ${g.edge(e).source_name}_${g.edge(e).target_name}_path @stroke to result 
-        set ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead @fill to result
-        wait 500ms
-    end`; 
-});
-*/
-
-const edge = inner.selectAll(".edgePath path.path");
-edge.attr("stroke", "#333");
-edge.attr("stroke-width", "1.5");
-
-/*
-edges.forEach(
-    (edge) => {
-        const eventSource = new EventSource(edge.endpoint);
-        
-        eventSource.addEventListener('alive', function(event) {
-            console.log('SSE message:', event.data);
-        });
-
-        eventSource.onopen = function() {
-            console.log(`${edge.source} -> ${edge.target} SSE connection opened`);
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('SSE error:', error);
-            eventSource.close();
-        };
-    }
-)
-
-nodes.forEach(
-    (node) => {
-        const eventSource = new EventSource(`/node/${node.id}/events`);
-        
-        eventSource.addEventListener('alive', function(event) {
-            console.log('SSE message:', event.data);
-        });
-
-        eventSource.onopen = function() {
-            console.log(`${node.id} SSE connection opened`);
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('SSE error:', error);
-            eventSource.close();
-        };
-    }
-);
-*/
-
-/*
-const arrowhead = inner.selectAll(".edgePath defs marker");
-arrowhead.attr("fill", "#333");
-arrowhead.attr("_", (e) => { 
-    return `
-    on load repeat forever 
-        fetch ${g.edge(e).endpoint} 
-        set @fill to result 
-        wait 500ms
-    end`; 
-});
-*/
 
 var initialScale = 1;
 
