@@ -14,7 +14,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(
             node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">',
+            '<link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">',
             use_default_router=False, *args, **kwargs
         )
 
