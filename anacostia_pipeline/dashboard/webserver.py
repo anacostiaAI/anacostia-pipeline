@@ -62,9 +62,15 @@ class Webserver(FastAPI):
             async def event_stream():
                 while True:
                     try:
-                        yield f"EventName"
-                        yield f"data: black"
-                        await asyncio.sleep(2)
+                        for node in self.pipeline.nodes:
+                            for successor in node.successors:
+                                if Work.WAITING_SUCCESSORS in node.work_list:
+                                    yield f"event: {node.name}_{successor.name}_change_edge_color\n"
+                                    yield f"data: red\n\n"
+                                else: 
+                                    yield f"event: {node.name}_{successor.name}_change_edge_color\n"
+                                    yield f"data: black\n\n"
+                        await asyncio.sleep(1)
 
                     except asyncio.CancelledError:
                         print("event source closed")
