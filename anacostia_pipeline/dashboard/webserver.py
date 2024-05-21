@@ -4,15 +4,16 @@ import signal
 from importlib import metadata
 from threading import Thread
 import uvicorn
+import asyncio
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi import Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from .components.index import index_template
 
 from ..engine.pipeline import Pipeline, PipelineModel
+from ..engine.constants import Work
 
 
 
@@ -54,8 +55,25 @@ class Webserver(FastAPI):
             frontend_json = self.__frontend_json()
             nodes = frontend_json["nodes"]
             node_headers = self.__headers()
-            return index_template(nodes, frontend_json, node_headers)
+            return index_template(nodes, frontend_json, "/graph_sse", node_headers)
 
+        @self.get('/graph_sse', response_class=StreamingResponse)
+        async def graph_sse(request: Request):
+            async def event_stream():
+                while True:
+                    try:
+                        yield f"EventName"
+                        yield f"data: black"
+                        await asyncio.sleep(2)
+
+                    except asyncio.CancelledError:
+                        print("event source closed")
+                        yield "event: close\n"
+                        yield "data: \n\n"
+                        break
+
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
+            
     def __headers(self):
         node_headers = []
         for node in self.pipeline.nodes:
@@ -78,7 +96,7 @@ class Webserver(FastAPI):
             edges_from_node = [
                 { 
                     "source": node_model["id"], "target": successor, 
-                    "endpoint": node.get_app().get_edge_endpoint(node_model["id"], successor) 
+                    "event_name": f"{node_model['id']}_{successor}_change_edge_color" 
                 } 
                 for successor in node_model["successors"]
             ]

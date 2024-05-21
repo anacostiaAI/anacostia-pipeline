@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, Response
-import asyncio
+from fastapi.responses import HTMLResponse
 
-from anacostia_pipeline.engine.constants import Work
 from ..components.node_bar import node_bar_closed, node_bar_open, default_node_page, work_template
 
 
@@ -22,24 +20,6 @@ class BaseNodeApp(FastAPI):
         @self.get("/work", response_class=HTMLResponse)
         async def work_endpoint(request: Request):
             return work_template(self.node.work_list)
-        
-        @self.get("/edge/", response_class=HTMLResponse)
-        async def edge_endpoint(request: Request, source: str, target: str):
-            print(f"source = {source}, target = {target}")
-
-            async def event_stream():
-                while True: 
-                    yield "event: change_edge_color\n" 
-                    yield f"data: #333\n\n"
-
-                    await asyncio.sleep(1)
-                    
-                    yield "event: change_edge_color\n"
-                    yield f"data: red\n\n"
-
-                    await asyncio.sleep(1)
-
-            return StreamingResponse(event_stream(), media_type="text/event-stream")
         
         @self.get("/header_bar", response_class=HTMLResponse)
         async def header_bar_endpoint(request: Request, visibility: bool = True):

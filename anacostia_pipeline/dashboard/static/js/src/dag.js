@@ -37,10 +37,8 @@ edges.forEach((edge) => {
         edge.source, 
         edge.target, 
         { 
-            source_name: edge.source,
-            target_name: edge.target,
             arrowhead: "vee",
-            endpoint: edge.endpoint
+            event_name: edge.event_name
         }
     );
 });
@@ -97,23 +95,10 @@ edge.attr("stroke-width", "1.5");
 edge.attr("stroke", "#333");
 edge.attr("_", (e) => { 
     return `
-    on load
-        -- create global variables to store the edge's line and arrowhead
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_path to me
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead to the next <marker/> 
-
-        -- listen for a 'change_edge_color' event, change the color of the line and arrowhead to the color specified in the data packet
-        eventsource event_stream from ${g.edge(e).endpoint} 
-            on change_edge_color as string
-                set ${g.edge(e).source_name}_${g.edge(e).target_name}_path @stroke to it 
-                set ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead @fill to it
-            end
-            on close as string
-                log it
-                call event_stream.close()
-            end
-        end
-    end`; 
+    on ${g.edge(e).event_name} from EventStream
+        set @stroke to event.data 
+        set @fill to event.data in next <marker/>
+    end`;
 });
 
 var initialScale = 1;
