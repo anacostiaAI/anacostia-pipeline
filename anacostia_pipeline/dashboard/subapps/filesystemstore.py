@@ -81,10 +81,6 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             async def event_stream():
                 while True:
                     try:
-                        if await request.is_disconnected():
-                            print(f"{self.node.name} SSE disconnected")
-                            continue
-                        
                         added_rows, state_changes = get_table_update_events()
 
                         if len(added_rows) > 0: 
@@ -103,6 +99,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
 
                                 yield f"event: StateUpdate{file_entry['id']}\n"
                                 yield sse_message
+                        
+                        await asyncio.sleep(0.2)
 
                     except asyncio.CancelledError:
                         print("browser closed")
