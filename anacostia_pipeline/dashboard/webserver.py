@@ -59,18 +59,30 @@ class Webserver(FastAPI):
 
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
+            edge_color_table = {}
+            for node in self.pipeline.nodes:
+                for successor in node.successors:
+                    edge_color_table[f"{node.name}_{successor.name}"] = None
+
             async def event_stream():
                 while True:
                     try:
                         for node in self.pipeline.nodes:
                             for successor in node.successors:
+                                edge_name = f"{node.name}_{successor.name}"
+
                                 if Work.WAITING_SUCCESSORS in node.work_list:
-                                    yield f"event: {node.name}_{successor.name}_change_edge_color\n"
-                                    yield f"data: red\n\n"
+                                    if edge_color_table[edge_name] != "red":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: red\n\n"
+                                        edge_color_table[edge_name] = "red"
                                 else: 
-                                    yield f"event: {node.name}_{successor.name}_change_edge_color\n"
-                                    yield f"data: black\n\n"
-                        await asyncio.sleep(1)
+                                    if edge_color_table[edge_name] != "black":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: black\n\n"
+                                        edge_color_table[edge_name] = "black"
+                                
+                        await asyncio.sleep(0.1)
 
                     except asyncio.CancelledError:
                         print("event source closed")
