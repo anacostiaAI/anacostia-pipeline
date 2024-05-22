@@ -2,7 +2,7 @@ from typing import List, Dict
 
 
 
-def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: List[str] = []) -> str:
+def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str, node_headers: List[str] = []) -> str:
     """
     The template for the Anacostia Pipeline landing page
 
@@ -72,7 +72,12 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, node_headers: Li
                     </div>
                 </div>
             </nav>
-            <div id="page_content">
+            <div id="page_content" 
+                _=" eventsource EventStream from {graph_sse_endpoint}
+                        on open 
+                            log 'event source connected'
+                        end
+                    end">
                 <div id="graph">
                     <svg width="960" height="700"><g/></svg> 
                     <section id="footer">

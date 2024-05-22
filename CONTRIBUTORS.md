@@ -1,7 +1,7 @@
 # Welcome to the Anacostia Pipeline!
 
 
-###Requirements: 
+### Requirements: 
 Python 3.11 or greater, if you need to update Python, here are the steps:
 
 Updating Python on Mac
@@ -45,7 +45,7 @@ source ~/.zshrc
 8. Confirm New Version
 ```python --version```
 
-###How to install the pipeline:
+### How to install the pipeline:
 
 1. Create the python virtual env (Linux/Mac)
 ```
@@ -72,7 +72,7 @@ cd tests
 python3 graph_test.py
 ```
 
-###Packaging and publishing to PyPI:
+### Packaging and publishing to PyPI:
 1. Build the package:
 ```
 cd anacostia
@@ -90,7 +90,7 @@ twine upload dist/*
 ```
 For additional directions regarding adding a `~/.pypirc` file, see https://github.com/mdo6180/code-records/blob/main/python/packaging/guide.txt
 
-###Anacostia Pipeline Modules:
+### Anacostia Pipeline Modules:
 1. Engine - defines the Anacostia Pipeline
     - base.py:
         - ```BaseNode```: defines methods for implementing the node lifecycles.

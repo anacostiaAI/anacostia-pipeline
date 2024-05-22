@@ -14,7 +14,7 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         # after the super().__init__() call inside the constructor
         super().__init__(
             node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/sqlmetadatastore.css">',
+            '<link rel="stylesheet" type="text/css" href="/static/css/styles/sqlmetadatastore.css">',
             use_default_router=False, *args, **kwargs
         )
 

@@ -37,10 +37,8 @@ edges.forEach((edge) => {
         edge.source, 
         edge.target, 
         { 
-            source_name: edge.source,
-            target_name: edge.target,
             arrowhead: "vee",
-            endpoint: edge.endpoint
+            event_name: edge.event_name
         }
     );
 });
@@ -88,110 +86,25 @@ text.append("tspan")
     .attr("hx-trigger", "load, every 1s")
     .attr("hx-swap", "innerHTML");
 
-/*
-const arrowhead = inner.selectAll(".edgePath defs marker");
-arrowhead.attr("fill", "#333");
-
-const edge = inner.selectAll(".edgePath path.path");
-edge.attr("stroke-width", "1.5");
-edge.attr("stroke", "#333");
-edge.attr("_", (e) => { 
-    return `
-    on load
-        -- create global variables to store the edge's line and arrowhead
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_path to me
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead to the next <marker/> 
-
-        -- listen for a 'done' event, change the color of the line and arrowhead to the color specified in the data packet
-        eventsource event_stream from ${g.edge(e).endpoint} 
-            on done as string
-                set ${g.edge(e).source_name}_${g.edge(e).target_name}_path @stroke to it 
-                set ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead @fill to it
-            end
-            on close as string
-                log it
-                call event_stream.close()
-            end
-        end
-    end`; 
-});
-
-const edge = inner.selectAll(".edgePath path.path");
-edge.attr("stroke", "#333");
-edge.attr("stroke-width", "1.5");
-edge.attr("id", (e) => { 
-    return `${g.edge(e).source_name}-${g.edge(e).target_name}`; 
-});
-edge.attr("_", (e) => { 
-    return `
-    on load 
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_path to me
-        set global ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead to the next <marker/>
-    repeat forever 
-        fetch ${g.edge(e).endpoint} 
-        set ${g.edge(e).source_name}_${g.edge(e).target_name}_path @stroke to result 
-        set ${g.edge(e).source_name}_${g.edge(e).target_name}_arrowhead @fill to result
-        wait 500ms
-    end`; 
-});
-*/
-
-const edge = inner.selectAll(".edgePath path.path");
-edge.attr("stroke", "#333");
-edge.attr("stroke-width", "1.5");
-
-/*
-edges.forEach(
-    (edge) => {
-        const eventSource = new EventSource(edge.endpoint);
-        
-        eventSource.addEventListener('alive', function(event) {
-            console.log('SSE message:', event.data);
-        });
-
-        eventSource.onopen = function() {
-            console.log(`${edge.source} -> ${edge.target} SSE connection opened`);
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('SSE error:', error);
-            eventSource.close();
-        };
-    }
-)
-
-nodes.forEach(
-    (node) => {
-        const eventSource = new EventSource(`/node/${node.id}/events`);
-        
-        eventSource.addEventListener('alive', function(event) {
-            console.log('SSE message:', event.data);
-        });
-
-        eventSource.onopen = function() {
-            console.log(`${node.id} SSE connection opened`);
-        };
-
-        eventSource.onerror = function(error) {
-            console.error('SSE error:', error);
-            eventSource.close();
-        };
-    }
-);
-*/
-
-/*
+// setting color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
 arrowhead.attr("fill", "#333");
 arrowhead.attr("_", (e) => { 
     return `
-    on load repeat forever 
-        fetch ${g.edge(e).endpoint} 
-        set @fill to result 
-        wait 500ms
+    on ${g.edge(e).event_name} from EventStream
+        set my @fill to event.data
     end`; 
 });
-*/
+
+const edge = inner.selectAll(".edgePath path.path");
+edge.attr("stroke-width", "1.5");
+edge.attr("stroke", "#333");
+edge.attr("_", (e) => { 
+    return `
+    on ${g.edge(e).event_name} from EventStream
+        set my @stroke to event.data 
+    end`;
+});
 
 var initialScale = 1;
 

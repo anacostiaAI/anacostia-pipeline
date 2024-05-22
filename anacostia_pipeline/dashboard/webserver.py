@@ -4,15 +4,16 @@ import signal
 from importlib import metadata
 from threading import Thread
 import uvicorn
+import asyncio
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi import Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from .components.index import index_template
 
 from ..engine.pipeline import Pipeline, PipelineModel
+from ..engine.constants import Work
 
 
 
@@ -54,8 +55,43 @@ class Webserver(FastAPI):
             frontend_json = self.__frontend_json()
             nodes = frontend_json["nodes"]
             node_headers = self.__headers()
-            return index_template(nodes, frontend_json, node_headers)
+            return index_template(nodes, frontend_json, "/graph_sse", node_headers)
 
+        @self.get('/graph_sse', response_class=StreamingResponse)
+        async def graph_sse(request: Request):
+            edge_color_table = {}
+            for node in self.pipeline.nodes:
+                for successor in node.successors:
+                    edge_color_table[f"{node.name}_{successor.name}"] = None
+
+            async def event_stream():
+                while True:
+                    try:
+                        for node in self.pipeline.nodes:
+                            for successor in node.successors:
+                                edge_name = f"{node.name}_{successor.name}"
+
+                                if Work.WAITING_SUCCESSORS in node.work_list:
+                                    if edge_color_table[edge_name] != "red":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: red\n\n"
+                                        edge_color_table[edge_name] = "red"
+                                else: 
+                                    if edge_color_table[edge_name] != "black":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: black\n\n"
+                                        edge_color_table[edge_name] = "black"
+                                
+                        await asyncio.sleep(0.1)
+
+                    except asyncio.CancelledError:
+                        print("event source closed")
+                        yield "event: close\n"
+                        yield "data: \n\n"
+                        break
+
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
+            
     def __headers(self):
         node_headers = []
         for node in self.pipeline.nodes:
@@ -78,7 +114,7 @@ class Webserver(FastAPI):
             edges_from_node = [
                 { 
                     "source": node_model["id"], "target": successor, 
-                    "endpoint": node.get_app().get_edge_endpoint(node_model["id"], successor) 
+                    "event_name": f"{node_model['id']}_{successor}_change_edge_color" 
                 } 
                 for successor in node_model["successors"]
             ]

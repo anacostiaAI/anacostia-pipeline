@@ -14,7 +14,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(
             node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/filesystemstore.css">',
+            '<link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">',
             use_default_router=False, *args, **kwargs
         )
 
@@ -88,30 +88,28 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                         added_rows, state_changes = get_table_update_events()
 
                         if len(added_rows) > 0: 
-                            file_entries = format_file_entries(added_rows)      # add information into dictionaries to prepare for html conversion
-                            file_entries = create_table_rows(file_entries)      # convert dictionaries to html
-                            file_entries = format_html_for_sse(file_entries)    # convert html to SSE message
+                            formatted_dict = format_file_entries(added_rows)        # add information into dictionaries to prepare for html conversion
+                            html_snippet = create_table_rows(formatted_dict)        # convert dictionaries to html
+                            sse_message = format_html_for_sse(html_snippet)         # convert html to SSE message
 
                             yield "event: TableUpdate\n"
-                            yield file_entries
+                            yield sse_message
                         
                         if len(state_changes) > 0:
                             for file_entry in state_changes:
-                                file_entry = format_file_entries(file_entry)    # add information into dictionary to prepare for html conversion
-                                file_entry = table_row(file_entry)              # convert dictionary to html
-                                file_entry = format_html_for_sse(file_entry)    # convert html to SSE message 
+                                formatted_dict = format_file_entries(file_entry)    # add information into dictionary to prepare for html conversion
+                                html_snippet = table_row(formatted_dict)            # convert dictionary to html
+                                sse_message = format_html_for_sse(html_snippet)     # convert html to SSE message 
 
                                 yield f"event: StateUpdate{file_entry['id']}\n"
-                                yield file_entry
+                                yield sse_message
 
-                        await asyncio.sleep(0.5)
-                    
                     except asyncio.CancelledError:
                         print("browser closed")
                         break 
 
                     except Exception as e:
-                        print(e)
+                        print(f"{type(e).__name__} at line {e.__traceback__.tb_lineno} of {__file__}: {e}")
                         break 
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")

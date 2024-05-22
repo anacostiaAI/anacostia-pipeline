@@ -5,13 +5,13 @@
 2. Override all base methods that raise ```NotImplementedError``` with some default code
 3. Start by implementing setup() method
     - Tip: don’t call ```Pipeline.launch_nodes()```, just call ```Pipeline.setup_nodes()```
-    - Desired result: verify you can acquire, configured to work with the pipeline, and and that the pipeline can be spun it up
-4. Implement ```create_resource_tracker()``` method
+    - Desired result: verify you can acquire, configure to work with the pipeline, and that the pipeline can be spun up
+4. Implement the ```create_resource_tracker()``` method
     - Tip: use FilesystemStoreNode in your pipeline
-    - Tip: implement a test case that puts files into your folder that’s being watched by the FilesystemStoreNode
-5. Implement ```create_entry()``` method
-6. Implement ```start_run()``` and ```end_run()``` methods
-7. Implement ```add_run_id()``` and ```add_end_time()``` methods
+    - Tip: implement a test case that puts files into your folder that are being watched by the FilesystemStoreNode
+5. Implement the ```create_entry()``` method
+6. Implement the ```start_run()``` and ```end_run()``` methods
+7. Implement the ```add_run_id()``` and ```add_end_time()``` methods
 
 Note: See sql_metadata_store.py for an example of how to create your own metadata store node.
 
@@ -21,7 +21,7 @@ Note: See sql_metadata_store.py for an example of how to create your own metadat
 3. Override all base methods that raise ```NotImplementedError``` with some default code
 4. Start by implementing setup() method
     - Tip: don’t call ```Pipeline.launch_nodes()```, just call ```Pipeline.setup_nodes()```
-    - Desired result: verify you can acquire, configured to work with the pipeline, and and that the pipeline can be spun it up
+    - Desired result: verify you can acquire, configure to work with the pipeline, and that the pipeline can be spun up
 5. Implement the ```start_monitoring()``` method
     - Note: you must create a new thread and run your monitoring code there
 6. Implement the ```stop_monitoring()``` method
