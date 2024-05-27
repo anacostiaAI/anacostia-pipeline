@@ -90,7 +90,6 @@ class FilesystemStoreNode(BaseResourceNode):
         return artifacts
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def get_artifact(self, id: int) -> Dict:
         return self.metadata_store.get_entry(self, id)
     

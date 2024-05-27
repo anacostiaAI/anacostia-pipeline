@@ -411,7 +411,6 @@ class BaseResourceNode(BaseNode):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
-                time.sleep(0.001)   # tiny sleep function to 
                 with self.resource_lock:
                     result = func(self, *args, **kwargs)
                     return result
