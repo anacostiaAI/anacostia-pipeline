@@ -247,10 +247,11 @@ class SqliteMetadataStore(BaseMetadataStoreNode):
             samples = [sample.as_dict() for sample in samples]
             return samples
     
-    def get_entry(self, resource_node: BaseResourceNode, id: int) -> Sample:
+    def get_entry(self, resource_node: BaseResourceNode, id: int) -> Dict:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            return session.query(Sample).filter_by(node_id=node_id, id=id).first()
+            sample = session.query(Sample).filter_by(node_id=node_id, id=id).first()
+            return sample.as_dict()
         
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
         with scoped_session_manager(self.session_factory, resource_node) as session:
