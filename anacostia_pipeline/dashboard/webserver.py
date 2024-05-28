@@ -85,7 +85,7 @@ class Webserver(FastAPI):
                         await asyncio.sleep(0.1)
 
                     except asyncio.CancelledError:
-                        print("event source closed")
+                        print("event source /graph_sse closed")
                         yield "event: close\n"
                         yield "data: \n\n"
                         break

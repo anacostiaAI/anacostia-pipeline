@@ -82,6 +82,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         @self.get("/table_update_events", response_class=HTMLResponse)
         async def samples(request: Request):
             async def event_stream():
+                print("event source /table_update_events connected")
                 while True:
                     try:
                         added_rows, state_changes = get_table_update_events()
@@ -106,7 +107,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
                         await asyncio.sleep(0.2)
 
                     except asyncio.CancelledError:
-                        print("browser closed")
+                        print("event source /table_update_events closed")
                         break 
 
                     except Exception as e:

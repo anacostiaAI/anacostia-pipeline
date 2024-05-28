@@ -75,7 +75,13 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <div id="page_content" 
                 _=" eventsource EventStream from {graph_sse_endpoint}
                         on open 
-                            log 'event source connected'
+                            log 'event source /graph_sse connected'
+                        end
+                    end
+                    on htmx:beforeSwap
+                        if event.detail.target == htmx.find('#page_content')
+                            log 'event source /graph_sse closed'
+                            EventStream.close() 
                         end
                     end">
                 <div id="graph">
