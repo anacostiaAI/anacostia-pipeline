@@ -416,6 +416,7 @@ class BaseResourceNode(BaseNode):
                     return result
         return resource_accessor_wrapper
     
+    # consider removing this decorator in the future. it hasn't been used for anything.
     def monitoring_enabled(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
