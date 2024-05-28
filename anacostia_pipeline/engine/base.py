@@ -428,7 +428,6 @@ class BaseResourceNode(BaseNode):
         return wrapper
     
     @BaseNode.log_exception
-    @resource_accessor
     def start_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 
@@ -437,7 +436,6 @@ class BaseResourceNode(BaseNode):
         pass
 
     @BaseNode.log_exception
-    @resource_accessor
     def stop_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 
