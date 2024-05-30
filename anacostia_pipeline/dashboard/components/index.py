@@ -43,12 +43,6 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <!-- htmx server-sent events extension -->
             <script src="/static/js/third_party/sse.js"></script>
 
-            <!-- Dependencies for DAG rendering (D3, Dagre, Dagre-D3) -->
-            <script src="/static/js/third_party/d3.v6.min.js"></script>
-            <script src="/static/js/third_party/dagre.min.js"></script>
-            <script src="/static/js/third_party/dagre-d3.min.js"></script>
-            <link rel="stylesheet" type="text/css" href="/static/css/styles/dag.css">
-
             <!-- node_headers -->
             { newline.join(list(set([header for header in node_headers]))) }
         </head>
@@ -84,12 +78,23 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
                             EventStream.close() 
                         end
                     end">
+                
+                <!-- Load CSS for DAG before <svg> and D3, Dagre, Dagre-D3 to allow page to load quicker -->
+                <link rel="stylesheet" type="text/css" href="/static/css/styles/dag.css">
+
                 <div id="graph">
                     <svg width="960" height="700"><g/></svg> 
                     <section id="footer">
                         <p>Potomac AI Inc.</p>
                     </section>
                 </div>
+
+                <!-- Dependencies for DAG rendering (D3, Dagre, Dagre-D3) -->
+                <script src="/static/js/third_party/d3.v6.min.js"></script>
+                <script src="/static/js/third_party/dagre.min.js"></script>
+                <script src="/static/js/third_party/dagre-d3.min.js"></script>
+
+                <!-- Custom JS for rendering DAG -->
                 <script src="/static/js/src/dag.js" graph-data="{json_data}"></script>
             </div>
         </body>
