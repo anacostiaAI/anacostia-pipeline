@@ -54,8 +54,7 @@ class Webserver(FastAPI):
         async def index(request: Request):
             frontend_json = self.__frontend_json()
             nodes = frontend_json["nodes"]
-            node_headers = self.__headers()
-            return index_template(nodes, frontend_json, "/graph_sse", node_headers)
+            return index_template(nodes, frontend_json, "/graph_sse")
 
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
@@ -92,15 +91,6 @@ class Webserver(FastAPI):
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
             
-    def __headers(self):
-        node_headers = []
-        for node in self.pipeline.nodes:
-            # change .get_header_template() to .get_headers)
-            header_template = node.get_app().get_header_template()
-            if header_template is not None:
-                node_headers.append(header_template)
-        return node_headers
-
     def __frontend_json(self):
         model = self.pipeline.model().model_dump()
         edges = []

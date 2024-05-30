@@ -6,12 +6,9 @@ from ..components.node_bar import node_bar_closed, node_bar_open, default_node_p
 
 
 class BaseNodeApp(FastAPI):
-    def __init__(self, node, header_template: str = None, use_default_router=True, *args, **kwargs):
+    def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.header_template = header_template
-
-        # Note: the /static directory is not mounted here, but in the main webserver
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):
@@ -61,6 +58,3 @@ class BaseNodeApp(FastAPI):
     
     def get_edge_endpoint(self, source: str, target: str):
         return f"{self.get_prefix()}/edge/?source={source}&target={target}"
-    
-    def get_header_template(self):
-        return self.header_template

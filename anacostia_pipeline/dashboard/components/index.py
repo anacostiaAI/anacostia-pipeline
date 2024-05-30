@@ -2,7 +2,7 @@ from typing import List, Dict
 
 
 
-def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str, node_headers: List[str] = []) -> str:
+def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str) -> str:
     """
     The template for the Anacostia Pipeline landing page
 
@@ -42,9 +42,6 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
 
             <!-- htmx server-sent events extension -->
             <script src="/static/js/third_party/sse.js"></script>
-
-            <!-- node_headers -->
-            { newline.join(list(set([header for header in node_headers]))) }
         </head>
         <body>
             <nav class="navbar" role="navigation" aria-label="main navigation">
