@@ -7,10 +7,6 @@ from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
 from ..components.utils import format_html_for_sse
 
-import time
-import cProfile
-import pstats
-
 
 
 class FilesystemStoreNodeApp(BaseNodeApp):
@@ -120,15 +116,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         if use_default_file_renderer:
             @self.get("/retrieve_file", response_class=HTMLResponse)
             async def sample(request: Request, file_id: int):
-                with cProfile.Profile() as pr:
-                    artifact_path = self.node.get_artifact(file_id)["location"]
-                    #content = self.node.load_artifact(artifact_path)
-                    #x = filesystemstore_viewer(content, f"Content of {artifact_path}")
-                
-                web_tests_path = "./testing_artifacts/frontend"
-                stats = pstats.Stats(pr)
-                stats.sort_stats(pstats.SortKey.TIME)
-                stats.dump_stats(filename=f"{web_tests_path}/filestore.prof")
-
-                return "test file fix"
+                artifact_path = self.node.get_artifact(file_id)["location"]
+                content = self.node.load_artifact(artifact_path)
+                x = filesystemstore_viewer(content, f"Content of {artifact_path}")
+                return x
     
