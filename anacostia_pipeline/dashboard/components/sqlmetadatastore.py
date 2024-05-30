@@ -37,6 +37,10 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
 def sqlmetadatastore_home(header_bar_endpoint: str, data_options: Dict[str, str], runs: List[Dict[str, str]]):
     return f"""
         {node_bar_closed(header_bar_endpoint)}
+
+        <!-- Note: the /static directory is not mounted here, but in the main webserver -->
+        <link rel="stylesheet" type="text/css" href="/static/css/styles/sqlmetadatastore.css">
+
         <div id="data_type_menu" class="dropdown is-hoverable">
             <div class="dropdown-trigger">
                 <button class="button" aria-haspopup="true" aria-controls="dropdown-menu3">
