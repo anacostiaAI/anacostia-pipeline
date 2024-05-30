@@ -11,11 +11,7 @@ from ..components.utils import format_html_for_sse
 
 class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
-        super().__init__(
-            node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">',
-            use_default_router=False, *args, **kwargs
-        )
+        super().__init__(node, use_default_router=False, *args, **kwargs)
 
         self.event_source = f"{self.get_prefix()}/table_update_events"
         self.event_name = "TableUpdate"

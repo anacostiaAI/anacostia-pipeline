@@ -27,6 +27,7 @@ def create_table_rows(file_entries: List[Dict[str, str]]):
 def filesystemstore_home(header_bar_endpoint: str, sse_endpoint: str, event_name: str, file_entries: List[Dict[str, str]]):
     return f"""
         { node_bar_closed(header_bar_endpoint) }
+        <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
         <div id="table_container" class="container">
             <table class="table is-bordered is-striped is-hoverable">
                 <thead>
