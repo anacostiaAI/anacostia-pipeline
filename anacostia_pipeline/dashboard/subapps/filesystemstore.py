@@ -6,17 +6,12 @@ from typing import List, Dict, Tuple, Union
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from ..components.filesystemstore import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
 from ..components.utils import format_html_for_sse
-import time
 
 
 
 class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
-        super().__init__(
-            node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">',
-            use_default_router=False, *args, **kwargs
-        )
+        super().__init__(node, use_default_router=False, *args, **kwargs)
 
         self.event_source = f"{self.get_prefix()}/table_update_events"
         self.event_name = "TableUpdate"
@@ -79,12 +74,9 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         @self.get("/table_update_events", response_class=HTMLResponse)
         async def samples(request: Request):
             async def event_stream():
+                print("event source /table_update_events connected")
                 while True:
                     try:
-                        if await request.is_disconnected():
-                            print(f"{self.node.name} SSE disconnected")
-                            continue
-                        
                         added_rows, state_changes = get_table_update_events()
 
                         if len(added_rows) > 0: 
@@ -103,9 +95,11 @@ class FilesystemStoreNodeApp(BaseNodeApp):
 
                                 yield f"event: StateUpdate{file_entry['id']}\n"
                                 yield sse_message
+                        
+                        await asyncio.sleep(0.2)
 
                     except asyncio.CancelledError:
-                        print("browser closed")
+                        print("event source /table_update_events closed")
                         break 
 
                     except Exception as e:
@@ -118,10 +112,8 @@ class FilesystemStoreNodeApp(BaseNodeApp):
         if use_default_file_renderer:
             @self.get("/retrieve_file", response_class=HTMLResponse)
             async def sample(request: Request, file_id: int):
-                start = time.time()
-                # artifact_path = self.node.get_artifact(file_id)
-                # content = self.node.load_artifact(artifact_path)
-                # x = filesystemstore_viewer(content, f"Content of {artifact_path}")
-                print(time.time() - start)
-                return "test file fix"
+                artifact_path = self.node.get_artifact(file_id)["location"]
+                content = self.node.load_artifact(artifact_path)
+                x = filesystemstore_viewer(content, f"Content of {artifact_path}")
+                return x
     

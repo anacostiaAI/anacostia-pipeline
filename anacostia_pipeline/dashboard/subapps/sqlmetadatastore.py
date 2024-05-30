@@ -12,13 +12,7 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used
         # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
         # after the super().__init__() call inside the constructor
-        super().__init__(
-            node, 
-            '<link rel="stylesheet" type="text/css" href="/static/css/styles/sqlmetadatastore.css">',
-            use_default_router=False, *args, **kwargs
-        )
-
-        # Note: the /static directory is not mounted here, but in the main webserver
+        super().__init__(node, use_default_router=False, *args, **kwargs)
 
         self.data_options = {
             "runs": f"{self.get_prefix()}/runs",

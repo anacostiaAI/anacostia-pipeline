@@ -129,7 +129,7 @@ class BaseNode(Thread):
 
     def log_exception(func):
         @wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def log_exception_wrapper(self, *args, **kwargs):
             try: 
                 ret = func(self, *args, **kwargs)
                 return ret
@@ -137,7 +137,7 @@ class BaseNode(Thread):
                 self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}")
                 self.status = Status.ERROR
                 return
-        return wrapper
+        return log_exception_wrapper
     
     def signal_successors(self, result: Result):
         for successor in self.successors:
@@ -407,15 +407,16 @@ class BaseResourceNode(BaseNode):
 
     def resource_accessor(func):
         @wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def resource_accessor_wrapper(self, *args, **kwargs):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
                 with self.resource_lock:
                     result = func(self, *args, **kwargs)
                     return result
-        return wrapper
+        return resource_accessor_wrapper
     
+    # consider removing this decorator in the future. it hasn't been used for anything.
     def monitoring_enabled(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -427,7 +428,6 @@ class BaseResourceNode(BaseNode):
         return wrapper
     
     @BaseNode.log_exception
-    @resource_accessor
     def start_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 
@@ -436,7 +436,6 @@ class BaseResourceNode(BaseNode):
         pass
 
     @BaseNode.log_exception
-    @resource_accessor
     def stop_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 

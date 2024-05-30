@@ -7,15 +7,15 @@ If you are interested in building your own plugins for Anacostia and contributin
 
 ## Basic Anacostia Concepts & Terminology:
 Anacostia works by allowing you to define a pipeline as a directed acyclic graph (DAG). Each node in the DAG is nothing more than a continuously running thread that does the following:
-1. Waits for enough data to become available in a resource or waits for signals recieved from other nodes.
+1. Waits for enough data to become available in a resource or waits for signals received from other nodes.
 2. Executes a job. 
-3. Send signal to another node upon completion of its job.
+3. Sends a signal to another node upon completion of its job.
 
 The edges of the DAG dictates which child nodes are listening for signals from which parent nodes.
 
 There are fundamentally three types of nodes in Anacostia:
 1. Metadata store nodes: stores tracking information about each time the pipeline executes (i.e., a *run*).
-    - The metadata store is responsibles for storing information like the start/end time of the run, metadata information about all the nodes in the pipeline, etc. 
+    - The metadata store is responsible for storing information like the start/end time of the run, metadata information about all the nodes in the pipeline, etc. 
     - All metadata store nodes must implement the following methods: ...
 2. Resource nodes: think of a "resource" as the inputs and outputs of your pipeline.
     - A resource can be a folder on a local filesystem, an S3 bucket, an API endpoint, a database, etc.
@@ -30,7 +30,7 @@ There are fundamentally three types of nodes in Anacostia:
 Every node in Anacostia is inherited from these three basic nodes.
 
 A couple things that distinguish Anacostia from other MLOps solutions:
-1. Anacostis is meant to be ran locally. Of course you can run an Anacostia Pipeline in the cloud, but it is designed to be ran locally.
+1. Anacostia is meant to be ran locally. Of course you can run an Anacostia Pipeline in the cloud, but it is designed to be ran locally.
 2. Pipelines in Anacostia can be built incrementally. Start with building the simplest pipeline possible; just one metadata store node, one input resource node, and one action node; e.g., an alerting system that monitors a resource and then sends an email notification whenever there is a certain amount of data available. From there, add in an output resource node to build something like a data preprocessing pipeline and then add in more nodes for retraining and evaluation to create a model retraining pipeline. 
 3. Because every node in the Anacostia ecosystem derives from one of the three base nodes, Anacostia provides a format for a common API; thus, allowing for users to swap one node out for another node. This is great for experimentation and evaluating different solutions for your pipeline (e.g., swap out a sqlite metadata store for a redis metadata store).
 

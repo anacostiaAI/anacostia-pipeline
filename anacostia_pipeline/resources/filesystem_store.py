@@ -3,6 +3,7 @@ from typing import List, Any, Union, Dict
 from datetime import datetime
 from logging import Logger
 from threading import Thread
+import time
 
 from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
 from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
@@ -63,6 +64,11 @@ class FilesystemStoreNode(BaseResourceNode):
                         if self.metadata_store.entry_exists(self, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}")
                             self.record_new(filepath)
+
+                # put this sleep here so that the _monitor_thread_func stops acquiring the lock, 
+                # thus preventing _monitor_thread_func from being a greedy thread.
+                # without this sleep, the @BaseResourceNode.resource_accessor will take too long to run for methods like .get_artifact()
+                time.sleep(0.1)
                 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
@@ -91,7 +97,7 @@ class FilesystemStoreNode(BaseResourceNode):
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
-    def get_artifact(self, id: int) -> Any:
+    def get_artifact(self, id: int) -> Dict:
         return self.metadata_store.get_entry(self, id)
     
     @BaseResourceNode.log_exception
