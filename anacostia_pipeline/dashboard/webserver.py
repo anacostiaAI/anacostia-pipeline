@@ -20,7 +20,7 @@ from ..engine.constants import Work
 PACKAGE_NAME = "anacostia_pipeline"
 DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__file__)
 
-# Additional Filters for Jinja Templates
+# Additional Filters for Jinja Templates (Note: we are no longer using Jinja templates, consider getting rid of this function)
 def basename(value, attribute=None):
     return os.path.basename(value)
 

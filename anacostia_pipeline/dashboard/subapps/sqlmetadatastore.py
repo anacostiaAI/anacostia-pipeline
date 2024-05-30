@@ -10,7 +10,6 @@ class SqliteMetadataStoreApp(BaseNodeApp):
     def __init__(self, node, *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used
-        # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
         # after the super().__init__() call inside the constructor
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
