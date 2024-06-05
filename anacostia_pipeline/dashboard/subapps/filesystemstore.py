@@ -18,24 +18,6 @@ class FilesystemStoreNodeApp(BaseNodeApp):
 
         self.displayed_file_entries = None
 
-        def get_table_update_events() -> Tuple[List[Dict]]:
-            file_entries = self.node.metadata_store.get_entries()
-
-            added_rows = []
-            entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]
-            for retrieved_entry in file_entries:
-                if retrieved_entry["id"] not in entry_ids:
-                    added_rows.append(retrieved_entry)
-
-            state_changes = []
-            for displayed_entry, retrieved_entry in zip(self.displayed_file_entries, file_entries):
-                if displayed_entry["state"] != retrieved_entry["state"]:
-                    state_changes.append(retrieved_entry)
-            
-            self.displayed_file_entries = file_entries
-            
-            return added_rows, state_changes
-        
         def format_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             # adding on file_display_endpoint to each entry to get the contents of the file when user clicks on row 
             # note: state_change_event_name is used to update the state of the file entry via SSEs
@@ -73,6 +55,25 @@ class FilesystemStoreNodeApp(BaseNodeApp):
 
         @self.get("/table_update_events", response_class=HTMLResponse)
         async def samples(request: Request):
+
+            def get_table_update_events() -> Tuple[List[Dict]]:
+                file_entries = self.node.metadata_store.get_entries()
+
+                added_rows = []
+                entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]
+                for retrieved_entry in file_entries:
+                    if retrieved_entry["id"] not in entry_ids:
+                        added_rows.append(retrieved_entry)
+
+                state_changes = []
+                for displayed_entry, retrieved_entry in zip(self.displayed_file_entries, file_entries):
+                    if displayed_entry["state"] != retrieved_entry["state"]:
+                        state_changes.append(retrieved_entry)
+                
+                self.displayed_file_entries = file_entries
+                
+                return added_rows, state_changes
+            
             async def event_stream():
                 print("event source /table_update_events connected")
                 while True:
