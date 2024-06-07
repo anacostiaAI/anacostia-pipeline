@@ -63,6 +63,13 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
                     </div>
                 </div>
             </nav>
+            <div>
+                { 
+                    newline.join(
+                        [ f'''<div hx-get="{node["header_bar_endpoint"]}" hx-trigger="click from:#{node["id"]}"></div>''' for node in nodes ]
+                    ) 
+                }
+            </div>
             <div id="page_content" 
                 _=" eventsource EventStream from {graph_sse_endpoint}
                         on open 

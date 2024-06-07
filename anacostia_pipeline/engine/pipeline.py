@@ -108,12 +108,12 @@ class Pipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
     
-    def setup_nodes(self, nodes: List[BaseNode]):
+    def __setup_nodes(self, nodes: List[BaseNode]):
         """
         Sets up all the nodes in the pipeline.
         """
 
-        threads = []
+        threads: List[Thread] = []
         for node in nodes:
             node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
             thread = Thread(target=node.setup)
@@ -132,15 +132,15 @@ class Pipeline:
 
         # set up metadata store nodes
         metadata_stores = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
-        self.setup_nodes(metadata_stores)
+        self.__setup_nodes(metadata_stores)
 
         # set up resource nodes
         resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
-        self.setup_nodes(resource_nodes)
+        self.__setup_nodes(resource_nodes)
         
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
-        self.setup_nodes(action_nodes)
+        self.__setup_nodes(action_nodes)
 
         # start nodes
         for node in self.nodes:

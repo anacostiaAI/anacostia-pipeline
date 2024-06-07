@@ -10,7 +10,6 @@ class SqliteMetadataStoreApp(BaseNodeApp):
     def __init__(self, node, *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used
-        # IMPORTANT: declare the templates directory, declare the static directory, and declare routes
         # after the super().__init__() call inside the constructor
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
@@ -30,9 +29,7 @@ class SqliteMetadataStoreApp(BaseNodeApp):
                 if run['end_time'] is not None:
                     run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return sqlmetadatastore_home(
-                header_bar_endpoint=self.get_header_bar_endpoint(), data_options=self.data_options, runs=runs
-            )
+            return sqlmetadatastore_home(data_options=self.data_options, runs=runs)
         
         @self.get("/runs", response_class=HTMLResponse)
         async def runs(request: Request):

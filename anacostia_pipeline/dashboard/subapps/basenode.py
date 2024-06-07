@@ -32,7 +32,7 @@ class BaseNodeApp(FastAPI):
                 return node_bar_closed(
                     header_bar_endpoint = f"{self.get_header_bar_endpoint()}/?visibility=true"
                 )
-
+        
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)
             async def endpoint(request: Request):
