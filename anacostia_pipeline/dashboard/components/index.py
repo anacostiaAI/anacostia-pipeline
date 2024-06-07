@@ -55,7 +55,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
                         <div class="navbar-dropdown is-right">
                             {newline.join(
                                 [
-                                    f'''<a class="navbar-item" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
+                                    f'''<a id="{node["id"]}_tab" class="navbar-item" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
                                     for node in nodes
                                 ])
                             }
@@ -66,7 +66,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <div>
                 { 
                     newline.join(
-                        [ f'''<div hx-get="{node["header_bar_endpoint"]}" hx-trigger="click from:#{node["id"]}"></div>''' for node in nodes ]
+                        [ f'''<div hx-get="{node["header_bar_endpoint"]}" hx-trigger="click from:#{node["id"]}, click from:#{node["id"]}_tab"></div>''' for node in nodes ]
                     ) 
                 }
             </div>
