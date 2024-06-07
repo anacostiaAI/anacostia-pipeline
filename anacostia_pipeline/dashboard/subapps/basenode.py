@@ -32,6 +32,11 @@ class BaseNodeApp(FastAPI):
                 return node_bar_closed(
                     header_bar_endpoint = f"{self.get_header_bar_endpoint()}/?visibility=true"
                 )
+        
+        @self.get("/test", response_class=HTMLResponse)
+        async def testing(request: Request):
+            print(f"endpoint {self.get_prefix()}/test hit")
+            return ""
 
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)

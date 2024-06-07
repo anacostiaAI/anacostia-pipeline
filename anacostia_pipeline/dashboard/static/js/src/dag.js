@@ -22,6 +22,7 @@ nodes.forEach((node) => {
     g.setNode(
         node.id, 
         { 
+            id: node.id,
             label: node.label, 
             width: 150, 
             height: 100, 
@@ -63,9 +64,10 @@ const node_container = inner.selectAll(".node");
 
 // apply HTMX attributes to the entire node container
 node_container.attr("hx-get", (v) => { return g.node(v).endpoint; })
-                .attr("hx-trigger", "click")
-                .attr("hx-target", "#page_content")
-                .attr("hx-swap", "innerHTML");
+              .attr("hx-trigger", "click")
+              .attr("hx-target", "#page_content")
+              .attr("hx-swap", "innerHTML")
+              .attr("id", (v) => { return g.node(v).id; });
 
 // apply SVG attributes to the rect element
 const rect = inner.selectAll("rect");
