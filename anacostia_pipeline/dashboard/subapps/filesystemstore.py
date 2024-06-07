@@ -47,7 +47,6 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             file_entries = format_file_entries(file_entries)
 
             return filesystemstore_home(
-                header_bar_endpoint = self.get_header_bar_endpoint(),
                 sse_endpoint = self.event_source,
                 event_name = self.event_name,
                 file_entries = file_entries,

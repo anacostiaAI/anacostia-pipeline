@@ -66,8 +66,7 @@ const node_container = inner.selectAll(".node");
 node_container.attr("hx-get", (v) => { return g.node(v).endpoint; })
               .attr("hx-trigger", "click")
               .attr("hx-target", "#page_content")
-              .attr("hx-swap", "innerHTML")
-              .attr("id", (v) => { return g.node(v).id; });
+              .attr("hx-swap", "innerHTML");
 
 // apply SVG attributes to the rect element
 const rect = inner.selectAll("rect");

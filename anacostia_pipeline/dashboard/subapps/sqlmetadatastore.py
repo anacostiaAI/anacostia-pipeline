@@ -29,9 +29,7 @@ class SqliteMetadataStoreApp(BaseNodeApp):
                 if run['end_time'] is not None:
                     run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
-            return sqlmetadatastore_home(
-                header_bar_endpoint=self.get_header_bar_endpoint(), data_options=self.data_options, runs=runs
-            )
+            return sqlmetadatastore_home(data_options=self.data_options, runs=runs)
         
         @self.get("/runs", response_class=HTMLResponse)
         async def runs(request: Request):

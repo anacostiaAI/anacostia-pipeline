@@ -66,7 +66,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <div>
                 { 
                     newline.join(
-                        [ f'''<div hx-get="{node["endpoint"].replace("/home", "/test")}" hx-trigger="click from:#{node["id"]}"></div>''' for node in nodes ]
+                        [ f'''<div hx-get="{node["header_bar_endpoint"]}" hx-trigger="click from:#{node["id"]}"></div>''' for node in nodes ]
                     ) 
                 }
             </div>

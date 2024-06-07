@@ -96,10 +96,12 @@ class Webserver(FastAPI):
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
             node_model["id"] = node_model["name"]
-            node_model["label"] = node_model.pop("name")
+            # label is for creating a more readable name, in the future, enable users to input their own labels
+            node_model["label"] = node_model["name"].replace("_", " ")
             node_model["endpoint"] = node.get_app().get_endpoint()
             node_model["status_endpoint"] = node.get_app().get_status_endpoint()
             node_model["work_endpoint"] = node.get_app().get_work_endpoint()
+            node_model["header_bar_endpoint"] = f'''{node.get_app().get_header_bar_endpoint()}/?visibility=false'''
 
             edges_from_node = [
                 { 
