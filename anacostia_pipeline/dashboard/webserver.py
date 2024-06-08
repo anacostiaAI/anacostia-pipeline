@@ -75,7 +75,7 @@ class Webserver(FastAPI):
                                             hx-get="{node_model["header_bar_endpoint"]}" 
                                             hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
                                             hx-swap-oob="true">
-                                            { node_bar_closed(header_bar_endpoint = f"/header_bar/?node_id={node_model["id"]}&visibility=true") } 
+                                            { node_bar_closed(header_bar_endpoint = f'/header_bar/?node_id={node_model["id"]}&visibility=true') } 
                                         </div>'''
                     else:
                         snippet = f'''<div id="{node_model["id"]}_header_div" 
@@ -87,7 +87,7 @@ class Webserver(FastAPI):
                                                     node_name=node_model["id"],
                                                     status_endpoint=node_model["status_endpoint"],
                                                     work_endpoint=node_model["work_endpoint"],
-                                                    header_bar_endpoint = f"/header_bar/?node_id={node_model["id"]}&visibility=false"
+                                                    header_bar_endpoint = f'/header_bar/?node_id={node_model["id"]}&visibility=false'
                                                 ) 
                                             } 
                                         </div>'''

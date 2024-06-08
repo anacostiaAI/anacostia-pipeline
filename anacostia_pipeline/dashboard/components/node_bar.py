@@ -25,12 +25,6 @@ def node_bar_open(node_name: str, status_endpoint: str, work_endpoint: str, head
     </div>
     """
 
-def node_page_template(header_bar_endpoint: str, node_content: str):
-    return f"""
-    <div id="node_header_container" hx-get="{ header_bar_endpoint }" hx-trigger="load" hx-target="this" hx-swap="innerHTML"></div>
-    {node_content}
-    """
-
 def default_node_page(header_bar_endpoint: str):
     return f"""
     {node_bar_closed(header_bar_endpoint)}
