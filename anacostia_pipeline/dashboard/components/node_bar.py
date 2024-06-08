@@ -41,9 +41,8 @@ def node_bar_open(node_model: Dict[str, str], close_div_endpoint: str) -> str:
     </div>
     """
 
-def default_node_page(header_bar_endpoint: str) -> str:
+def default_node_page() -> str:
     return f"""
-    {node_bar_closed(header_bar_endpoint)}
     <div class="container">
         There is no graphical user interface for this node.
     </div>

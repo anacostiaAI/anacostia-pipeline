@@ -121,7 +121,6 @@ class Webserver(FastAPI):
             node_model["endpoint"] = node.get_app().get_endpoint()
             node_model["status_endpoint"] = node.get_app().get_status_endpoint()
             node_model["work_endpoint"] = node.get_app().get_work_endpoint()
-            # node_model["header_bar_endpoint"] = f'''{node.get_app().get_header_bar_endpoint()}/?visibility=false'''
             node_model["header_bar_endpoint"] = f'''/header_bar/?node_id={node_model["id"]}'''
 
             edges_from_node = [
