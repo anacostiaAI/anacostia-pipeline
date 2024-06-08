@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from .components.index import index_template
-from .components.node_bar import node_bar_closed, node_bar_open
+from .components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
 
 from ..engine.pipeline import Pipeline, PipelineModel
 from ..engine.constants import Work
@@ -65,32 +65,12 @@ class Webserver(FastAPI):
             node_models = frontend_json["nodes"]
             for node_model in node_models:
                 if node_model["id"] != node_id:
-                    snippet = f'''<div id="{node_model["id"]}_header_div" 
-                                        hx-get="/header_bar/?node_id={node_model["id"]}&visibility=false" 
-                                        hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
-                                        hx-swap-oob="true"></div>'''
+                    snippet = node_bar_invisible(node_model=node_model)
                 else:
                     if visibility is False:
-                        snippet = f'''<div id="{node_model["id"]}_header_div" 
-                                            hx-get="{node_model["header_bar_endpoint"]}" 
-                                            hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
-                                            hx-swap-oob="true">
-                                            { node_bar_closed(header_bar_endpoint = f'/header_bar/?node_id={node_model["id"]}&visibility=true') } 
-                                        </div>'''
+                        snippet = node_bar_closed(node_model=node_model, open_div_endpoint=f'/header_bar/?node_id={node_model["id"]}&visibility=true')
                     else:
-                        snippet = f'''<div id="{node_model["id"]}_header_div" 
-                                            hx-get="{node_model["header_bar_endpoint"]}" 
-                                            hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
-                                            hx-swap-oob="true">
-                                            { 
-                                                node_bar_open(
-                                                    node_name=node_model["id"],
-                                                    status_endpoint=node_model["status_endpoint"],
-                                                    work_endpoint=node_model["work_endpoint"],
-                                                    header_bar_endpoint = f'/header_bar/?node_id={node_model["id"]}&visibility=false'
-                                                ) 
-                                            } 
-                                        </div>'''
+                        snippet = node_bar_open(node_model=node_model, close_div_endpoint=f'/header_bar/?node_id={node_model["id"]}&visibility=false') 
 
                 html_responses.append(snippet)
 
