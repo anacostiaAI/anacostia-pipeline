@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from .components.index import index_template
+from .components.node_bar import node_bar_closed, node_bar_open
 
 from ..engine.pipeline import Pipeline, PipelineModel
 from ..engine.constants import Work
@@ -56,6 +57,45 @@ class Webserver(FastAPI):
             nodes = frontend_json["nodes"]
             return index_template(nodes, frontend_json, "/graph_sse")
 
+        @self.get("/header_bar", response_class=HTMLResponse)
+        def header_bar(node_id: str, visibility: bool = False):
+            html_responses = []
+            frontend_json = self.__frontend_json()
+
+            node_models = frontend_json["nodes"]
+            for node_model in node_models:
+                if node_model["id"] != node_id:
+                    snippet = f'''<div id="{node_model["id"]}_header_div" 
+                                        hx-get="/header_bar/?node_id={node_model["id"]}&visibility=false" 
+                                        hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
+                                        hx-swap-oob="true"></div>'''
+                else:
+                    if visibility is False:
+                        snippet = f'''<div id="{node_model["id"]}_header_div" 
+                                            hx-get="{node_model["header_bar_endpoint"]}" 
+                                            hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
+                                            hx-swap-oob="true">
+                                            { node_bar_closed(header_bar_endpoint = f"/header_bar/?node_id={node_model["id"]}&visibility=true") } 
+                                        </div>'''
+                    else:
+                        snippet = f'''<div id="{node_model["id"]}_header_div" 
+                                            hx-get="{node_model["header_bar_endpoint"]}" 
+                                            hx-trigger="click from:#{node_model["id"]}, click from:#{node_model["id"]}_tab" 
+                                            hx-swap-oob="true">
+                                            { 
+                                                node_bar_open(
+                                                    node_name=node_model["id"],
+                                                    status_endpoint=node_model["status_endpoint"],
+                                                    work_endpoint=node_model["work_endpoint"],
+                                                    header_bar_endpoint = f"/header_bar/?node_id={node_model["id"]}&visibility=false"
+                                                ) 
+                                            } 
+                                        </div>'''
+
+                html_responses.append(snippet)
+
+            return "\n".join(html_responses)
+            
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
             edge_color_table = {}
@@ -90,7 +130,7 @@ class Webserver(FastAPI):
                         break
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
-            
+
     def __frontend_json(self):
         model = self.pipeline.model().model_dump()
         edges = []
@@ -101,7 +141,8 @@ class Webserver(FastAPI):
             node_model["endpoint"] = node.get_app().get_endpoint()
             node_model["status_endpoint"] = node.get_app().get_status_endpoint()
             node_model["work_endpoint"] = node.get_app().get_work_endpoint()
-            node_model["header_bar_endpoint"] = f'''{node.get_app().get_header_bar_endpoint()}/?visibility=false'''
+            # node_model["header_bar_endpoint"] = f'''{node.get_app().get_header_bar_endpoint()}/?visibility=false'''
+            node_model["header_bar_endpoint"] = f'''/header_bar/?node_id={node_model["id"]}'''
 
             edges_from_node = [
                 { 

@@ -10,12 +10,12 @@ def node_bar_closed(header_bar_endpoint: str):
     </div>
     """
 
-def node_bar_open(node_name: str, node_type: str, status_endpoint: str, work_endpoint: str, header_bar_endpoint: str):
+def node_bar_open(node_name: str, status_endpoint: str, work_endpoint: str, header_bar_endpoint: str):
     return f"""
     <div id="node_header_container">
         <div id="node_header_bar">
             <div>Node name: { node_name }</div>
-            <div>Node type: { node_type }</div>
+            <!-- Note: add another div to display node type information -->
             <div hx-get="{ status_endpoint }" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML"></div>
             <div hx-get="{ work_endpoint }" hx-trigger="load, every 500ms" hx-target="this" hx-swap="innerHTML"></div>
         </div>
