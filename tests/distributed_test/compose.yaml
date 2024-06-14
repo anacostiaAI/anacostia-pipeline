@@ -1,0 +1,22 @@
+name: anacostia
+
+services:
+  root-pipeline:
+    build: ./root-service
+    container_name: root-container
+    volumes:
+      - type: bind
+        source: ./root-service/src
+        target: /src
+    ports:
+      - "8000:80"
+
+  leaf-pipeline:
+    build: ./leaf-service
+    container_name: leaf-container
+    volumes:
+      - type: bind
+        source: ./leaf-service/src
+        target: /src
+    ports:
+      - "8080:80"
