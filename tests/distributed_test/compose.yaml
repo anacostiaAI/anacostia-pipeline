@@ -9,6 +9,12 @@ services:
         source: ./root-service/src
         target: /src
       - type: bind
+        source: ./root-service/input_artifacts
+        target: /input_artifacts
+      - type: bind
+        source: ./root-service/output_artifacts
+        target: /output_artifacts
+      - type: bind
         source: ./testing_artifacts
         target: /testing_artifacts
     ports:
@@ -21,6 +27,12 @@ services:
       - type: bind
         source: ./leaf-service/src
         target: /src
+      - type: bind
+        source: ./leaf-service/input_artifacts
+        target: /input_artifacts
+      - type: bind
+        source: ./leaf-service/output_artifacts
+        target: /output_artifacts
       - type: bind
         source: ./testing_artifacts
         target: /testing_artifacts
