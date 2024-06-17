@@ -28,6 +28,9 @@ setup_path(testing_artifacts)
 # spin up docker containers in the background
 subprocess.Popen("docker compose up --detach", shell=True)
 
+# wait for graph to be set up
+...
+
 # begin tests (create a daemon process or thread to do run the test)
 ...
 
@@ -36,5 +39,6 @@ while True:
     try:
         time.sleep(0.5)
     except KeyboardInterrupt:
-        subprocess.Popen("docker compose down", shell=True)
+        process = subprocess.Popen("docker compose down", shell=True)
+        process.wait()
         sys.exit(0)
