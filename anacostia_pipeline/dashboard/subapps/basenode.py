@@ -38,5 +38,3 @@ class BaseNodeApp(FastAPI):
     def get_work_endpoint(self):
         return f"{self.get_prefix()}/work"
     
-    def get_edge_endpoint(self, source: str, target: str):
-        return f"{self.get_prefix()}/edge/?source={source}&target={target}"
