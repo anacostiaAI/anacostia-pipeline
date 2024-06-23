@@ -1,17 +1,18 @@
-from typing import Union
+from typing import List
 import logging
-import shutil
-import os
+import time
 from fastapi import FastAPI
+import uvicorn
+from threading import Thread
 
-app = FastAPI()
 
-leaf_test_path = "/testing_artifacts"
 
-log_path = f"{leaf_test_path}/anacostia.log"
+root_test_path = "/testing_artifacts"
+
+log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
     level=logging.DEBUG,
-    format='LEAF %(asctime)s - %(levelname)s - %(message)s',
+    format='ROOT %(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     filename=log_path,
     filemode='a'
@@ -19,12 +20,44 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@app.get("/")
-def read_root():
-    logger.debug("hello from leaf service")
-    return {"Hello": "leaf World"}
+
+class Node(Thread):
+    def run(self) -> None:
+        i = 0
+        while i<10:
+            print(f"hello from leaf {i}")
+            time.sleep(1)
+            i += 1
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+class Webserver(FastAPI):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pipeline: List[Node] = []
+
+        @self.get('/')
+        def welcome():
+            for _ in range(5):
+                node = Node()
+                node.daemon = True
+                self.pipeline.append(node)
+                node.start()
+            return "Leaf pipeline started"
+        
+        @self.get("/stop")
+        def stop():
+            for node in self.pipeline:
+                node.join()
+            return "Leaf pipeline stopped"
+
+
+def run_background_webserver(**kwargs):
+    app = Webserver()
+    config = uvicorn.Config(app, host="0.0.0.0", port=8080)
+    server = uvicorn.Server(config)
+    fastapi_thread = Thread(target=server.run)
+    fastapi_thread.start()
+
+
+if __name__ == "__main__":
+    run_background_webserver()

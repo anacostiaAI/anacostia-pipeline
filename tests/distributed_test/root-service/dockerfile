@@ -4,4 +4,4 @@ WORKDIR /src
 
 RUN pip install fastapi
 
-CMD ["fastapi", "run", "main.py", "--port", "80"]
+CMD ["python3", "main.py"]
