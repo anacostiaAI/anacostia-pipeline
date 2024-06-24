@@ -19,6 +19,8 @@ services:
         target: /testing_artifacts
     ports:
       - "8000:8000"
+    networks:
+      - anacostia-network
 
   leaf-pipeline:
     build: ./leaf-service
@@ -38,3 +40,9 @@ services:
         target: /testing_artifacts
     ports:
       - "8080:8080"
+    networks:
+      - anacostia-network
+
+networks:
+  anacostia-network:
+    driver: bridge

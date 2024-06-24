@@ -4,6 +4,7 @@ import time
 from fastapi import FastAPI
 import uvicorn
 from threading import Thread
+import requests
 
 
 
@@ -24,8 +25,8 @@ logger = logging.getLogger(__name__)
 class Node(Thread):
     def run(self) -> None:
         i = 0
-        while i<10:
-            print(f"hello from root {i}")
+        while True:
+            print(f"hello from root {i}", flush=True)
             time.sleep(1)
             i += 1
 
@@ -37,13 +38,23 @@ class Webserver(FastAPI):
 
         @self.get('/')
         def welcome():
-            for _ in range(5):
+            for _ in range(2):
                 node = Node()
                 node.daemon = True
                 self.pipeline.append(node)
                 node.start()
             return "Root pipeline started"
         
+        @self.get("/forward_signal")
+        def forward_signal_handler():
+            response = requests.get(url="http://leaf-pipeline:8080/forward_signal")
+            print(response.text, flush=True)
+            return response.text
+
+        @self.get("/backward_signal")
+        def backward_signal_handler():
+            return "response from root"
+
         @self.get("/stop")
         def stop():
             for node in self.pipeline:

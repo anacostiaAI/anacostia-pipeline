@@ -2,6 +2,6 @@ FROM python:3.12.4-slim
 
 WORKDIR /src
 
-RUN pip install fastapi
+RUN pip install fastapi requests
 
 CMD ["python", "main.py"]
