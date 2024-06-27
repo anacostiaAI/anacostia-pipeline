@@ -2,20 +2,20 @@ name: anacostia
 
 services:
   root-pipeline:
-    build: ./root-service
+    build: .
     container_name: root-container
     volumes:
       - type: bind
-        source: ./root-service/src
-        target: /src
+        source: ./distributed_tests/root-service/tests
+        target: /tests
       - type: bind
-        source: ./root-service/input_artifacts
+        source: ./distributed_tests/root-service/input_artifacts
         target: /input_artifacts
       - type: bind
-        source: ./root-service/output_artifacts
+        source: ./distributed_tests/leaf-service/output_artifacts
         target: /output_artifacts
       - type: bind
-        source: ./testing_artifacts
+        source: ./distributed_tests/testing_artifacts
         target: /testing_artifacts
     ports:
       - "8000:8000"
@@ -23,20 +23,20 @@ services:
       - anacostia-network
 
   leaf-pipeline:
-    build: ./leaf-service
+    build: .
     container_name: leaf-container
     volumes:
       - type: bind
-        source: ./leaf-service/src
-        target: /src
+        source: ./distributed_tests/leaf-service/tests
+        target: /tests
       - type: bind
-        source: ./leaf-service/input_artifacts
+        source: ./distributed_tests/leaf-service/input_artifacts
         target: /input_artifacts
       - type: bind
-        source: ./leaf-service/output_artifacts
+        source: ./distributed_tests/leaf-service/output_artifacts
         target: /output_artifacts
       - type: bind
-        source: ./testing_artifacts
+        source: ./distributed_tests/testing_artifacts
         target: /testing_artifacts
     ports:
       - "8080:8080"

@@ -18,6 +18,8 @@ leaf_input_artifacts = "./leaf-service/input_artifacts"
 leaf_output_artifacts = "./leaf-service/output_artifacts"
 testing_artifacts = "./testing_artifacts"
 
+print("setup started")
+
 # clean up artifacts from old tests and recreate folders to set up testing environment for new test
 setup_path(root_input_artifacts)
 setup_path(root_output_artifacts)
@@ -25,8 +27,11 @@ setup_path(leaf_input_artifacts)
 setup_path(leaf_output_artifacts)
 setup_path(testing_artifacts)
 
+print("setup complete")
+
+"""
 # spin up docker containers in the background
-subprocess.Popen("docker compose up --detach", shell=True)
+subprocess.Popen("docker compose up --build --detach", shell=True)
 
 # wait for graph to be set up
 ...
@@ -42,3 +47,4 @@ while True:
         process = subprocess.Popen("docker compose down", shell=True)
         process.wait()
         sys.exit(0)
+"""

@@ -47,6 +47,7 @@ setup(
         "pydantic",
         "sqlalchemy",
         "fastapi", 
-        "uvicorn[standard]" 
+        "uvicorn[standard]",
+        "requests" 
     ],
 )

@@ -5,6 +5,7 @@ from fastapi import FastAPI, status
 import uvicorn
 import threading
 import requests
+from anacostia_pipeline.engine.pipeline import Pipeline
 
 
 
