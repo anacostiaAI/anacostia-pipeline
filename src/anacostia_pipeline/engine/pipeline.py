@@ -1,7 +1,8 @@
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Tuple, Dict, Optional, Set
 from threading import Thread
 from datetime import datetime
 from logging import Logger
+from collections import defaultdict
 
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
@@ -41,6 +42,8 @@ class Pipeline:
 
         self.node_dict = dict()
         self.graph = nx.DiGraph()
+        self.nodes: List[BaseNode] = list()
+        self.metadata_store = None
 
         # Add nodes into graph
         for node in nodes:
@@ -65,7 +68,7 @@ class Pipeline:
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
 
-        self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
+        self.nodes = list(nx.topological_sort(self.graph))
 
         # check 2: make sure graph is not disconnected
         if not nx.is_weakly_connected(self.graph):
@@ -125,38 +128,110 @@ class Pipeline:
             thread.join()
             node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
 
-    def launch_nodes(self):
+    def launch_nodes(self, nodes:List[BaseNode]=None):
         """
         Lanches all the registered nodes in topological order.
         """
 
+        if nodes is None:
+            nodes = self.nodes
+
         # set up metadata store nodes
-        metadata_stores = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
+        metadata_stores = [node for node in nodes if isinstance(node, BaseMetadataStoreNode) is True]
         self.__setup_nodes(metadata_stores)
 
         # set up resource nodes
-        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
+        resource_nodes = [node for node in nodes if isinstance(node, BaseResourceNode) is True]
         self.__setup_nodes(resource_nodes)
         
         # set up action nodes
-        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
+        action_nodes = [node for node in nodes if isinstance(node, BaseActionNode) is True]
         self.__setup_nodes(action_nodes)
 
         # start nodes
-        for node in self.nodes:
+        for node in nodes:
             # Note: since node is a subclass of Thread, calling start() will run the run() method
             node.status = Status.RUNNING
             node.start()
 
-    def terminate_nodes(self) -> None:
+    def terminate_nodes(self, nodes:List[BaseNode]=None) -> None:
         # terminating nodes need to be done in reverse order so that the successor nodes are terminated before the predecessor nodes
         # this is because the successor nodes will continue to listen for signals from the predecessor nodes,
         # and if the predecessor nodes are terminated first, then the sucessor nodes will never receive the signals,
         # thus, the successor nodes will never be terminated.
         # predecessor nodes need to wait for the successor nodes to terminate before they can terminate. 
+        if nodes is None:
+            nodes = self.nodes
 
         print("Terminating nodes")
         for node in reversed(self.nodes):
             node.exit()
             node.join()
         print("All nodes terminated")
+
+class ServerInfo:
+    ip: str
+    port: int
+    name: str
+
+    def __hash__(self):
+        return hash(f"{self.ip}:{self.port}")
+
+class DistributedPipeline(Pipeline):
+    '''
+    A Distributed Version of Pipeline
+    '''
+
+    def __init__(
+        self,
+        node_server_map: Iterable[Tuple[BaseNode, ServerInfo]],
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
+
+        self._servers:Dict = dict()
+        self._server_maps:Dict[ServerInfo, List[BaseNode]] = defaultdict(lambda: list())
+        self._server_lookup:Dict[BaseNode, ServerInfo] = dict()
+        
+        # Treat everything conceptually has one DAG across the network
+        # but only allow certain nodes to run based on `node_server_map` mapping
+        super.__init__([n for n,_ in node_server_map], loggers)
+
+        for node_server_pair in node_server_map:
+            node, server = node_server_pair
+            self._server_lookup[node] = server
+            self._servers[server.name] = server
+
+        # Ensures each mapping of server to nodes has a topological sorted list of nodes
+        for node in self.nodes:
+            server = self._server_lookup[node]
+            self._server_maps[server].append(node)
+
+    def _name_lookup(self, server_name:str) -> ServerInfo:
+        return self._servers.get(server_name, None)
+
+    @property
+    def servers(self) -> Iterable[ServerInfo]:
+        '''Returns an iterable of server information'''
+        return self._servers.keys()
+
+    def server_nodes(self, server:Union[str, ServerInfo]):
+        '''Returns Nodes associated with a server in topological order'''
+        if isinstance(server, str):
+            server = self._name_lookup(server)
+        if server is None:
+            raise ValueError(f"Invalid Server: {server}")
+
+        return self._server_maps[server]
+
+    def server_info(self, node) -> Optional[ServerInfo]:
+        '''Returns Server information containing the given node'''
+        return self._server_lookup.get(node, None)
+        
+    def launch_nodes(self, server:Union[str, ServerInfo]):
+        nodes = self.server_nodes(server) 
+        super.launch_nodes(nodes)
+
+    def terminate_nodes(self, server:Union[str, ServerInfo]):
+        nodes = self.server_nodes(server) 
+        nodes = reversed(nodes)
+        super.terminate_nodes(nodes)
