@@ -65,6 +65,7 @@ class RootWebserver(FastAPI):
                 node = Node()
                 node.daemon = True
                 self.pipeline.append(node)
+            logger.info("Root pipeline created...")
 
             response = requests.post(url="http://leaf-pipeline:8080/create")
             if response.status_code == status.HTTP_201_CREATED:
@@ -76,6 +77,7 @@ class RootWebserver(FastAPI):
         def start():
             for node in self.pipeline:
                 node.start()
+            logger.info("Root pipeline started running...")
 
             response = requests.post(url="http://leaf-pipeline:8080/start")
             if response.status_code == status.HTTP_200_OK:
@@ -89,6 +91,7 @@ class RootWebserver(FastAPI):
                 node.pause_event.set()
                 node.shutdown_event.set()
                 node.join()
+            logger.info("Root pipeline shutdown...")
             
             response = requests.post(url="http://leaf-pipeline:8080/shutdown")
             if response.status_code == status.HTTP_200_OK:
@@ -100,6 +103,7 @@ class RootWebserver(FastAPI):
         def pause():
             for node in self.pipeline:
                 node.pause_event.clear()
+            logger.info("Root pipeline paused...")
             
             response = requests.post(url="http://leaf-pipeline:8080/pause")
             if response.status_code == status.HTTP_200_OK:
@@ -111,6 +115,7 @@ class RootWebserver(FastAPI):
         def resume():
             for node in self.pipeline:
                 node.pause_event.set()
+            logger.info("Root pipeline resumed running...")
             
             response = requests.post(url="http://leaf-pipeline:8080/resume")
             if response.status_code == status.HTTP_200_OK:

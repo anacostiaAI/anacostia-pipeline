@@ -6,6 +6,6 @@ COPY ./src /anacostia
 
 RUN pip install -e /anacostia --no-cache-dir
 
-WORKDIR /tests
+WORKDIR /service
 
 CMD ["python", "main.py"]

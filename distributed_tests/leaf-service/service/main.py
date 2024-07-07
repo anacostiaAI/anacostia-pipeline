@@ -65,11 +65,13 @@ class LeafWebserver(FastAPI):
                 node = Node()
                 node.daemon = True
                 self.pipeline.append(node)
+            logger.info("Leaf pipeline created")
 
         @self.post('/start', status_code=status.HTTP_200_OK)
         def start():
             for node in self.pipeline:
                 node.start()
+            logger.info("Leaf pipeline started")
         
         @self.post('/shutdown', status_code=status.HTTP_200_OK)
         def shutdown():
@@ -77,16 +79,19 @@ class LeafWebserver(FastAPI):
                 node.pause_event.set()
                 node.shutdown_event.set()
                 node.join()
+            logger.info("Leaf pipeline shutdown")
         
         @self.post("/pause", status_code=status.HTTP_200_OK)
         def pause():
             for node in self.pipeline:
                 node.pause_event.clear()
+            logger.info("Leaf pipeline pause")
 
         @self.post("/resume", status_code=status.HTTP_200_OK)
         def resume():
             for node in self.pipeline:
                 node.pause_event.set()
+            logger.info("Leaf pipeline resume")
 
 
 def run_background_webserver(**kwargs):
