@@ -1,0 +1,48 @@
+name: anacostia
+
+services:
+  root-pipeline:
+    build: .
+    container_name: root-container
+    volumes:
+      - type: bind
+        source: ./distributed_tests/root-service/tests
+        target: /tests
+      - type: bind
+        source: ./distributed_tests/root-service/input_artifacts
+        target: /input_artifacts
+      - type: bind
+        source: ./distributed_tests/leaf-service/output_artifacts
+        target: /output_artifacts
+      - type: bind
+        source: ./distributed_tests/testing_artifacts
+        target: /testing_artifacts
+    ports:
+      - "8000:8000"
+    networks:
+      - anacostia-network
+
+  leaf-pipeline:
+    build: .
+    container_name: leaf-container
+    volumes:
+      - type: bind
+        source: ./distributed_tests/leaf-service/tests
+        target: /tests
+      - type: bind
+        source: ./distributed_tests/leaf-service/input_artifacts
+        target: /input_artifacts
+      - type: bind
+        source: ./distributed_tests/leaf-service/output_artifacts
+        target: /output_artifacts
+      - type: bind
+        source: ./distributed_tests/testing_artifacts
+        target: /testing_artifacts
+    ports:
+      - "8080:8080"
+    networks:
+      - anacostia-network
+
+networks:
+  anacostia-network:
+    driver: bridge
