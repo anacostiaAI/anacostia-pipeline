@@ -59,6 +59,10 @@ class LeafWebserver(FastAPI):
             print(response.text, flush=True)
             return response.text
         
+        @self.get("/is_started")
+        def healthcheck():
+            return "good"
+         
         @self.post('/create', status_code=status.HTTP_201_CREATED)
         def create():
             for _ in range(2):

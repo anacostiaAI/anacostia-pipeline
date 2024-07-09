@@ -58,6 +58,10 @@ class RootWebserver(FastAPI):
         @self.get("/backward_signal")
         def backward_signal_handler():
             return "response from root"
+        
+        @self.get("/is_started")
+        def healthcheck():
+            return "good"
 
         @self.get("/create")
         def stop():
