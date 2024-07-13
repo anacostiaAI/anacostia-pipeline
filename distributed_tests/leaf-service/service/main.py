@@ -45,8 +45,14 @@ class Node(threading.Thread):
 
 
 class LeafWebserver(FastAPI):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, port_range: List[int], *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        start = port_range[0]
+        end = port_range[1]
+        self.connection_ports = list(range(start+1, end+1))
+        self.designated_port = start
+        
         self.pipeline: List[Node] = []
 
         @self.get("/forward_signal")
@@ -63,6 +69,11 @@ class LeafWebserver(FastAPI):
         def healthcheck():
             return "good"
          
+        @self.get('/create', status_code=status.HTTP_201_CREATED)
+        def create():
+            return "0.0.0.0:8000"
+
+        """
         @self.post('/create', status_code=status.HTTP_201_CREATED)
         def create():
             for _ in range(2):
@@ -70,6 +81,7 @@ class LeafWebserver(FastAPI):
                 node.daemon = True
                 self.pipeline.append(node)
             logger.info("Leaf pipeline created")
+        """
 
         @self.post('/start', status_code=status.HTTP_200_OK)
         def start():
@@ -77,6 +89,11 @@ class LeafWebserver(FastAPI):
                 node.start()
             logger.info("Leaf pipeline started")
         
+        @self.get('/shutdown', status_code=status.HTTP_200_OK)
+        def shutdown():
+            return "0.0.0.0:8000"
+        
+        """
         @self.post('/shutdown', status_code=status.HTTP_200_OK)
         def shutdown():
             for node in self.pipeline:
@@ -84,6 +101,7 @@ class LeafWebserver(FastAPI):
                 node.shutdown_event.set()
                 node.join()
             logger.info("Leaf pipeline shutdown")
+        """
         
         @self.post("/pause", status_code=status.HTTP_200_OK)
         def pause():
@@ -99,7 +117,7 @@ class LeafWebserver(FastAPI):
 
 
 def run_background_webserver(**kwargs):
-    app = LeafWebserver()
+    app = LeafWebserver(port_range=[8000, 9000])
     config = uvicorn.Config(app, host="0.0.0.0", port=8080)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)

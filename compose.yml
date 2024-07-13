@@ -39,11 +39,14 @@ services:
         target: /utils
     ports:
       - "8000:8000"
+      - "8001:8001"
     networks:
       - anacostia-network
     depends_on:
       setup:
         condition: service_completed_successfully
+      leaf-pipeline:
+        condition: service_healthy
     healthcheck:    # think of healthchecks as like heartbeats
       test: "python3 /utils/healthcheck.py http://localhost:8000/is_started"
       interval: 2s
@@ -71,6 +74,7 @@ services:
         target: /utils
     ports:
       - "8080:8080"
+      - "8081:8081"
     networks:
       - anacostia-network
     depends_on:
@@ -82,8 +86,7 @@ services:
       timeout: 10s
       retries: 2
 
-  # wait for healthcheck from root pipeline and leaf pipeline before starting tests
-  tests:
+  tests:    # wait for healthcheck from root pipeline and leaf pipeline before starting tests
     image: python:3.12.4-slim
     volumes:
       - type: bind

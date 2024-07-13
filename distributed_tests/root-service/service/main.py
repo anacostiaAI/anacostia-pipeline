@@ -5,6 +5,11 @@ from fastapi import FastAPI, status
 import uvicorn
 import threading
 import requests
+import asyncio
+from contextlib import asynccontextmanager
+import sys
+import signal
+
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 
@@ -44,6 +49,9 @@ class Node(threading.Thread):
             i += 1
 
 
+# Note: in the future, this RootWebserver class will be renamed to AnacostiaWebserver
+# each instance of the AnacostiaWebserver class will be responsible for handling all the web traffic for one copy of a subgraph.
+# This means that each instance of the AnacostiaWebserver class will be bound to a single port.
 class RootWebserver(FastAPI):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,6 +136,70 @@ class RootWebserver(FastAPI):
                 return "pipeline resume failed"
         
 
+
+class AnacostiaService(FastAPI):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        
+        # Note: in the future, Anacostia service will pull the origins from connector nodes in the pipeline
+        self.leaf_origins = ["http://leaf-pipeline:8080"]
+
+        @self.get("/is_started")
+        def healthcheck():
+            return "good"
+    
+
+@asynccontextmanager
+async def lifespan(app: AnacostiaService):
+    async def handshake(url: str):
+        return requests.get(url)
+    
+    # on start up, ping all leaf pipelines to ensure proper connection
+    # Note: all leaf pipelines must be online prior to root pipeline starts running
+    responses = await asyncio.gather(*[handshake(f"{url}/create") for url in app.leaf_origins])
+    for response in responses:
+        print(f"leaf created {response.text}")
+
+    yield
+
+    # on shutdown, ping all leaf pipelines to shutoff and destroy pipeline instances
+    responses = await asyncio.gather(*[handshake(f"{url}/shutdown") for url in app.leaf_origins])
+    for response in responses:
+        print(f"leaf shutdown {response.text}")
+
+
+
+
+# Note: in the future, run_service will work like so:
+# 1. take in a pipeline as an argument
+# 2. automatically scan the pipeline
+# 3. finds connection nodes that work across servers
+# 4. retrieve the host+port of the leaf pipeline service
+# 5. make the connection with the leaf pipeline service
+# 6. spin up the webserver and the pipeline
+def run_service(host: str = "0.0.0.0", port: int = 8000):
+    app = AnacostiaService(lifespan=lifespan)
+    config = uvicorn.Config(app, host=host, port=port)
+    server = uvicorn.Server(config)
+    fastapi_thread = threading.Thread(target=server.run)
+
+    def signal_handler(sig, frame):
+        # Handle SIGTERM here
+        print('SIGTERM received, performing cleanup...')
+        server.should_exit = True
+        fastapi_thread.join()
+
+    # Register signal handler for SIGTERM (this is done for shutting down docker containers via docker stop)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Register signal handler for SIGINT (this is done for shutting down using Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    fastapi_thread.start()
+
+# Note: in the future, this function will be a part of the AnacostiaService class 
+# and it will be responsible for spinning up multiple instances of the AnacostiaWebserver class
+# This means that each instance of the AnacostiaService class will be bound to a single ip address.
 def run_background_webserver(**kwargs):
     app = RootWebserver()
     config = uvicorn.Config(app, host="0.0.0.0", port=8000)
@@ -137,4 +209,4 @@ def run_background_webserver(**kwargs):
 
 
 if __name__ == "__main__":
-    run_background_webserver()
+    run_service()
