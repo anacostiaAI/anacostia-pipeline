@@ -2,12 +2,11 @@ from typing import List
 import logging
 import time
 from fastapi import FastAPI, status
+import httpx
 import uvicorn
 import threading
-import requests
 import asyncio
 from contextlib import asynccontextmanager
-import sys
 import signal
 
 from anacostia_pipeline.engine.pipeline import Pipeline
@@ -57,9 +56,11 @@ class RootWebserver(FastAPI):
         super().__init__(*args, **kwargs)
         self.pipeline: List[Node] = []
 
+        self.client: httpx.AsyncClient = None
+
         @self.get("/forward_signal")
-        def forward_signal_handler():
-            response = requests.get(url="http://leaf-pipeline:8080/forward_signal")
+        async def forward_signal_handler():
+            response = await self.client.get(url="http://leaf-pipeline:8080/forward_signal")
             print(response.text, flush=True)
             return response.text
 
@@ -72,64 +73,64 @@ class RootWebserver(FastAPI):
             return "good"
 
         @self.get("/create")
-        def stop():
+        async def stop():
             for _ in range(2):
                 node = Node()
                 node.daemon = True
                 self.pipeline.append(node)
             logger.info("Root pipeline created...")
 
-            response = requests.post(url="http://leaf-pipeline:8080/create")
+            response = await self.client.post(url="http://leaf-pipeline:8080/create")
             if response.status_code == status.HTTP_201_CREATED:
                 return "Root and leaf pipelines created..."
             else:
                 return "pipeline creation failed"
 
         @self.get('/start', status_code=status.HTTP_200_OK)
-        def start():
+        async def start():
             for node in self.pipeline:
                 node.start()
             logger.info("Root pipeline started running...")
 
-            response = requests.post(url="http://leaf-pipeline:8080/start")
+            response = await self.client.post(url="http://leaf-pipeline:8080/start")
             if response.status_code == status.HTTP_200_OK:
                 return "Root and leaf pipelines started running..."
             else:
                 return "pipeline start failed"
 
         @self.get('/shutdown')
-        def shutdown():
+        async def shutdown():
             for node in self.pipeline:
                 node.pause_event.set()
                 node.shutdown_event.set()
                 node.join()
             logger.info("Root pipeline shutdown...")
             
-            response = requests.post(url="http://leaf-pipeline:8080/shutdown")
+            response = await self.client.post(url="http://leaf-pipeline:8080/shutdown")
             if response.status_code == status.HTTP_200_OK:
                 return "Root and leaf pipelines shutdown..."
             else:
                 return "pipeline shutdown failed"
         
         @self.get("/pause")
-        def pause():
+        async def pause():
             for node in self.pipeline:
                 node.pause_event.clear()
             logger.info("Root pipeline paused...")
             
-            response = requests.post(url="http://leaf-pipeline:8080/pause")
+            response = await self.client.post(url="http://leaf-pipeline:8080/pause")
             if response.status_code == status.HTTP_200_OK:
                 return "Root and leaf pipelines paused..."
             else:
                 return "pipeline pause failed"
 
         @self.get("/resume")
-        def resume():
+        async def resume():
             for node in self.pipeline:
                 node.pause_event.set()
             logger.info("Root pipeline resumed running...")
             
-            response = requests.post(url="http://leaf-pipeline:8080/resume")
+            response = await self.client.post(url="http://leaf-pipeline:8080/resume")
             if response.status_code == status.HTTP_200_OK:
                 return "Root and leaf pipelines resumed running..."
             else:
@@ -141,6 +142,8 @@ class AnacostiaService(FastAPI):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         
+        self.client: httpx.AsyncClient = None
+
         # Note: in the future, Anacostia service will pull the origins from connector nodes in the pipeline
         self.leaf_origins = ["http://leaf-pipeline:8080"]
 
@@ -151,19 +154,18 @@ class AnacostiaService(FastAPI):
 
 @asynccontextmanager
 async def lifespan(app: AnacostiaService):
-    async def handshake(url: str):
-        return requests.get(url)
-    
+    app.client = httpx.AsyncClient()
+
     # on start up, ping all leaf pipelines to ensure proper connection
     # Note: all leaf pipelines must be online prior to root pipeline starts running
-    responses = await asyncio.gather(*[handshake(f"{url}/create") for url in app.leaf_origins])
+    responses = await asyncio.gather(*[app.client.get(f"{url}/create") for url in app.leaf_origins])
     for response in responses:
         print(f"leaf created {response.text}")
 
     yield
 
     # on shutdown, ping all leaf pipelines to shutoff and destroy pipeline instances
-    responses = await asyncio.gather(*[handshake(f"{url}/shutdown") for url in app.leaf_origins])
+    responses = await asyncio.gather(*[app.client.get(f"{url}/shutdown") for url in app.leaf_origins])
     for response in responses:
         print(f"leaf shutdown {response.text}")
 
@@ -197,11 +199,20 @@ def run_service(host: str = "0.0.0.0", port: int = 8000):
 
     fastapi_thread.start()
 
+
+
+@asynccontextmanager
+async def life(app: RootWebserver):
+    app.client = httpx.AsyncClient()
+    yield
+    await app.client.aclose()
+
+
 # Note: in the future, this function will be a part of the AnacostiaService class 
 # and it will be responsible for spinning up multiple instances of the AnacostiaWebserver class
 # This means that each instance of the AnacostiaService class will be bound to a single ip address.
 def run_background_webserver(**kwargs):
-    app = RootWebserver()
+    app = RootWebserver(lifespan=life)
     config = uvicorn.Config(app, host="0.0.0.0", port=8000)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
@@ -209,4 +220,4 @@ def run_background_webserver(**kwargs):
 
 
 if __name__ == "__main__":
-    run_service()
+    run_background_webserver()

@@ -48,6 +48,6 @@ setup(
         "sqlalchemy",
         "fastapi", 
         "uvicorn[standard]",
-        "requests" 
+        "httpx" 
     ],
 )

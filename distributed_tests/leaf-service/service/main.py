@@ -4,7 +4,8 @@ import time
 from fastapi import FastAPI, status
 import uvicorn
 import threading
-import requests
+import httpx
+from contextlib import asynccontextmanager
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 
@@ -55,13 +56,15 @@ class LeafWebserver(FastAPI):
         
         self.pipeline: List[Node] = []
 
+        self.client: httpx.AsyncClient = None
+
         @self.get("/forward_signal")
         def forward_signal_handler():
             return "response from leaf"
         
         @self.get("/backward_signal")
-        def backward_signal_handler():
-            response = requests.get(url="http://root-pipeline:8000/backward_signal")
+        async def backward_signal_handler():
+            response = await self.client.get(url="http://root-pipeline:8000/backward_signal")
             print(response.text, flush=True)
             return response.text
         
@@ -69,11 +72,12 @@ class LeafWebserver(FastAPI):
         def healthcheck():
             return "good"
          
+        """
         @self.get('/create', status_code=status.HTTP_201_CREATED)
         def create():
             return "0.0.0.0:8000"
-
         """
+
         @self.post('/create', status_code=status.HTTP_201_CREATED)
         def create():
             for _ in range(2):
@@ -81,7 +85,6 @@ class LeafWebserver(FastAPI):
                 node.daemon = True
                 self.pipeline.append(node)
             logger.info("Leaf pipeline created")
-        """
 
         @self.post('/start', status_code=status.HTTP_200_OK)
         def start():
@@ -89,11 +92,12 @@ class LeafWebserver(FastAPI):
                 node.start()
             logger.info("Leaf pipeline started")
         
+        """
         @self.get('/shutdown', status_code=status.HTTP_200_OK)
         def shutdown():
             return "0.0.0.0:8000"
-        
         """
+        
         @self.post('/shutdown', status_code=status.HTTP_200_OK)
         def shutdown():
             for node in self.pipeline:
@@ -101,7 +105,6 @@ class LeafWebserver(FastAPI):
                 node.shutdown_event.set()
                 node.join()
             logger.info("Leaf pipeline shutdown")
-        """
         
         @self.post("/pause", status_code=status.HTTP_200_OK)
         def pause():
@@ -116,8 +119,17 @@ class LeafWebserver(FastAPI):
             logger.info("Leaf pipeline resume")
 
 
+
+@asynccontextmanager
+async def life(app: LeafWebserver):
+    app.client = httpx.AsyncClient()
+    yield
+    await app.client.aclose()
+
+
+
 def run_background_webserver(**kwargs):
-    app = LeafWebserver(port_range=[8000, 9000])
+    app = LeafWebserver(port_range=[8000, 9000], lifecycle=life)
     config = uvicorn.Config(app, host="0.0.0.0", port=8080)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
