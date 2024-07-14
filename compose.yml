@@ -18,6 +18,39 @@ services:
         target: /utils
     command: python3 /utils/setup.py
 
+  leaf-pipeline:
+    build: .
+    container_name: leaf-container
+    volumes:
+      - type: bind
+        source: ./distributed_tests/leaf-service/service
+        target: /service
+      - type: bind
+        source: ./distributed_tests/leaf-service/input_artifacts
+        target: /input_artifacts
+      - type: bind
+        source: ./distributed_tests/leaf-service/output_artifacts
+        target: /output_artifacts
+      - type: bind
+        source: ./distributed_tests/testing_artifacts
+        target: /testing_artifacts
+      - type: bind
+        source: ./distributed_tests/utils
+        target: /utils
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    networks:
+      - anacostia-network
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:    # think of healthchecks as like heartbeats
+      test: "python3 /utils/healthcheck.py http://localhost:8080/is_started"
+      interval: 2s
+      timeout: 10s
+      retries: 2
+
   root-pipeline:
     build: .
     container_name: root-container
@@ -49,39 +82,6 @@ services:
         condition: service_healthy
     healthcheck:    # think of healthchecks as like heartbeats
       test: "python3 /utils/healthcheck.py http://localhost:8000/is_started"
-      interval: 2s
-      timeout: 10s
-      retries: 2
-
-  leaf-pipeline:
-    build: .
-    container_name: leaf-container
-    volumes:
-      - type: bind
-        source: ./distributed_tests/leaf-service/service
-        target: /service
-      - type: bind
-        source: ./distributed_tests/leaf-service/input_artifacts
-        target: /input_artifacts
-      - type: bind
-        source: ./distributed_tests/leaf-service/output_artifacts
-        target: /output_artifacts
-      - type: bind
-        source: ./distributed_tests/testing_artifacts
-        target: /testing_artifacts
-      - type: bind
-        source: ./distributed_tests/utils
-        target: /utils
-    ports:
-      - "8080:8080"
-      - "8081:8081"
-    networks:
-      - anacostia-network
-    depends_on:
-      setup:
-        condition: service_completed_successfully
-    healthcheck:    # think of healthchecks as like heartbeats
-      test: "python3 /utils/healthcheck.py http://localhost:8080/is_started"
       interval: 2s
       timeout: 10s
       retries: 2
