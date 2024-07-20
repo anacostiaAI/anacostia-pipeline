@@ -137,8 +137,7 @@ def run_background_webserver(**kwargs):
     fastapi_thread = threading.Thread(target=server.run)
 
     def signal_handler(sig, frame):
-        # Handle SIGTERM here
-        print(f'{sig} received, performing cleanup for leaf...', flush=True)
+        logger.debug(f'{sig} received, performing cleanup for root...')
         server.should_exit = True
         fastapi_thread.join()
     
@@ -146,7 +145,7 @@ def run_background_webserver(**kwargs):
     signal.signal(signal.SIGTERM, signal_handler)
 
     # Register signal handler for SIGINT (this is done for shutting down via Ctrl+C from the command line)
-    signal.signal(signal.SIGINT, signal_handler)
+    # signal.signal(signal.SIGINT, signal_handler)
 
     fastapi_thread.start()
 
