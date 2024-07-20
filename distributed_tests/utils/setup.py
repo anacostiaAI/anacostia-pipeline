@@ -4,10 +4,10 @@ import logging
 
 
 
-root_input_artifacts = "./root-service/input_artifacts"
-root_output_artifacts = "./root-service/output_artifacts"
-leaf_input_artifacts = "./leaf-service/input_artifacts"
-leaf_output_artifacts = "./leaf-service/output_artifacts"
+root_input_artifacts = "./root-artifacts/input_artifacts"
+root_output_artifacts = "./root-artifacts/output_artifacts"
+leaf_input_artifacts = "./leaf-artifacts/input_artifacts"
+leaf_output_artifacts = "./leaf-artifacts/output_artifacts"
 testing_artifacts = "./testing_artifacts"
 
 

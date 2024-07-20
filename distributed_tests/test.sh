@@ -35,9 +35,9 @@ python ./utils/setup.py
 echo "Done."
 
 # Start pipelines
-python ./root-service/service/main.py &
+python root.py &
 PID1=$!
-python ./leaf-service/service/main.py &
+python leaf.py &
 PID2=$!
 
 # Function to ping an IP address
