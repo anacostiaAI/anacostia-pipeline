@@ -35,7 +35,7 @@ python ./utils/setup.py
 echo "Done."
 
 # Start pipelines
-python root.py &
+python root.py $IP_ROOT $PORT_ROOT &
 PID1=$!
 python leaf.py &
 PID2=$!

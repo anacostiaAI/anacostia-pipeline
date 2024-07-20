@@ -8,6 +8,7 @@ import threading
 import asyncio
 from contextlib import asynccontextmanager
 import signal
+import argparse
 
 from anacostia_pipeline.engine.pipeline import Pipeline
 
@@ -217,13 +218,13 @@ async def life(app: RootWebserver):
 # This means that each instance of the AnacostiaService class will be bound to a single ip address.
 def run_background_webserver(**kwargs):
     app = RootWebserver(lifespan=life)
-    config = uvicorn.Config(app, host="127.0.0.1", port=8001)
+    config = uvicorn.Config(app, **kwargs)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
 
     def signal_handler(sig, frame):
         # Handle SIGTERM here
-        print(f'{sig} received, performing cleanup for root...', flush=True)
+        logger.debug(f'{sig} received, performing cleanup for root...')
         server.should_exit = True
         fastapi_thread.join()
 
@@ -237,4 +238,9 @@ def run_background_webserver(**kwargs):
 
 
 if __name__ == "__main__":
-    run_background_webserver()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('host', type=str)
+    parser.add_argument('port', type=int)
+    args = parser.parse_args()
+
+    run_background_webserver(host=args.host, port=args.port)
