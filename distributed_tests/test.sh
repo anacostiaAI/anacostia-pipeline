@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # run the following command in terminal to execute this bash script:
-# $ chmod +x greet.sh
+# $ chmod +x test.sh
 # $ ./test.sh
 
 # Determine the operating system
