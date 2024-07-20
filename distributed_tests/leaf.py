@@ -7,6 +7,8 @@ import threading
 import httpx
 import signal
 from contextlib import asynccontextmanager
+import argparse
+
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 
@@ -47,14 +49,9 @@ class Node(threading.Thread):
 
 
 class LeafWebserver(FastAPI):
-    def __init__(self, port_range: List[int], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        start = port_range[0]
-        end = port_range[1]
-        self.connection_ports = list(range(start+1, end+1))
-        self.designated_port = start
-        
         self.pipeline: List[Node] = []
 
         self.client: httpx.AsyncClient = None
@@ -134,8 +131,8 @@ async def life(app: LeafWebserver):
 
 
 def run_background_webserver(**kwargs):
-    app = LeafWebserver(port_range=[8000, 9000], lifecycle=life)
-    config = uvicorn.Config(app, host="192.168.100.2", port=8002)
+    app = LeafWebserver(lifespan=life)
+    config = uvicorn.Config(app, **kwargs)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
 
@@ -156,4 +153,9 @@ def run_background_webserver(**kwargs):
 
 
 if __name__ == "__main__":
-    run_background_webserver()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('host', type=str)
+    parser.add_argument('port', type=int)
+    args = parser.parse_args()
+
+    run_background_webserver(host=args.host, port=args.port)

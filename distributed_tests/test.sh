@@ -37,7 +37,7 @@ echo "Done."
 # Start pipelines
 python root.py $IP_ROOT $PORT_ROOT &
 PID1=$!
-python leaf.py &
+python leaf.py $IP_LEAF $PORT_LEAF &
 PID2=$!
 
 # Function to ping an IP address
