@@ -31,7 +31,7 @@ ifconfig $INTERFACE
 
 # Set up testing environment
 echo "Setting up distributed tests"
-python ./utils/setup.py
+python setup.py
 echo "Done."
 
 # Start pipelines
