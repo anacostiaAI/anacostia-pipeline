@@ -55,11 +55,9 @@ ping_ip() {
 ping_ip $IP_ROOT
 ping_ip $IP_LEAF
 
-# Function to clean up background processes
+# Function to wait for background processes to complete (or until terminated by Ctrl+C)
 cleanup() {
     echo "Stopping FastAPI servers..."
-    kill -15 $PID1
-    kill -15 $PID2
     wait $PID1
     wait $PID2
     echo "Cleanup done."
@@ -67,10 +65,6 @@ cleanup() {
 
 # Set up the trap to call the cleanup function on SIGINT (Ctrl+C)
 trap cleanup SIGINT
-
-# Wait for background processes to complete (or until terminated by Ctrl+C)
-wait $PID1
-wait $PID2
 
 # remove an IP address from en0
 sudo ifconfig $INTERFACE -alias $IP_LEAF

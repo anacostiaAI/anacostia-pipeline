@@ -227,11 +227,8 @@ def run_background_webserver(**kwargs):
         server.should_exit = True
         fastapi_thread.join()
 
-    # Register signal handler for SIGTERM (this is done for shutting down via test.sh)
-    signal.signal(signal.SIGTERM, signal_handler)
-    
     # Register signal handler for SIGINT (this is done for shutting down via Ctrl+C from the command line)
-    # signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
     fastapi_thread.start()
 
