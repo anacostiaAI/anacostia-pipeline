@@ -13,7 +13,7 @@ from anacostia_pipeline.engine.pipeline import Pipeline
 
 
 
-root_test_path = "/testing_artifacts"
+root_test_path = "./testing_artifacts"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
@@ -57,6 +57,10 @@ class RootWebserver(FastAPI):
         self.pipeline: List[Node] = []
 
         self.client: httpx.AsyncClient = None
+
+        @self.get("/")
+        async def main_page():
+            return "hello"
 
         @self.get("/forward_signal")
         async def forward_signal_handler():
@@ -213,9 +217,22 @@ async def life(app: RootWebserver):
 # This means that each instance of the AnacostiaService class will be bound to a single ip address.
 def run_background_webserver(**kwargs):
     app = RootWebserver(lifespan=life)
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000)
+    config = uvicorn.Config(app, host="192.168.100.1", port=8000)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
+
+    def signal_handler(sig, frame):
+        # Handle SIGTERM here
+        print('SIGTERM received, performing cleanup...', flush=True)
+        server.should_exit = True
+        fastapi_thread.join()
+
+    # Register signal handler for SIGTERM (this is done for shutting down via test.sh)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Register signal handler for SIGINT (this is done for shutting down via Ctrl+C from the command line)
+    signal.signal(signal.SIGINT, signal_handler)
+
     fastapi_thread.start()
 
 
