@@ -60,7 +60,7 @@ class RootWebserver(FastAPI):
 
         @self.get("/")
         async def main_page():
-            return "hello"
+            return "hello from root"
 
         @self.get("/forward_signal")
         async def forward_signal_handler():
@@ -217,13 +217,13 @@ async def life(app: RootWebserver):
 # This means that each instance of the AnacostiaService class will be bound to a single ip address.
 def run_background_webserver(**kwargs):
     app = RootWebserver(lifespan=life)
-    config = uvicorn.Config(app, host="192.168.100.1", port=8000)
+    config = uvicorn.Config(app, host="127.0.0.1", port=8001)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
 
     def signal_handler(sig, frame):
         # Handle SIGTERM here
-        print('SIGTERM received, performing cleanup...', flush=True)
+        print(f'{sig} received, performing cleanup for root...', flush=True)
         server.should_exit = True
         fastapi_thread.join()
 

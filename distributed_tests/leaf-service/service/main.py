@@ -5,12 +5,13 @@ from fastapi import FastAPI, status
 import uvicorn
 import threading
 import httpx
+import signal
 from contextlib import asynccontextmanager
 from anacostia_pipeline.engine.pipeline import Pipeline
 
 
 
-root_test_path = "/testing_artifacts"
+root_test_path = "./testing_artifacts"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
@@ -57,6 +58,10 @@ class LeafWebserver(FastAPI):
         self.pipeline: List[Node] = []
 
         self.client: httpx.AsyncClient = None
+
+        @self.get("/")
+        async def main_page():
+            return "hello from leaf"
 
         @self.get("/forward_signal")
         def forward_signal_handler():
@@ -130,10 +135,24 @@ async def life(app: LeafWebserver):
 
 def run_background_webserver(**kwargs):
     app = LeafWebserver(port_range=[8000, 9000], lifecycle=life)
-    config = uvicorn.Config(app, host="0.0.0.0", port=8080)
+    config = uvicorn.Config(app, host="192.168.100.2", port=8002)
     server = uvicorn.Server(config)
     fastapi_thread = threading.Thread(target=server.run)
+
+    def signal_handler(sig, frame):
+        # Handle SIGTERM here
+        print(f'{sig} received, performing cleanup for leaf...', flush=True)
+        server.should_exit = True
+        fastapi_thread.join()
+    
+    # Register signal handler for SIGTERM (this is done for shutting down via test.sh)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # Register signal handler for SIGINT (this is done for shutting down via Ctrl+C from the command line)
+    signal.signal(signal.SIGINT, signal_handler)
+
     fastapi_thread.start()
+
 
 
 if __name__ == "__main__":
