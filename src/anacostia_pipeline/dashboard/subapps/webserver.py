@@ -10,11 +10,10 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-from .components.index import index_template
-from .components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
-
-from ..engine.pipeline import Pipeline, PipelineModel
-from ..engine.constants import Work
+from anacostia_pipeline.dashboard.components.index import index_template
+from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
+from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
+from anacostia_pipeline.engine.constants import Work
 
 
 
