@@ -23,11 +23,8 @@ class BaseNodeApp(FastAPI):
             async def endpoint(request: Request):
                 return default_node_page()
 
-    def get_ip_address(self):
-        return "127.0.0.1:8000"
-    
     def get_prefix(self):
-        return f"/node/{self.node.name}"
+        return f"/{self.node.name}"
     
     def get_endpoint(self):
         return f"{self.get_prefix()}/home"

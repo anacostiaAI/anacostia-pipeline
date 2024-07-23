@@ -23,12 +23,13 @@ DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__fi
 
 
 class PipelineWebserver(FastAPI):
-    def __init__(self, pipeline: Pipeline, *args, **kwargs):
+    def __init__(self, name: str, pipeline: Pipeline, *args, **kwargs):
         super().__init__(*args, **kwargs)
         host = kwargs.get("host")
         port = kwargs.get("port")
         self.host = host if host is not None else "localhost"
         self.port = port if port is not None else 8000
+        self.name = name
 
         self.pipeline = pipeline
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
@@ -164,3 +165,6 @@ class PipelineWebserver(FastAPI):
         # launch the pipeline
         print("Launching Pipeline...")
         self.pipeline.launch_nodes()
+
+    def get_graph_prefix(self):
+        return f"/{self.name}"

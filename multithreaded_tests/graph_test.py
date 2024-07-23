@@ -172,7 +172,7 @@ pipeline = Pipeline(
 
 
 if __name__ == "__main__":
-    webserver = PipelineWebserver(pipeline, host="127.0.0.1", port=8000)
+    webserver = PipelineWebserver(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
     webserver.run()
 
     time.sleep(6)
