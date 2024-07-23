@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from typing import List
+import uuid
 
 
 
@@ -43,17 +44,29 @@ class GraphApp(FastAPI):
 
 
 class ServiceApp(FastAPI):
-    def __init__(self, name: str, graphs: List[GraphApp], *args, **kwargs):
+    def __init__(self, name: str, nodes: List[NodeApp], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
-
-        for graph in graphs:
-            self.mount(graph.get_graph_prefix(), graph)
+        self.nodes = nodes
 
         @self.get("/")
         def service_info():
             # http://localhost:8000/
             return f"{self.name} info"
+        
+        @self.get("/connect")
+        def connect():
+            # http://localhost:8000/connect
+
+            # initialize a graph FastAPI subapp
+            graph_name = f"graph_{uuid.uuid4().hex}"
+            graph = GraphApp(graph_name, self.nodes)
+
+            # mount the subapp
+            self.mount(graph.get_graph_prefix(), graph)
+
+            return f"{graph_name} mounted"
+
 
 
 
@@ -66,7 +79,7 @@ if __name__ == "__main__":
     graph1 = GraphApp("graph1", [node1, node2])
     graph2 = GraphApp("graph2", [node3, node4])
 
-    service = ServiceApp("service", [graph1, graph2])
+    service = ServiceApp("service", [node1, node2, node3, node4])
 
     config = uvicorn.Config(service, host="localhost", port=8000)
     server = uvicorn.Server(config)
