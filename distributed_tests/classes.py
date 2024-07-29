@@ -25,7 +25,7 @@ class NodeApp(FastAPI):
 
 
 class GraphApp(FastAPI):
-    def __init__(self, name: str, nodes: List[NodeApp], *args, **kwargs):
+    def __init__(self, nodes: List[NodeApp], name: str = "", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
 
@@ -60,7 +60,7 @@ class ServiceApp(FastAPI):
 
             # initialize a graph FastAPI subapp
             graph_name = f"graph_{uuid.uuid4().hex}"
-            graph = GraphApp(graph_name, self.nodes)
+            graph = GraphApp(self.nodes, graph_name)
 
             # mount the subapp
             self.mount(graph.get_graph_prefix(), graph)
