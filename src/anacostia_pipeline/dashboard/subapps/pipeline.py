@@ -23,17 +23,20 @@ DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__fi
 
 
 class PipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: Pipeline, *args, **kwargs):
+    def __init__(self, name: str, pipeline: Pipeline, host="127.0.0.1", port=8000, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        host = kwargs.get("host")
-        port = kwargs.get("port")
-        self.host = host if host is not None else "localhost"
-        self.port = port if port is not None else 8000
         self.name = name
-
         self.pipeline = pipeline
+        self.host = host
+        self.port = port
+
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
+
+        for node in self.pipeline.nodes:
+            node_subapp = node.get_app()
+            node_subapp.graph_prefix = self.get_graph_prefix()      # set the graph_prefix variable in the BaseNodeApp
+            self.mount(node_subapp.get_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.get('/api/')
         def welcome():
@@ -133,12 +136,10 @@ class PipelineWebserver(FastAPI):
         model["edges"] = edges
         return model
 
-    def run(self):
-        for node in self.pipeline.nodes:
-            node_subapp = node.get_app()
-            self.mount(node_subapp.get_prefix(), node_subapp)
-            # app.include_router(node_router, prefix=node_router.get_prefix())
+    def get_graph_prefix(self):
+        return f"/{self.name}"
 
+    def run(self):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         server = uvicorn.Server(config)
         fastapi_thread = Thread(target=server.run)
@@ -165,6 +166,3 @@ class PipelineWebserver(FastAPI):
         # launch the pipeline
         print("Launching Pipeline...")
         self.pipeline.launch_nodes()
-
-    def get_graph_prefix(self):
-        return f"/{self.name}"
