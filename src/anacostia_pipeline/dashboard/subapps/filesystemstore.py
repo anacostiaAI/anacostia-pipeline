@@ -13,7 +13,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
-        self.event_source = f"{self.get_prefix()}/table_update_events"
+        self.event_source = f"{self.get_node_prefix()}/table_update_events"
         self.event_name = "TableUpdate"
 
         self.displayed_file_entries = None
@@ -24,7 +24,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             if type(file_entries) is list:
                 for file_entry in file_entries:
                     file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                    file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
+                    file_entry["file_display_endpoint"] = f"{self.get_node_prefix()}/retrieve_file?file_id={file_entry['id']}"
                     file_entry["state_change_event_name"] = f"StateUpdate{file_entry['id']}"
                     if file_entry['end_time'] is not None:
                         file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
@@ -33,7 +33,7 @@ class FilesystemStoreNodeApp(BaseNodeApp):
             elif type(file_entries) is dict:
                 file_entry = file_entries
                 file_entry['created_at'] = file_entry['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                file_entry["file_display_endpoint"] = f"{self.get_prefix()}/retrieve_file?file_id={file_entry['id']}"
+                file_entry["file_display_endpoint"] = f"{self.get_node_prefix()}/retrieve_file?file_id={file_entry['id']}"
                 file_entry["state_change_event_name"] = f"StateUpdate{file_entry['id']}"
                 if file_entry['end_time'] is not None:
                     file_entry['end_time'] = file_entry['end_time'].strftime("%m/%d/%Y, %H:%M:%S")

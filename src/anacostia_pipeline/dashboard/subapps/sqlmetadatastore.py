@@ -14,11 +14,11 @@ class SqliteMetadataStoreApp(BaseNodeApp):
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
         self.data_options = {
-            "runs": f"{self.get_prefix()}/runs",
-            "metrics": f"{self.get_prefix()}/metrics",
-            "params": f"{self.get_prefix()}/params",
-            "tags": f"{self.get_prefix()}/tags",
-            "samples": f"{self.get_prefix()}/samples"
+            "runs": f"{self.get_node_prefix()}/runs",
+            "metrics": f"{self.get_node_prefix()}/metrics",
+            "params": f"{self.get_node_prefix()}/params",
+            "tags": f"{self.get_node_prefix()}/tags",
+            "samples": f"{self.get_node_prefix()}/samples"
         }
 
         @self.get("/home", response_class=HTMLResponse)

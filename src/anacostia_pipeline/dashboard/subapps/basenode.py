@@ -24,18 +24,18 @@ class BaseNodeApp(FastAPI):
             async def endpoint(request: Request):
                 return default_node_page()
 
-    def get_prefix(self):
+    def get_node_prefix(self):
         return f"/{self.node.name}"
     
     def get_full_prefix(self):
-        return f"{self.graph_prefix}{self.get_prefix()}"
+        return f"{self.graph_prefix}{self.get_node_prefix()}"
 
     def get_endpoint(self):
-        return f"{self.get_prefix()}/home"
+        return f"{self.get_node_prefix()}/home"
     
     def get_status_endpoint(self):
-        return f"{self.get_prefix()}/status"
+        return f"{self.get_node_prefix()}/status"
     
     def get_work_endpoint(self):
-        return f"{self.get_prefix()}/work"
+        return f"{self.get_node_prefix()}/work"
     

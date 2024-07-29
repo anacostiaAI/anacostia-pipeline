@@ -36,7 +36,7 @@ class PipelineWebserver(FastAPI):
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
             node_subapp.graph_prefix = self.get_graph_prefix()      # set the graph_prefix variable in the BaseNodeApp
-            self.mount(node_subapp.get_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
+            self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.get('/api/')
         def welcome():
