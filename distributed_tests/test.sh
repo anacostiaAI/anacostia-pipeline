@@ -7,6 +7,10 @@
 # Determine the operating system
 OS_TYPE=$(uname)
 
+# Define file paths of root and leaf services
+FILEPATH_ROOT="root_service.py"
+FILEPATH_LEAF="leaf_service.py"
+
 # Define IP addresses and ports
 IP_ROOT="127.0.0.1"
 IP_LEAF="192.168.100.2"
@@ -35,9 +39,9 @@ python setup.py
 echo "Done."
 
 # Start pipelines
-python root.py $IP_ROOT $PORT_ROOT &
+python $FILEPATH_ROOT $IP_ROOT $PORT_ROOT &
 PID1=$!
-python leaf.py $IP_LEAF $PORT_LEAF &
+python $FILEPATH_LEAF $IP_LEAF $PORT_LEAF &
 PID2=$!
 
 # Function to ping an IP address
@@ -60,14 +64,23 @@ cleanup() {
     echo "Stopping FastAPI servers..."
     wait $PID1
     wait $PID2
-    echo "Cleanup done."
+    echo "FastAPI servers stopped."
 }
 
 # Set up the trap to call the cleanup function on SIGINT (Ctrl+C)
 trap cleanup SIGINT
 
+# Wait for background processes to complete (or until terminated by Ctrl+C)
+# Note: SIGINT is sent to root and leaf services when Ctrl+C is pressed
+wait $PID1
+wait $PID2
+
 # remove an IP address from en0
+echo "Removing IP address $IP_LEAF from $INTERFACE..."
 sudo ifconfig $INTERFACE -alias $IP_LEAF
 
 # Bring the interface down:
+echo "Bringing $INTERFACE down..."
 sudo ifconfig $INTERFACE down
+
+echo "Done."
