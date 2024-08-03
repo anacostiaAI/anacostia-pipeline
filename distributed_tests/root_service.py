@@ -3,7 +3,7 @@ import logging
 
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
 from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
-from anacostia_pipeline.dashboard.service import AnacostiaService
+from anacostia_pipeline.dashboard.service import RootService
 
 
 
@@ -11,8 +11,8 @@ root_test_path = "./testing_artifacts"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='LEAF %(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    format='ROOT %(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     filename=log_path,
     filemode='a'
@@ -27,5 +27,5 @@ if __name__ == "__main__":
     parser.add_argument('port', type=int)
     args = parser.parse_args()
 
-    service = AnacostiaService(name="root", host=args.host, port=args.port)
+    service = RootService(name="root", host=args.host, port=args.port, logger=logger)
     service.run()

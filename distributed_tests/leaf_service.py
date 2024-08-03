@@ -1,8 +1,23 @@
 import argparse
+import logging
 
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
 from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
-from anacostia_pipeline.dashboard.service import AnacostiaService
+from anacostia_pipeline.dashboard.service import LeafService
+
+
+root_test_path = "./testing_artifacts"
+
+log_path = f"{root_test_path}/anacostia.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format='LEAF %(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename=log_path,
+    filemode='a'
+)
+logger = logging.getLogger(__name__)
+
 
 
 if __name__ == "__main__":
@@ -11,6 +26,6 @@ if __name__ == "__main__":
     parser.add_argument('port', type=int)
     args = parser.parse_args()
 
-    service = AnacostiaService(name="leaf", host=args.host, port=args.port)
+    service = LeafService(name="leaf", host=args.host, port=args.port, logger=logger)
     service.run()
 
