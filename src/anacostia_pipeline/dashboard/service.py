@@ -14,6 +14,8 @@ from pydantic import BaseModel
 
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
 from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
+from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
+from anacostia_pipeline.engine.constants import Result
 
 
 
@@ -115,7 +117,17 @@ class RootService(AnacostiaService):
                 except Exception as e:
                     print(f"Failed to connect to leaf at {ip_address} with error: {e}")
                     self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
-
+        
+            @self.post("signal_predecessor", status_code=status.HTTP_200_OK)
+            async def signal_predecessor(request: Request, result: Result):
+                self.logger.info(f"Signal received from leaf service '{self.name}'")
+                return {"message": "success"}
+        
+    async def signal_successors(self, sender_node: SenderNode, result: Result):
+        pipeline_id = f"pipeline-{uuid.uuid4().hex}"
+        leaf_ip_adresses = sender_node.leaf_url
+        for ip_address in leaf_ip_adresses:
+            response = await self.client.post(f"http://{ip_address}/signal_successor", json=result)
 
 
 class LeafService(AnacostiaService):
@@ -136,3 +148,11 @@ class LeafService(AnacostiaService):
             }
             return leaf_data
         
+        @self.post("/signal_successor", status_code=status.HTTP_200_OK)
+        async def signal_successor(request: Request, result: Result):
+            self.logger.info(f"Signal received from root service '{self.name}'")
+            return {"message": "success"}
+        
+    async def signal_predecessors(self, reciever_node, result: Result):
+        root_ip_address = reciever_node.root_url
+        response = await self.client.post(f"http://{root_ip_address}/signal_predecessor", json=result)
