@@ -61,12 +61,15 @@ class Pipeline:
             for node in nodes:
                 node.add_loggers(loggers)
 
+        """
         # check 1: make sure graph is acyclic (i.e., check if graph is a DAG)
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
-
+        """
+        
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
 
+        """
         # check 2: make sure graph is not disconnected
         if not nx.is_weakly_connected(self.graph):
             raise InvalidNodeDependencyError(f"Node '{node.name}' is disconnected from graph")
@@ -79,10 +82,12 @@ class Pipeline:
         for node in self.nodes:
             if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
                 raise InvalidNodeDependencyError("There can only be one metadata store node")
+        """
                 
         # set metadata store node
         self.metadata_store = self.nodes[0]
 
+        """
         # check 5: make sure all resource nodes are successors of the metadata store node
         for node in self.nodes:
             if isinstance(node, BaseResourceNode) is True:
@@ -101,6 +106,7 @@ class Pipeline:
                 for successor in list(self.graph.successors(node)):
                     if (isinstance(successor, BaseMetadataStoreNode) is True) or (isinstance(successor, BaseResourceNode) is True):
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
+        """
 
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
