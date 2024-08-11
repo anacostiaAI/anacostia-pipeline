@@ -149,3 +149,8 @@ if __name__ == "__main__":
 
     service = RootService(name="root", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
     service.run()
+
+    time.sleep(6)
+    for i in range(10):
+        create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
+        time.sleep(1.5)
