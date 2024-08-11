@@ -12,7 +12,7 @@ import uvicorn
 import httpx
 from pydantic import BaseModel
 
-from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
+from anacostia_pipeline.engine.pipeline import Pipeline, LeafPipeline
 from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
 from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
 from anacostia_pipeline.engine.constants import Result
@@ -138,9 +138,10 @@ class RootService(AnacostiaService):
 
 
 class LeafService(AnacostiaService):
-    def __init__(self, name: str, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
+    def __init__(self, name: str, pipeline: LeafPipeline, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
         super().__init__(name, host=host, pipeline=None, port=port, logger=logger, *args, **kwargs)
         self.logger.info(f"Leaf service '{self.host}:{self.port}' started")
+        self.pipeline = pipeline
 
         @self.post("/connect_leaf", status_code=status.HTTP_200_OK)
         async def connect(request: Request, root_service_data: RootServiceData):
@@ -165,4 +166,8 @@ class LeafService(AnacostiaService):
         response = await self.client.post(f"http://{root_ip_address}/signal_predecessor", json=result)
     
     def run(self):
-        pass
+        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
+        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
+        pipeline_server = PipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+        self.mount(f"/", pipeline_server)
+        super().run()

@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
-from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
+from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
 
@@ -166,3 +166,13 @@ class PipelineWebserver(FastAPI):
         # launch the pipeline
         print("Launching Pipeline...")
         self.pipeline.launch_nodes()
+
+
+
+class LeafPipelineWebserver(FastAPI):
+    def __init__(self, name: str, pipeline: LeafPipeline, host="127.0.0.1", port=8000, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = name
+        self.pipeline = pipeline
+        self.host = host
+        self.port = port

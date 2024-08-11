@@ -11,8 +11,7 @@ import logging
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
-from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel
-from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
+from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.service import RootService
 from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
 

@@ -13,6 +13,9 @@ class SenderNode(BaseActionNode):
     
     def signal_successors(self, result: Result):
         self.service.signal_successors(self, result)
+    
+    def execute(self, *args, **kwargs) -> bool:
+        return True
 
 
 
