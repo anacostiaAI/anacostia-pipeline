@@ -21,7 +21,7 @@ from anacostia_pipeline.engine.constants import Result
 
 class AnacostiaService(FastAPI):
 
-    def __init__(self, name: str, host: str = "localhost", port: int = 8000, logger: Logger = None, *args, **kwargs):
+    def __init__(self, name: str, pipeline: Pipeline, host: str = "localhost", port: int = 8000, logger: Logger = None, *args, **kwargs):
         
         # lifespan context manager for spinning up and down the Service
         @asynccontextmanager
@@ -33,20 +33,15 @@ class AnacostiaService(FastAPI):
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
+
         self.host = host
         self.port = port
-
         self.logger = logger
         self.name = name
+        self.pipeline = pipeline
         
         self.client: httpx.AsyncClient = None
         
-        @self.get("/")
-        def service_info():
-            # http://localhost:8000/
-            return f"Hello from {name}, in the future, display the graph of the pipeline here"
-        
-    
     def run(self):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         server = uvicorn.Server(config)
@@ -60,6 +55,10 @@ class AnacostiaService(FastAPI):
             fastapi_thread.join()
             print(f"Anacostia Webservice {self.name} Killed...")
 
+            print("Killing pipeline...")
+            self.pipeline.terminate_nodes()
+            print("Pipeline Killed.")
+
             # register the original default kill handler once the pipeline is killed
             signal.signal(signal.SIGINT, original_sigint_handler)
 
@@ -67,13 +66,14 @@ class AnacostiaService(FastAPI):
         signal.signal(signal.SIGINT, _kill_webserver)
         fastapi_thread.start()
 
+        self.pipeline.launch_nodes()
+
 
 
 class RootServiceData(BaseModel):
     name: str
     host: str
     port: int
-    pipeline_id: str
 
 
 
@@ -128,11 +128,18 @@ class RootService(AnacostiaService):
         leaf_ip_adresses = sender_node.leaf_url
         for ip_address in leaf_ip_adresses:
             response = await self.client.post(f"http://{ip_address}/signal_successor", json=result)
+    
+    def run(self):
+        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
+        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
+        pipeline_server = PipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+        self.mount(f"/", pipeline_server)
+        super().run()
 
 
 class LeafService(AnacostiaService):
     def __init__(self, name: str, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
-        super().__init__(name, host=host, port=port, logger=logger, *args, **kwargs)
+        super().__init__(name, host=host, pipeline=None, port=port, logger=logger, *args, **kwargs)
         self.logger.info(f"Leaf service '{self.host}:{self.port}' started")
 
         @self.post("/connect_leaf", status_code=status.HTTP_200_OK)
@@ -156,3 +163,6 @@ class LeafService(AnacostiaService):
     async def signal_predecessors(self, reciever_node, result: Result):
         root_ip_address = reciever_node.root_url
         response = await self.client.post(f"http://{root_ip_address}/signal_predecessor", json=result)
+    
+    def run(self):
+        pass
