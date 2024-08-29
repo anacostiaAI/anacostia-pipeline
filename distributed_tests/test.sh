@@ -39,7 +39,7 @@ python setup.py
 echo "Done."
 
 # Start pipelines
-python $FILEPATH_ROOT $IP_ROOT $PORT_ROOT &
+python $FILEPATH_ROOT $IP_ROOT $PORT_ROOT $IP_LEAF $PORT_LEAF &
 PID1=$!
 python $FILEPATH_LEAF $IP_LEAF $PORT_LEAF &
 PID2=$!

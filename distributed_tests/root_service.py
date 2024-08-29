@@ -13,7 +13,7 @@ from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.service import RootService
-from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
+from anacostia_pipeline.actions.network import SenderNode
 
 from utils import *
 
@@ -21,6 +21,13 @@ from utils import *
 load_dotenv()
 
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('root_host', type=str)
+parser.add_argument('root_port', type=int)
+parser.add_argument('leaf_host', type=str)
+parser.add_argument('leaf_port', type=int)
+args = parser.parse_args()
 
 root_test_path = "./testing_artifacts"
 
@@ -134,22 +141,25 @@ model_registry = ModelRegistryNode(
 plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, model_registry, metadata_store)
+
+shakespeare_eval_sender = SenderNode(
+    "shakespeare_eval", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="shakespeare_eval_receiver", 
+    predecessors=[retraining], loggers=logger
+)
+haiku_eval_sender = SenderNode(
+    "haiku_eval", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="haiku_eval_receiver",
+    predecessors=[retraining], loggers=logger
+)
+
 pipeline = Pipeline(
-    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining], 
+    nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining, shakespeare_eval_sender, haiku_eval_sender], 
     loggers=logger
 )
 
+service = RootService(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
+service.run()
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('host', type=str)
-    parser.add_argument('port', type=int)
-    args = parser.parse_args()
-
-    service = RootService(name="root", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
-    service.run()
-
-    time.sleep(6)
-    for i in range(10):
-        create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
-        time.sleep(1.5)
+time.sleep(6)
+for i in range(10):
+    create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
+    time.sleep(1.5)

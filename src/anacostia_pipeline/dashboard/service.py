@@ -1,6 +1,4 @@
 import threading
-import os
-import sys
 import signal
 import asyncio
 import uuid
@@ -8,14 +6,14 @@ from logging import Logger
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 from pydantic import BaseModel
 
 from anacostia_pipeline.engine.pipeline import Pipeline, LeafPipeline
-from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
+from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver, LeafPipelineWebserver
 from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
-from anacostia_pipeline.engine.constants import Result
 
 
 
@@ -26,10 +24,14 @@ class AnacostiaService(FastAPI):
         # lifespan context manager for spinning up and down the Service
         @asynccontextmanager
         async def lifespan(app: AnacostiaService):
-            print("opening client")
+            print(f"Opening client for service '{app.name}'")
+            self.logger.info(f"Opening client for service '{app.name}'")
             app.client = httpx.AsyncClient()
+            
             yield
-            print("closing client")
+
+            print(f"Closing client for {app.name}")
+            self.logger.info(f"Closing client for service '{app.name}'")
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -71,9 +73,11 @@ class AnacostiaService(FastAPI):
 
 
 class RootServiceData(BaseModel):
-    name: str
-    host: str
-    port: int
+    root_name: str
+    leaf_host: str
+    leaf_port: int
+    sender_name: str
+    receiver_name: str
 
 
 
@@ -86,49 +90,63 @@ class LeafServiceData(BaseModel):
 
 
 class RootService(AnacostiaService):
-    def __init__(self, name: str, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
-        super().__init__(name, host=host, port=port, logger=logger, *args, **kwargs)
+    def __init__(self, name: str, pipeline: Pipeline, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
+        super().__init__(name, pipeline, host=host, port=port, logger=logger, *args, **kwargs)
         self.logger.info(f"Root service '{self.host}:{self.port}' started")
+        self.connections = []
+        self.leaf_ip_addresses = []
 
         @self.get("/connect", status_code=status.HTTP_200_OK)
-        async def connect(request: Request):
-            pipeline_id = f"pipeline-{uuid.uuid4().hex}"
-
-            leaf_ip_adresses = ["192.168.100.2:8002"]
-
-            for ip_address in leaf_ip_adresses:
-                try:
-                    root_data = {
-                        "name": self.name,
-                        "host": self.host,
-                        "port": self.port,
-                        "pipeline_id": pipeline_id
+        async def connect():
+            # Extract data about leaf pipelines from the sender nodes in the pipeline
+            for node in self.pipeline.nodes:
+                if isinstance(node, SenderNode):
+                    connection_dict = {
+                        "root_name": self.name,
+                        "leaf_host": node.leaf_host,
+                        "leaf_port": node.leaf_port,
+                        "sender_name": node.name,
+                        "receiver_name": node.leaf_receiver
                     }
+                    
+                    if any([connection_dict["receiver_name"] == connection["receiver_name"] for connection in self.connections]):
+                        raise ValueError(f"Duplicate receiver name '{connection_dict['receiver_name']}' found in the pipeline")
+                    else:
+                        self.connections.append(connection_dict)
 
-                    # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
-                    # Instead, we use await self.client.post because we already have an httpx.AsyncClient() object 
-                    # created in the lifespan context manager in the AnacostiaService class.
-                    # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
-                    response = await self.client.post(f"http://{ip_address}/connect_leaf", json=root_data)
+                    node_subapp = node.get_app()
+                    node_subapp.set_client(self.client)
+            
+            # Extract the leaf ip addresses from the connections
+            for connection in self.connections:
+                pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
+                if pipeline_ip_address not in self.leaf_ip_addresses:
+                    self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
+            
+            self.logger.info(f"Root service '{self.name}' connected to leaf services at ip addresses: {self.leaf_ip_addresses}")
+            
+            try:
+                # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
+                # Instead, we use await self.client.post because we already have an httpx.AsyncClient() object 
+                # created in the lifespan context manager in the AnacostiaService class.
+                # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
+
+                # Send a healthcheck request to each leaf service
+                tasks = []
+                for ip_address in self.leaf_ip_addresses:
+                    tasks.append(self.client.post(f"http://{ip_address}/healthcheck"))
+
+                responses = await asyncio.gather(*tasks)
+
+                for response in responses:
                     response_data = response.json()
-                    self.logger.info(response_data)
-                    print(response_data)
+                    if response_data["status"] == "ok":
+                        self.logger.info(f"Successfully connected to leaf at {ip_address}")
+                
+            except Exception as e:
+                print(f"Failed to connect to leaf at {ip_address} with error: {e}")
+                self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
 
-                except Exception as e:
-                    print(f"Failed to connect to leaf at {ip_address} with error: {e}")
-                    self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
-        
-            @self.post("signal_predecessor", status_code=status.HTTP_200_OK)
-            async def signal_predecessor(request: Request, result: Result):
-                self.logger.info(f"Signal received from leaf service '{self.name}'")
-                return {"message": "success"}
-        
-    async def signal_successors(self, sender_node: SenderNode, result: Result):
-        pipeline_id = f"pipeline-{uuid.uuid4().hex}"
-        leaf_ip_adresses = sender_node.leaf_url
-        for ip_address in leaf_ip_adresses:
-            response = await self.client.post(f"http://{ip_address}/signal_successor", json=result)
-    
     def run(self):
         # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
         # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
@@ -143,31 +161,31 @@ class LeafService(AnacostiaService):
         self.logger.info(f"Leaf service '{self.host}:{self.port}' started")
         self.pipeline = pipeline
 
-        @self.post("/connect_leaf", status_code=status.HTTP_200_OK)
-        async def connect(request: Request, root_service_data: RootServiceData):
-            pipeline_id = f"pipeline-{uuid.uuid4().hex}"
-            self.logger.info(f"Leaf service '{self.name}' connected to '{root_service_data.name} ({root_service_data.pipeline_id})' service running on '{root_service_data.host}:{root_service_data.port}'")
-            
+        @self.post("/healthcheck", status_code=status.HTTP_200_OK)
+        async def healthcheck():
+            return {"status": "ok"}
+
+        @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
+        async def create_pipeline():
+            pipeline_id = uuid.uuid4().hex
+            pipeline_server = LeafPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+            self.mount(f"/{pipeline_id}", pipeline_server)
+            self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             leaf_data = {
-                "name": self.name,
-                "host": self.host,
-                "port": self.port,
                 "pipeline_id": pipeline_id
             }
             return leaf_data
+
+        @self.post("/connect_node", status_code=status.HTTP_200_OK)
+        async def connect(request: Request, root_service_data: RootServiceData):
+            self.logger.info(f"Leaf receiver node '{root_service_data.receiver_name}' connected to root sender node '{root_service_data.sender_name}'")
         
-        @self.post("/signal_successor", status_code=status.HTTP_200_OK)
-        async def signal_successor(request: Request, result: Result):
-            self.logger.info(f"Signal received from root service '{self.name}'")
-            return {"message": "success"}
-        
-    async def signal_predecessors(self, reciever_node, result: Result):
-        root_ip_address = reciever_node.root_url
-        response = await self.client.post(f"http://{root_ip_address}/signal_predecessor", json=result)
-    
     def run(self):
-        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
-        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
-        pipeline_server = PipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
-        self.mount(f"/", pipeline_server)
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         super().run()

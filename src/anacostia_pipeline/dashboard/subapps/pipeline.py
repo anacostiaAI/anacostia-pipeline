@@ -176,3 +176,20 @@ class LeafPipelineWebserver(FastAPI):
         self.pipeline = pipeline
         self.host = host
         self.port = port
+        self.server = None
+        self.fastapi_thread = None
+
+        @self.post('/terminate')
+        def terminate():
+            if (self.server is not None) and (self.fastapi_thread is not None):
+                self.server.should_exit = True
+                self.fastapi_thread.join()
+                #self.pipeline.terminate_nodes()
+                return {"message": "Pipeline Terminated"}
+            else:
+                return {"message": "Error: pipeline not running"}
+    
+    def run(self):
+        config = uvicorn.Config(self, host=self.host, port=self.port)
+        self.server = uvicorn.Server(config)
+        self.fastapi_thread = Thread(target=self.server.run)
