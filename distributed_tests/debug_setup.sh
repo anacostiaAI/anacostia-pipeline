@@ -3,7 +3,7 @@ OS_TYPE=$(uname)
 
 # Define IP addresses and ports
 IP_ROOT="127.0.0.1"
-IP_LEAF="192.168.100.2"
+IP_LEAF="192.168.0.172"
 PORT_ROOT="8000"
 PORT_LEAF="8002"
 
