@@ -143,11 +143,11 @@ haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_
 retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, model_registry, metadata_store)
 
 shakespeare_eval_sender = SenderNode(
-    "shakespeare_eval", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="shakespeare_eval_receiver", 
+    "shakespeare_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="shakespeare_eval_receiver", 
     predecessors=[retraining], loggers=logger
 )
 haiku_eval_sender = SenderNode(
-    "haiku_eval", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="haiku_eval_receiver",
+    "haiku_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="haiku_eval_receiver",
     predecessors=[retraining], loggers=logger
 )
 

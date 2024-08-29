@@ -15,9 +15,14 @@ class SenderNode(BaseActionNode):
         self.leaf_signal_received = False
         self.app = SenderNodeApp(self, leaf_host, leaf_port)
     
+        self.pipeline_id: str = None
+
     def get_app(self):
         return self.app
     
+    def set_pipeline_id(self, pipeline_id: str):
+        self.pipeline_id = pipeline_id
+
     def signal_successors(self, result: Result):
         self.app.signal_successors(result)
     

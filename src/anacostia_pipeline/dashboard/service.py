@@ -143,6 +143,23 @@ class RootService(AnacostiaService):
                     if response_data["status"] == "ok":
                         self.logger.info(f"Successfully connected to leaf at {ip_address}")
                 
+                # Send a create_pipeline request to each leaf service and store the pipeline ID
+                tasks = []
+                for ip_address in self.leaf_ip_addresses:
+                    tasks.append(self.client.post(f"http://{ip_address}/create_pipeline"))
+                
+                responses = await asyncio.gather(*tasks)
+
+                for response in responses:
+                    response_data = response.json()
+                    pipeline_id = response_data["pipeline_id"]
+
+                    for node in self.pipeline.nodes:
+                        if isinstance(node, SenderNode):
+                            if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
+                                node.set_pipeline_id(pipeline_id)
+                                self.logger.info(f"Successfully connected '{node.name}' to pipeline '{node.pipeline_id}'")
+                
             except Exception as e:
                 print(f"Failed to connect to leaf at {ip_address} with error: {e}")
                 self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
@@ -180,6 +197,11 @@ class LeafService(AnacostiaService):
         async def connect(request: Request, root_service_data: RootServiceData):
             self.logger.info(f"Leaf receiver node '{root_service_data.receiver_name}' connected to root sender node '{root_service_data.sender_name}'")
         
+        # Note: in the future, we need to add another endpoint to enable the leaf service connect to leaf services,
+        # have those leaf services spin up their pipelines, and then connect to them.
+        # This will allow the leaf service to act as a root service for other leaf services.
+        # This will mean that we need a way to recursively connect to leaf services and spin up their pipelines.
+
     def run(self):
         self.add_middleware(
             CORSMiddleware,
