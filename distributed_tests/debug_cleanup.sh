@@ -1,8 +1,6 @@
 # Define IP addresses and ports
-IP_ROOT="127.0.0.1"
-IP_LEAF="192.168.0.172"
-PORT_ROOT="8000"
-PORT_LEAF="8002"
+IP_LEAF=$1
+PORT_LEAF=$2
 
 # Check if the system is Linux or macOS and then define network interfaces
 if [ "$OS_TYPE" = "Linux" ]; then
