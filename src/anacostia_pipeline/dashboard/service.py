@@ -5,7 +5,7 @@ import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
@@ -81,14 +81,6 @@ class RootServiceData(BaseModel):
 
 
 
-class LeafServiceData(BaseModel):
-    name: str
-    host: str
-    port: int
-    pipeline_id: str
-
-
-
 class RootService(AnacostiaService):
     def __init__(self, name: str, pipeline: Pipeline, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
         super().__init__(name, pipeline, host=host, port=port, logger=logger, *args, **kwargs)
@@ -131,7 +123,7 @@ class RootService(AnacostiaService):
                 # created in the lifespan context manager in the AnacostiaService class.
                 # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
 
-                # Send a healthcheck request to each leaf service
+                # Send a /healthcheck request to each leaf service
                 tasks = []
                 for ip_address in self.leaf_ip_addresses:
                     tasks.append(self.client.post(f"http://{ip_address}/healthcheck"))
@@ -143,7 +135,7 @@ class RootService(AnacostiaService):
                     if response_data["status"] == "ok":
                         self.logger.info(f"Successfully connected to leaf at {ip_address}")
                 
-                # Send a create_pipeline request to each leaf service and store the pipeline ID
+                # Send a /create_pipeline request to each leaf service and store the pipeline ID
                 tasks = []
                 for ip_address in self.leaf_ip_addresses:
                     tasks.append(self.client.post(f"http://{ip_address}/create_pipeline"))
@@ -160,6 +152,17 @@ class RootService(AnacostiaService):
                                 node.set_pipeline_id(pipeline_id)
                                 self.logger.info(f"Successfully connected '{node.name}' to pipeline '{node.pipeline_id}'")
                 
+                # Send a /connect_node request to each leaf service
+                tasks = []
+                for connection in self.connections:
+                    tasks.append(self.client.post(f"http://{connection['leaf_host']}:{connection['leaf_port']}/connect_node", json=connection))
+
+                responses = await asyncio.gather(*tasks)
+
+                for response in responses:
+                    response_data = response.json()
+                    self.logger.info(f"Successfully connected root sender node '{response_data['sender_name']}' to leaf receiver node '{response_data['receiver_name']}'")
+
             except Exception as e:
                 print(f"Failed to connect to leaf at {ip_address} with error: {e}")
                 self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
@@ -177,6 +180,7 @@ class LeafService(AnacostiaService):
         super().__init__(name, host=host, pipeline=None, port=port, logger=logger, *args, **kwargs)
         self.logger.info(f"Leaf service '{self.host}:{self.port}' started")
         self.pipeline = pipeline
+        self.connections = { node.name: None for node in pipeline.nodes if isinstance(node, ReceiverNode) }
 
         @self.post("/healthcheck", status_code=status.HTTP_200_OK)
         async def healthcheck():
@@ -193,9 +197,18 @@ class LeafService(AnacostiaService):
             }
             return leaf_data
 
+        # For each connection, we need to connect the root sender node to the leaf receiver node by saving the sender name in the connections dictionary
         @self.post("/connect_node", status_code=status.HTTP_200_OK)
-        async def connect(request: Request, root_service_data: RootServiceData):
-            self.logger.info(f"Leaf receiver node '{root_service_data.receiver_name}' connected to root sender node '{root_service_data.sender_name}'")
+        async def connect(request: Request, root_service_node_data: RootServiceData):
+            if root_service_node_data.receiver_name not in self.connections.keys():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail=f"Receiver node '{root_service_node_data.receiver_name}' not found in leaf service '{self.name}'"
+                )
+            else:
+                self.connections[root_service_node_data.receiver_name] = root_service_node_data.sender_name
+                self.logger.info(f"Leaf receiver node '{root_service_node_data.receiver_name}' connected to root sender node '{root_service_node_data.sender_name}'")
+                return {"sender_name": root_service_node_data.sender_name, "receiver_name": root_service_node_data.receiver_name}
         
         # Note: in the future, we need to add another endpoint to enable the leaf service connect to leaf services,
         # have those leaf services spin up their pipelines, and then connect to them.
