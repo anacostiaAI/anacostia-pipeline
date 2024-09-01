@@ -115,7 +115,7 @@ class RootService(AnacostiaService):
                 if pipeline_ip_address not in self.leaf_ip_addresses:
                     self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
             
-            self.logger.info(f"Root service '{self.name}' connected to leaf services at ip addresses: {self.leaf_ip_addresses}")
+            self.logger.info(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
             
             try:
                 # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
@@ -124,6 +124,7 @@ class RootService(AnacostiaService):
                 # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
 
                 # Send a /healthcheck request to each leaf service
+                self.logger.info("------------- Healthcheck started -------------")
                 tasks = []
                 for ip_address in self.leaf_ip_addresses:
                     tasks.append(self.client.post(f"http://{ip_address}/healthcheck"))
@@ -134,7 +135,9 @@ class RootService(AnacostiaService):
                     response_data = response.json()
                     if response_data["status"] == "ok":
                         self.logger.info(f"Successfully connected to leaf at {ip_address}")
+                self.logger.info("------------- Healthcheck completed -------------")
                 
+                self.logger.info("------------- Leaf pipeline creation started -------------")
                 # Send a /create_pipeline request to each leaf service and store the pipeline ID
                 tasks = []
                 for ip_address in self.leaf_ip_addresses:
@@ -149,12 +152,17 @@ class RootService(AnacostiaService):
                     for node in self.pipeline.nodes:
                         if isinstance(node, SenderNode):
                             if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
-                                node.set_pipeline_id(pipeline_id)
-                                self.logger.info(f"Successfully connected '{node.name}' to pipeline '{node.pipeline_id}'")
+                                node.set_leaf_pipeline_id(pipeline_id)
+                                self.logger.info(f"Successfully connected '{node.name}' to pipeline '{node.leaf_pipeline_id}'")
+                self.logger.info("------------- Leaf pipeline creation completed -------------")
                 
+                self.logger.info("------------- Node connection started -------------")
                 # Send a /connect_node request to each leaf service
                 tasks = []
                 for connection in self.connections:
+                    self.logger.info(
+                        f"Root service connecting root sender node '{connection['sender_name']}' to leaf receiver node '{connection['receiver_name']}'"
+                    )
                     tasks.append(self.client.post(f"http://{connection['leaf_host']}:{connection['leaf_port']}/connect_node", json=connection))
 
                 responses = await asyncio.gather(*tasks)
@@ -162,6 +170,7 @@ class RootService(AnacostiaService):
                 for response in responses:
                     response_data = response.json()
                     self.logger.info(f"Successfully connected root sender node '{response_data['sender_name']}' to leaf receiver node '{response_data['receiver_name']}'")
+                self.logger.info("------------- Node connection completed -------------")
 
             except Exception as e:
                 print(f"Failed to connect to leaf at {ip_address} with error: {e}")

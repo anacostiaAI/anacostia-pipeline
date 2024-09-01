@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 
 from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
+from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
@@ -34,8 +35,7 @@ class PipelineWebserver(FastAPI):
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
         for node in self.pipeline.nodes:
-            node_subapp = node.get_app()
-            node_subapp.graph_prefix = self.get_graph_prefix()      # set the graph_prefix variable in the BaseNodeApp
+            node_subapp: BaseNodeApp = node.get_app()
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.get('/api/')
@@ -179,6 +179,12 @@ class LeafPipelineWebserver(FastAPI):
         self.server = None
         self.fastapi_thread = None
 
+        """
+        for node in self.pipeline.nodes:
+            node_subapp = node.get_app()
+            self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
+        """
+
         @self.post('/terminate')
         def terminate():
             if (self.server is not None) and (self.fastapi_thread is not None):
@@ -189,6 +195,11 @@ class LeafPipelineWebserver(FastAPI):
             else:
                 return {"message": "Error: pipeline not running"}
     
+        """
+    def get_graph_prefix(self):
+        return f"/{self.name}"
+        """
+
     def run(self):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)

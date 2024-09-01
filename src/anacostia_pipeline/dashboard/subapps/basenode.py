@@ -9,7 +9,6 @@ class BaseNodeApp(FastAPI):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.graph_prefix = None    # graph_prefix variable is set by PipelineWebserver when BaseNodeApp is mounted
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):
@@ -27,9 +26,6 @@ class BaseNodeApp(FastAPI):
     def get_node_prefix(self):
         return f"/{self.node.name}"
     
-    def get_full_prefix(self):
-        return f"{self.graph_prefix}{self.get_node_prefix()}"
-
     def get_endpoint(self):
         return f"{self.get_node_prefix()}/home"
     

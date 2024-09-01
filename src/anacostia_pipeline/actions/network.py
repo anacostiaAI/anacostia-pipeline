@@ -7,21 +7,25 @@ from anacostia_pipeline.dashboard.subapps.network import SenderNodeApp, Receiver
 
 
 class SenderNode(BaseActionNode):
-    def __init__(self, name: str, leaf_host: str, leaf_port: int, leaf_receiver, predecessors: List[BaseNode], loggers: Logger | List[Logger] = None) -> None:
+    def __init__(
+        self, name: str, leaf_host: str, leaf_port: int, leaf_receiver: str, predecessors: List[BaseNode], loggers: Logger | List[Logger] = None
+    ) -> None:
+
         super().__init__(name, predecessors, loggers)
         self.leaf_host = leaf_host
         self.leaf_port = leaf_port
         self.leaf_receiver = leaf_receiver
         self.leaf_signal_received = False
-        self.app = SenderNodeApp(self, leaf_host, leaf_port)
+        self.app = SenderNodeApp(self, leaf_host, leaf_port, leaf_receiver)
     
-        self.pipeline_id: str = None
+        self.leaf_pipeline_id: str = None
 
     def get_app(self):
         return self.app
     
-    def set_pipeline_id(self, pipeline_id: str):
-        self.pipeline_id = pipeline_id
+    def set_leaf_pipeline_id(self, pipeline_id: str):
+        self.leaf_pipeline_id = pipeline_id
+        # also set the leaf_pipeline_id in the app
 
     def signal_successors(self, result: Result):
         self.app.signal_successors(result)
