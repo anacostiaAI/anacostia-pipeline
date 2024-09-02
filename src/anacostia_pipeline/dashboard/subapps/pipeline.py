@@ -5,14 +5,16 @@ from importlib import metadata
 from threading import Thread
 import uvicorn
 import asyncio
+import httpx
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.actions.network import ReceiverNode
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
@@ -170,7 +172,7 @@ class PipelineWebserver(FastAPI):
 
 
 class LeafPipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: LeafPipeline, host="127.0.0.1", port=8000, *args, **kwargs):
+    def __init__(self, name: str, pipeline: LeafPipeline, client: httpx.AsyncClient, host="127.0.0.1", port=8000, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.pipeline = pipeline
@@ -178,12 +180,12 @@ class LeafPipelineWebserver(FastAPI):
         self.port = port
         self.server = None
         self.fastapi_thread = None
+        self.client = client
 
-        """
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
+            #node_subapp.set_client(self.client)
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
-        """
 
         @self.post('/terminate')
         def terminate():
@@ -195,10 +197,8 @@ class LeafPipelineWebserver(FastAPI):
             else:
                 return {"message": "Error: pipeline not running"}
     
-        """
     def get_graph_prefix(self):
         return f"/{self.name}"
-        """
 
     def run(self):
         config = uvicorn.Config(self, host=self.host, port=self.port)

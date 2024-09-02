@@ -11,12 +11,6 @@ OS_TYPE=$(uname)
 FILEPATH_ROOT="root_service.py"
 FILEPATH_LEAF="leaf_service.py"
 
-# Define IP addresses and ports
-IP_ROOT="127.0.0.1"
-IP_LEAF="192.168.100.2"
-PORT_ROOT="8000"
-PORT_LEAF="8002"
-
 # Check if the system is Linux or macOS and then define network interfaces
 if [ "$OS_TYPE" = "Linux" ]; then
     echo "Running on Linux"
@@ -27,6 +21,20 @@ elif [ "$OS_TYPE" = "Darwin" ]; then
 else
     echo "Unsupported operating system: $OS_TYPE"
     exit 1
+fi
+
+# Define IP addresses and ports
+IP_ROOT="127.0.0.1"
+PORT_ROOT="8000"
+#IP_LEAF=$(ifconfig $INTERFACE | grep "inet " | awk '{print $2}')
+IP_LEAF="127.0.0.1"
+PORT_LEAF="8002"
+
+if [ -z "$IP_LEAF" ]; then
+    echo "No inet address found for en0"
+    exit 1
+else
+    echo "The inet address for en0 is: $IP_LEAF"
 fi
 
 # Configure the interface 

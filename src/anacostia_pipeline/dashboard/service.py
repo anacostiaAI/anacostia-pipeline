@@ -25,13 +25,13 @@ class AnacostiaService(FastAPI):
         @asynccontextmanager
         async def lifespan(app: AnacostiaService):
             print(f"Opening client for service '{app.name}'")
-            self.logger.info(f"Opening client for service '{app.name}'")
+            app.logger.info(f"Opening client for service '{app.name}'")
             app.client = httpx.AsyncClient()
             
             yield
 
             print(f"Closing client for {app.name}")
-            self.logger.info(f"Closing client for service '{app.name}'")
+            app.logger.info(f"Closing client for service '{app.name}'")
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -106,8 +106,8 @@ class RootService(AnacostiaService):
                     else:
                         self.connections.append(connection_dict)
 
-                    node_subapp = node.get_app()
-                    node_subapp.set_client(self.client)
+                    #node_subapp = node.get_app()
+                    #node_subapp.set_client(self.client)
             
             # Extract the leaf ip addresses from the connections
             for connection in self.connections:
@@ -153,6 +153,7 @@ class RootService(AnacostiaService):
                         if isinstance(node, SenderNode):
                             if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
                                 node.set_leaf_pipeline_id(pipeline_id)
+                                node.get_app().set_leaf_pipeline_id(pipeline_id)
                                 self.logger.info(f"Successfully connected '{node.name}' to pipeline '{node.leaf_pipeline_id}'")
                 self.logger.info("------------- Leaf pipeline creation completed -------------")
                 
@@ -169,7 +170,9 @@ class RootService(AnacostiaService):
 
                 for response in responses:
                     response_data = response.json()
-                    self.logger.info(f"Successfully connected root sender node '{response_data['sender_name']}' to leaf receiver node '{response_data['receiver_name']}'")
+                    self.logger.info(
+                        f"Successfully connected root sender node '{response_data['sender_name']}' to leaf receiver node '{response_data['receiver_name']}'"
+                    )
                 self.logger.info("------------- Node connection completed -------------")
 
             except Exception as e:
@@ -198,7 +201,7 @@ class LeafService(AnacostiaService):
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
         async def create_pipeline():
             pipeline_id = uuid.uuid4().hex
-            pipeline_server = LeafPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+            pipeline_server = LeafPipelineWebserver(name="pipeline", pipeline=self.pipeline, client=self.client, host=self.host, port=self.port)
             self.mount(f"/{pipeline_id}", pipeline_server)
             self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             leaf_data = {
@@ -232,4 +235,30 @@ class LeafService(AnacostiaService):
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        super().run()
+
+        config = uvicorn.Config(self, host=self.host, port=self.port)
+        server = uvicorn.Server(config)
+        fastapi_thread = threading.Thread(target=server.run)
+    
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+
+        def _kill_webserver(sig, frame):
+            print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
+            server.should_exit = True
+            fastapi_thread.join()
+            print(f"Anacostia Webservice {self.name} Killed...")
+
+            """
+            print("Killing pipeline...")
+            self.pipeline.terminate_nodes()
+            print("Pipeline Killed.")
+            """
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+        fastapi_thread.start()
+
+        # self.pipeline.launch_nodes()
