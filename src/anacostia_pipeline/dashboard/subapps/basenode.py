@@ -11,21 +11,9 @@ from ..components.node_bar import default_node_page, work_template
 
 class BaseNodeApp(FastAPI):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
-        @asynccontextmanager
-        async def lifespan(app: BaseNodeApp):
-            print(f"Opening client for node '{app.node.name}'")
-            app.node.log(f"Opening client for node '{app.name}'", level="INFO")
-            app.client = httpx.AsyncClient()
-            
-            yield
-
-            print(f"Closing client for node {app.node.name}")
-            app.node.log(f"Closing client for node '{app.name}'", level="INFO")
-            await app.client.aclose()
-        
-        super().__init__(lifespan=lifespan, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.node = node
-        self.client: httpx.AsyncClient = None
+        self.client: httpx.AsyncClient = httpx.AsyncClient()
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):

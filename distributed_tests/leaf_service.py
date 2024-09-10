@@ -5,6 +5,7 @@ from typing import List
 
 from anacostia_pipeline.engine.pipeline import LeafPipeline
 from anacostia_pipeline.dashboard.service import LeafService
+from anacostia_pipeline.dashboard.subapps.pipeline import LeafPipelineWebserver
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode
 from anacostia_pipeline.actions.network import ReceiverNode
 
@@ -36,7 +37,7 @@ class ShakespeareEvalNode(BaseActionNode):
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        #self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
+        self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         #self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
         return True
 
@@ -48,7 +49,7 @@ class HaikuEvalNode(BaseActionNode):
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        #self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
+        self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         #self.metadata_store.log_metrics(haiku_test_loss=2.43)
         return True
 
@@ -64,7 +65,9 @@ pipeline = LeafPipeline(
     nodes=[shakespeare_eval, haiku_eval, shakespeare_eval_receiver, haiku_eval_receiver],
     loggers=logger
 )
+webserver = LeafPipelineWebserver(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
+webserver.run()
 
-service = LeafService(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
-service.run()
+#service = LeafService(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
+#service.run()
 

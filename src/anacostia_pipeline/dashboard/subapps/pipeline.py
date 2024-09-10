@@ -6,6 +6,7 @@ from threading import Thread
 import uvicorn
 import asyncio
 import httpx
+import uuid
 
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
 from anacostia_pipeline.actions.network import ReceiverNode
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
@@ -32,6 +34,7 @@ class PipelineWebserver(FastAPI):
         self.pipeline = pipeline
         self.host = host
         self.port = port
+        self.client = httpx.AsyncClient()
 
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
@@ -172,7 +175,7 @@ class PipelineWebserver(FastAPI):
 
 
 class LeafPipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: LeafPipeline, client: httpx.AsyncClient, host="127.0.0.1", port=8000, *args, **kwargs):
+    def __init__(self, name: str, pipeline: LeafPipeline, host="127.0.0.1", port=8000, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.pipeline = pipeline
@@ -180,11 +183,16 @@ class LeafPipelineWebserver(FastAPI):
         self.port = port
         self.server = None
         self.fastapi_thread = None
-        self.client = client
+        self.client = httpx.AsyncClient()
+
+        pipeline_id = uuid.uuid4().hex
 
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
-            #node_subapp.set_client(self.client)
+
+            if isinstance(node_subapp, ReceiverNodeApp) or isinstance(node_subapp, SenderNodeApp):
+                node_subapp.set_leaf_pipeline_id(pipeline_id)
+
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.post('/terminate')
@@ -192,7 +200,7 @@ class LeafPipelineWebserver(FastAPI):
             if (self.server is not None) and (self.fastapi_thread is not None):
                 self.server.should_exit = True
                 self.fastapi_thread.join()
-                #self.pipeline.terminate_nodes()
+                self.pipeline.terminate_nodes()
                 return {"message": "Pipeline Terminated"}
             else:
                 return {"message": "Error: pipeline not running"}
@@ -204,3 +212,26 @@ class LeafPipelineWebserver(FastAPI):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = Thread(target=self.server.run)
+
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+        
+        def _kill_webserver(sig, frame):
+            print("\nCTRL+C Caught!; Killing Webserver...")
+            self.server.should_exit = True
+            self.fastapi_thread.join()
+            print("Webserver Killed...")
+
+            print("Killing pipeline...")
+            self.pipeline.terminate_nodes()
+            print("Pipeline Killed.")
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+        self.fastapi_thread.start()
+
+        # launch the pipeline
+        print("Launching Pipeline...")
+        self.pipeline.launch_nodes()
