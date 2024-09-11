@@ -102,15 +102,14 @@ class ReceiverNode(BaseNode):
         # Note: the run method should be able to execute asynchronous calls
 
         while self.shutdown_event.is_set() is False:
-            self.trap_interrupts()
             self.work_list.append(Work.WAITING_PREDECESSORS)
             self.wait_predecessor_event.wait()
+
             self.work_list.remove(Work.WAITING_PREDECESSORS)
+            self.wait_predecessor_event.clear()
 
             self.signal_successors(Result.SUCCESS)
 
-            # checking for successors signals before signalling predecessors will 
-            # ensure all action nodes have finished using the resource for current run
             self.trap_interrupts()
             self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
@@ -120,8 +119,6 @@ class ReceiverNode(BaseNode):
 
             self.trap_interrupts()
             # await self.signal_predecessors(Result.SUCCESS)
-
-            self.wait_predecessor_event.clear()
 
     def run(self) -> None:
         asyncio.run(self.run_async())
