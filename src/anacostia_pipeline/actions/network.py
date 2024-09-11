@@ -41,7 +41,7 @@ class SenderNode(BaseNode):
         super().exit()
     
     async def run_async(self) -> None:
-        while True:
+        while self.shutdown_event.is_set() is False:
             self.trap_interrupts()
             self.work_list.append(Work.WAITING_PREDECESSORS)
             while self.check_predecessors_signals() is False:
@@ -55,11 +55,9 @@ class SenderNode(BaseNode):
             self.trap_interrupts()
             self.work_list.append(Work.WAITING_SUCCESSORS)
             self.wait_successor_event.wait()
-            if self.shutdown_event.is_set() is True:
-                break
             self.work_list.remove(Work.WAITING_SUCCESSORS)
             
-            self.log(f"SenderNode {self.name} received signal from successors", level="INFO")
+            # self.log(f"SenderNode {self.name} received signal from successors", level="INFO")
 
             self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
@@ -103,17 +101,11 @@ class ReceiverNode(BaseNode):
         # 5. repeat steps 1-4 until the pipeline is terminated
         # Note: the run method should be able to execute asynchronous calls
 
-        while True:
+        while self.shutdown_event.is_set() is False:
             self.trap_interrupts()
             self.work_list.append(Work.WAITING_PREDECESSORS)
-            
             self.wait_predecessor_event.wait()
-            if self.shutdown_event.is_set() is True:
-                break
-            
             self.work_list.remove(Work.WAITING_PREDECESSORS)
-
-            self.log(f"ReceiverNode {self.name} received signal from predecessors", level="INFO")
 
             self.signal_successors(Result.SUCCESS)
 
@@ -127,7 +119,7 @@ class ReceiverNode(BaseNode):
             self.work_list.remove(Work.WAITING_SUCCESSORS)
 
             self.trap_interrupts()
-            #await self.signal_predecessors(Result.SUCCESS)
+            # await self.signal_predecessors(Result.SUCCESS)
 
             self.wait_predecessor_event.clear()
 
