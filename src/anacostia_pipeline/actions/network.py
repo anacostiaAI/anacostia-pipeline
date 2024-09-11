@@ -33,7 +33,8 @@ class SenderNode(BaseNode):
         self.leaf_pipeline_id = pipeline_id
 
     async def signal_successors(self, result: Result):
-        await self.app.signal_successors(result)
+        self.log(f"Sender '{self.name}' signaling successors", level="INFO")
+        return await self.app.signal_successors(result)
 
     def exit(self):
         self.wait_successor_event.set()
@@ -83,7 +84,7 @@ class ReceiverNode(BaseNode):
         return self.app
     
     async def signal_predecessors(self, result: Result):
-        self.log(f"Signaling predecessors", level="INFO")
+        self.log(f"Receiver '{self.name}' signaling predecessors", level="INFO")
         await self.app.signal_predecessors(result)
     
     def exit(self):
@@ -118,7 +119,7 @@ class ReceiverNode(BaseNode):
             self.work_list.remove(Work.WAITING_SUCCESSORS)
 
             self.trap_interrupts()
-            # await self.signal_predecessors(Result.SUCCESS)
+            await self.signal_predecessors(Result.SUCCESS)
 
     def run(self) -> None:
         asyncio.run(self.run_async())

@@ -14,6 +14,7 @@ from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.service import RootService
 from anacostia_pipeline.actions.network import SenderNode
+from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
 
 from utils import *
 
@@ -144,20 +145,22 @@ retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, mo
 
 shakespeare_eval_sender = SenderNode(
     "shakespeare_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="shakespeare_eval_receiver", 
-    predecessors=[retraining], loggers=logger
+    predecessors=[retraining]
 )
 haiku_eval_sender = SenderNode(
     "haiku_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="haiku_eval_receiver",
-    predecessors=[retraining], loggers=logger
+    predecessors=[retraining]
 )
 
 pipeline = Pipeline(
     nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining, shakespeare_eval_sender, haiku_eval_sender], 
     loggers=logger
 )
+pipeline_webserver = PipelineWebserver(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
+pipeline_webserver.run()
 
-service = RootService(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
-service.run()
+#service = RootService(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
+#service.run()
 
 time.sleep(6)
 for i in range(10):
