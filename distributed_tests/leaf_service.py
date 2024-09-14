@@ -4,7 +4,7 @@ from logging import Logger
 from typing import List
 
 from anacostia_pipeline.engine.pipeline import LeafPipeline
-from anacostia_pipeline.dashboard.service import LeafService
+#from anacostia_pipeline.dashboard.service import LeafService
 from anacostia_pipeline.dashboard.subapps.pipeline import LeafPipelineWebserver
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode
 from anacostia_pipeline.actions.network import ReceiverNode

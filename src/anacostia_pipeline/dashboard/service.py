@@ -19,6 +19,119 @@ from anacostia_pipeline.actions.network import SenderNode, ReceiverNode
 
 
 
+class RootService(FastAPI):
+    def __init__(self, name: str, pipeline: Pipeline, host: str = "localhost", port: int = 8000, logger: Logger = None, *args, **kwargs):
+
+        # lifespan context manager for spinning up and shutting down the service
+        @asynccontextmanager
+        async def lifespan(app: RootService):
+            app.log(f"Opening client for service '{app.name}'")
+            app.client = httpx.AsyncClient()
+
+            yield
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    if isinstance(route.app, RootPipelineWebserver):
+                        app.log(f"Closing client for webserver '{route.app.name}'")
+                        await route.app.client.aclose()
+
+            app.log(f"Closing client for service '{app.name}'")
+            await app.client.aclose()
+        
+        super().__init__(lifespan=lifespan, *args, **kwargs)
+        self.name = name
+        self.host = host
+        self.port = port
+        self.pipeline = pipeline
+        self.logger = logger
+        self.connections = []
+        self.leaf_ip_addresses = []
+        self.client: httpx.AsyncClient = None
+
+        config = uvicorn.Config(self, host=self.host, port=self.port)
+        self.server = uvicorn.Server(config)
+        self.fastapi_thread = threading.Thread(target=self.server.run)
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(f"{level}: {message}")
+    
+    async def connect(self):
+        # Extract data about leaf pipelines from the sender nodes in the pipeline
+        for node in self.pipeline.nodes:
+            if isinstance(node, SenderNode):
+                connection_dict = {
+                    "root_name": self.name,
+                    "leaf_host": node.leaf_host,
+                    "leaf_port": node.leaf_port,
+                    "sender_name": node.name,
+                    "receiver_name": node.leaf_receiver
+                }
+                
+                if any([connection_dict["receiver_name"] == connection["receiver_name"] for connection in self.connections]):
+                    raise ValueError(f"Duplicate receiver name '{connection_dict['receiver_name']}' found in the pipeline")
+                else:
+                    self.connections.append(connection_dict)
+
+            # Extract the leaf ip addresses from the connections
+            for connection in self.connections:
+                pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
+                if pipeline_ip_address not in self.leaf_ip_addresses:
+                    self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
+            
+            self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
+            self.log(self.leaf_ip_addresses)
+            self.log(self.connections)
+            
+    def run(self):
+        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
+        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
+        pipeline_server = RootPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+        pipeline_server.client = httpx.AsyncClient()
+
+        self.mount(f"/", pipeline_server)
+
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+
+        def _kill_webserver(sig, frame):
+            print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
+            self.server.should_exit = True
+            self.fastapi_thread.join()
+            print(f"Anacostia Webservice {self.name} Killed...")
+
+            print("Killing pipeline...")
+            self.pipeline.terminate_nodes()
+            print("Pipeline Killed.")
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+        self.fastapi_thread.start()
+
+        # Launch the root pipeline
+        self.pipeline.launch_nodes()
+
+        # Connect to the leaf services
+        asyncio.run(self.connect())
+
+
+"""
 class RootServiceData(BaseModel):
     root_name: str
     leaf_host: str
@@ -42,9 +155,10 @@ class RootService(FastAPI):
 
             for route in app.routes:
                 if isinstance(route, Mount):
-                    print(f"Closing client for subapp {route.path}")
-                    app.logger.info(f"Closing client for subapp '{route.path}'")
-                    await route.app.client.aclose()
+                    if isinstance(route.app, RootPipelineWebserver):
+                        print(f"Closing client for subapp {route.path}")
+                        app.logger.info(f"Closing client for subapp '{route.path}'")
+                        await route.app.client.aclose()
 
             print(f"Closing client for {app.name}")
             app.logger.info(f"Closing client for service '{app.name}'")
@@ -188,22 +302,20 @@ class LeafService(FastAPI):
 
         @asynccontextmanager
         async def lifespan(app: LeafService):
-            print(f"Opening client for service '{app.name}'")
-            app.logger.info(f"Opening client for service '{app.name}'")
+            app.log(f"Opening client for service '{app.name}'")
             app.client = httpx.AsyncClient()
 
             yield
 
-            """
             for route in app.routes:
                 if isinstance(route, Mount):
-                    print(f"Closing client for subapp {route.path}")
-                    app.logger.info(f"Closing client for subapp '{route.path}'")
-                    await route.app.client.aclose()
-            """
+                    subapp = route.app
 
-            print(f"Closing client for {app.name}")
-            app.logger.info(f"Closing client for service '{app.name}'")
+                    if isinstance(subapp, LeafPipelineWebserver):
+                        app.log(f"Closing client for webserver '{app.name}'")
+                        await subapp.client.aclose()
+
+            app.log(f"Closing client for service '{app.name}'")
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -214,7 +326,6 @@ class LeafService(FastAPI):
         self.logger = logger
         self.client: httpx.AsyncClient = None
 
-        self.logger.info(f"Leaf service '{self.host}:{self.port}' started")
         self.connections = { node.name: None for node in pipeline.nodes if isinstance(node, ReceiverNode) }
 
         @self.post("/healthcheck", status_code=status.HTTP_200_OK)
@@ -226,10 +337,13 @@ class LeafService(FastAPI):
             pipeline_id = uuid.uuid4().hex
             pipeline_server = LeafPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
             self.mount(f"/{pipeline_id}", pipeline_server)
-            self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
+            self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             leaf_data = {
                 "pipeline_id": pipeline_id
             }
+
+            pipeline_server.pipeline.launch_nodes() 
+
             return leaf_data
 
         # For each connection, we need to connect the root sender node to the leaf receiver node by saving the sender name in the connections dictionary
@@ -249,6 +363,23 @@ class LeafService(FastAPI):
         # have those leaf services spin up their pipelines, and then connect to them.
         # This will allow the leaf service to act as a root service for other leaf services.
         # This will mean that we need a way to recursively connect to leaf services and spin up their pipelines.
+
+    def log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(f"{level}: {message}")
 
     def run(self):
         self.add_middleware(
@@ -279,3 +410,4 @@ class LeafService(FastAPI):
         fastapi_thread.start()
 
         self.pipeline.launch_nodes()
+"""

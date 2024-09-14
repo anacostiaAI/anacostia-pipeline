@@ -61,7 +61,7 @@ class RootPipelineWebserver(FastAPI):
         self.host = host
         self.port = port
         self.logger = logger
-        self.client = None
+        self.client: httpx.AsyncClient = None
 
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
@@ -251,7 +251,7 @@ class LeafPipelineWebserver(FastAPI):
         self.port = port
         self.server = None
         self.fastapi_thread = None
-        self.client = None
+        self.client: httpx.AsyncClient = None
         self.logger = logger
 
         pipeline_id = uuid.uuid4().hex
