@@ -7,10 +7,13 @@ import uvicorn
 import asyncio
 import httpx
 import uuid
+from contextlib import asynccontextmanager
+from logging import Logger
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
+from starlette.routing import Mount
 
 from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
@@ -174,8 +177,29 @@ class RootPipelineWebserver(FastAPI):
 
 
 class LeafPipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: LeafPipeline, host="127.0.0.1", port=8000, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, pipeline: LeafPipeline, host="127.0.0.1", port=8000, logger: Logger = None, *args, **kwargs):
+
+        @asynccontextmanager
+        async def lifespan(app: LeafPipelineWebserver):
+            print(f"Opening client for service '{app.name}'")
+            app.logger.info(f"Opening client for service '{app.name}'")
+            app.client = httpx.AsyncClient()
+
+            yield
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    print(f"Closing client for subapp {route.path}")
+                    app.logger.info(f"Closing client for subapp '{route.path}'")
+
+                    subapp: BaseNodeApp = route.app
+                    await subapp.client.aclose()
+
+            print(f"Closing client for leaf pipeline {app.name}")
+            app.logger.info(f"Closing client for leaf pipeline '{app.name}'")
+            await app.client.aclose()
+
+        super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
         self.pipeline = pipeline
         self.host = host
@@ -183,6 +207,7 @@ class LeafPipelineWebserver(FastAPI):
         self.server = None
         self.fastapi_thread = None
         self.client = httpx.AsyncClient()
+        self.logger = logger
 
         pipeline_id = uuid.uuid4().hex
 
