@@ -13,7 +13,7 @@ class BaseNodeApp(FastAPI):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.client: httpx.AsyncClient = httpx.AsyncClient()
+        self.client: httpx.AsyncClient = None
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint(request: Request):

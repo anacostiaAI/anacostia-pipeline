@@ -30,13 +30,38 @@ DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__fi
 
 
 class RootPipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: Pipeline, host="127.0.0.1", port=8000, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, pipeline: Pipeline, host="127.0.0.1", port=8000, logger: Logger = None, *args, **kwargs):
+
+        @asynccontextmanager
+        async def lifespan(app: RootPipelineWebserver):
+            app.log(f"Opening client for root pipeline '{app.name}'", level="INFO")
+            app.client = httpx.AsyncClient()
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    if isinstance(route.app, BaseNodeApp):
+                        app.log(f"Opening client for subapp '{route.path}'", level="INFO")
+                        route.app.client = httpx.AsyncClient()
+
+            yield
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    if isinstance(route.app, BaseNodeApp):
+                        app.log(f"Closing client for subapp '{route.path}'", level="INFO")
+                        subapp: BaseNodeApp = route.app
+                        await subapp.client.aclose()
+
+            app.log(f"Closing client for root pipeline '{app.name}'", level="INFO")
+            await app.client.aclose()
+
+        super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
         self.pipeline = pipeline
         self.host = host
         self.port = port
-        self.client = httpx.AsyncClient()
+        self.logger = logger
+        self.client = None
 
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
@@ -142,6 +167,23 @@ class RootPipelineWebserver(FastAPI):
 
         model["edges"] = edges
         return model
+    
+    def log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(f"{level}: {message}")
 
     def get_graph_prefix(self):
         return f"/{self.name}"
@@ -181,22 +223,25 @@ class LeafPipelineWebserver(FastAPI):
 
         @asynccontextmanager
         async def lifespan(app: LeafPipelineWebserver):
-            print(f"Opening client for service '{app.name}'")
-            app.logger.info(f"Opening client for service '{app.name}'")
+            app.log(f"Starting leaf pipeline '{app.name}'")
             app.client = httpx.AsyncClient()
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    if isinstance(route.app, BaseNodeApp):
+                        app.log(f"Opening client for subapp '{route.path}'", level="INFO")
+                        route.app.client = httpx.AsyncClient()
 
             yield
 
             for route in app.routes:
                 if isinstance(route, Mount):
-                    print(f"Closing client for subapp {route.path}")
-                    app.logger.info(f"Closing client for subapp '{route.path}'")
+                    if isinstance(route.app, BaseNodeApp):
+                        app.log(f"Closing client for subapp '{route.path}'", level="INFO")
+                        subapp: BaseNodeApp = route.app
+                        await subapp.client.aclose()
 
-                    subapp: BaseNodeApp = route.app
-                    await subapp.client.aclose()
-
-            print(f"Closing client for leaf pipeline {app.name}")
-            app.logger.info(f"Closing client for leaf pipeline '{app.name}'")
+            app.log(f"Closing client for leaf pipeline '{app.name}'")
             await app.client.aclose()
 
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -206,10 +251,14 @@ class LeafPipelineWebserver(FastAPI):
         self.port = port
         self.server = None
         self.fastapi_thread = None
-        self.client = httpx.AsyncClient()
+        self.client = None
         self.logger = logger
 
         pipeline_id = uuid.uuid4().hex
+
+        config = uvicorn.Config(self, host=self.host, port=self.port)
+        self.server = uvicorn.Server(config)
+        self.fastapi_thread = Thread(target=self.server.run)
 
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
@@ -219,6 +268,23 @@ class LeafPipelineWebserver(FastAPI):
 
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
     
+    def log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(f"{level}: {message}")
+
     def stop(self):
         if (self.server is not None) and (self.fastapi_thread is not None):
             self.server.should_exit = True
@@ -232,10 +298,6 @@ class LeafPipelineWebserver(FastAPI):
         return f"/{self.name}"
 
     def run(self):
-        config = uvicorn.Config(self, host=self.host, port=self.port)
-        self.server = uvicorn.Server(config)
-        self.fastapi_thread = Thread(target=self.server.run)
-
         original_sigint_handler = signal.getsignal(signal.SIGINT)
         
         def _kill_webserver(sig, frame):
