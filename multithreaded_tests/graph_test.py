@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
-from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
+from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
 from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
@@ -172,7 +172,7 @@ pipeline = Pipeline(
 
 
 if __name__ == "__main__":
-    webserver = PipelineWebserver(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+    webserver = RootPipelineWebserver(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
     webserver.run()
 
     time.sleep(6)

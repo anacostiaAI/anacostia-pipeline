@@ -14,7 +14,7 @@ from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.service import RootService
 from anacostia_pipeline.actions.network import SenderNode
-from anacostia_pipeline.dashboard.subapps.pipeline import PipelineWebserver
+from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
 from utils import *
 
@@ -156,7 +156,7 @@ pipeline = Pipeline(
     nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining, shakespeare_eval_sender, haiku_eval_sender], 
     loggers=logger
 )
-pipeline_webserver = PipelineWebserver(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
+pipeline_webserver = RootPipelineWebserver(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
 pipeline_webserver.run()
 
 #service = RootService(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)

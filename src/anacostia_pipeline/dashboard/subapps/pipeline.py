@@ -27,7 +27,7 @@ DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__fi
 
 
 
-class PipelineWebserver(FastAPI):
+class RootPipelineWebserver(FastAPI):
     def __init__(self, name: str, pipeline: Pipeline, host="127.0.0.1", port=8000, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
