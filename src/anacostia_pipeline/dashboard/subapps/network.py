@@ -25,8 +25,11 @@ class SenderNodeApp(BaseNodeApp):
         self.leaf_pipeline_id = pipeline_id
 
     async def signal_successors(self, result: Result):
-        #signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.leaf_pipeline_id}/{self.receiver_node_name}/signal_leaf"
-        signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.receiver_name}/signal_leaf"
+        if self.leaf_pipeline_id is not None:
+            signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.leaf_pipeline_id}/{self.receiver_name}/signal_leaf"
+        else:
+            signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.receiver_name}/signal_leaf"
+
         return await self.client.post(signal_url)
         # self.node.log(f"Root node {self.node.name} signaled successors {signal_url}, result = {result}", level="INFO")
     

@@ -8,7 +8,7 @@ import asyncio
 import httpx
 import uuid
 
-from fastapi import FastAPI, Request, status, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 
@@ -16,7 +16,6 @@ from anacostia_pipeline.dashboard.components.index import index_template
 from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
-from anacostia_pipeline.actions.network import ReceiverNode
 from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
@@ -194,17 +193,16 @@ class LeafPipelineWebserver(FastAPI):
                 node_subapp.set_leaf_pipeline_id(pipeline_id)
 
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
-
-        @self.post('/terminate')
-        def terminate():
-            if (self.server is not None) and (self.fastapi_thread is not None):
-                self.server.should_exit = True
-                self.fastapi_thread.join()
-                self.pipeline.terminate_nodes()
-                return {"message": "Pipeline Terminated"}
-            else:
-                return {"message": "Error: pipeline not running"}
     
+    def stop(self):
+        if (self.server is not None) and (self.fastapi_thread is not None):
+            self.server.should_exit = True
+            self.fastapi_thread.join()
+            self.pipeline.terminate_nodes()
+            print("Pipeline Terminated")
+        else:
+            print("Error: pipeline not running")
+
     def get_graph_prefix(self):
         return f"/{self.name}"
 
