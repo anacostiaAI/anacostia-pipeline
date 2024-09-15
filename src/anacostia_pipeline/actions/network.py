@@ -24,14 +24,9 @@ class SenderNode(BaseNode):
         self.shutdown_event = threading.Event()
         self.app = SenderNodeApp(self, leaf_host, leaf_port, leaf_receiver)
     
-        self.leaf_pipeline_id: str = None
-
     def get_app(self):
         return self.app
     
-    def set_leaf_pipeline_id(self, pipeline_id: str):
-        self.leaf_pipeline_id = pipeline_id
-
     async def signal_successors(self, result: Result):
         self.log(f"Sender '{self.name}' signaling successors", level="INFO")
         return await self.app.signal_successors(result)

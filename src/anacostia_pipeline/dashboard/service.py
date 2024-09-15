@@ -4,6 +4,7 @@ import asyncio
 import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
+from typing import List, Dict
 
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +27,7 @@ class RootService(FastAPI):
         @asynccontextmanager
         async def lifespan(app: RootService):
             app.log(f"Opening client for service '{app.name}'")
-            app.client = httpx.AsyncClient()
+            # app.client = httpx.AsyncClient()
 
             yield
 
@@ -37,7 +38,7 @@ class RootService(FastAPI):
                         await route.app.client.aclose()
 
             app.log(f"Closing client for service '{app.name}'")
-            await app.client.aclose()
+            #await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
@@ -47,7 +48,7 @@ class RootService(FastAPI):
         self.logger = logger
         self.connections = []
         self.leaf_ip_addresses = []
-        self.client: httpx.AsyncClient = None
+        self.client = httpx.AsyncClient()
 
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
@@ -92,10 +93,49 @@ class RootService(FastAPI):
                 pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
                 if pipeline_ip_address not in self.leaf_ip_addresses:
                     self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
+                    self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
+
+        try:
+            # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
+            # Instead, we use await self.client.post because we already have an httpx.AsyncClient() object 
+            # created in the lifespan context manager in the AnacostiaService class.
+            # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
+
+            # Send a /healthcheck request to each leaf service
+            self.log("------------- Healthcheck started -------------")
+            tasks = []
+            for ip_address in self.leaf_ip_addresses:
+                tasks.append(self.client.post(f"http://{ip_address}/healthcheck"))
+
+            responses = await asyncio.gather(*tasks)
+
+            for response in responses:
+                response_data = response.json()
+                if response_data["status"] == "ok":
+                    self.log(f"Successfully connected to leaf at {ip_address}")
+            self.log("------------- Healthcheck completed -------------")
+                
+            self.log("------------- Leaf pipeline creation started -------------")
+            # Send a /create_pipeline request to each leaf service and store the pipeline ID
+            tasks = []
+            for ip_address in self.leaf_ip_addresses:
+                tasks.append(self.client.post(f"http://{ip_address}/create_pipeline"))
             
-            self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
-            self.log(self.leaf_ip_addresses)
-            self.log(self.connections)
+            responses = await asyncio.gather(*tasks)
+
+            for response in responses:
+                response_data = response.json()
+                pipeline_id = response_data["pipeline_id"]
+
+                for node in self.pipeline.nodes:
+                    if isinstance(node, SenderNode):
+                        if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
+                            node.get_app().set_leaf_pipeline_id(pipeline_id)
+            self.log("------------- Leaf pipeline creation completed -------------")
+
+        except Exception as e:
+            print(f"Failed to connect to leaf at {ip_address} with error: {e}")
+            self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
             
     def run(self):
         # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
@@ -129,6 +169,107 @@ class RootService(FastAPI):
 
         # Connect to the leaf services
         asyncio.run(self.connect())
+
+
+class LeafService(FastAPI):
+    def __init__(self, name: str, pipeline: LeafPipeline, host: str = "localhost", port: int = 8000, logger=Logger, *args, **kwargs):
+
+        @asynccontextmanager
+        async def lifespan(app: LeafService):
+            app.log(f"Opening client for service '{app.name}'")
+            #app.client = httpx.AsyncClient()
+
+            yield
+
+            for route in app.routes:
+                if isinstance(route, Mount):
+                    subapp = route.app
+
+                    if isinstance(subapp, LeafPipelineWebserver):
+                        app.log(f"Closing client for webserver '{subapp.name}'")
+                        await subapp.client.aclose()
+
+            app.log(f"Closing client for service '{app.name}'")
+            await app.client.aclose()
+        
+        super().__init__(lifespan=lifespan, *args, **kwargs)
+        self.name = name
+        self.host = host
+        self.port = port
+        self.pipeline = pipeline
+        self.logger = logger
+        self.client = httpx.AsyncClient()
+
+        self.connections = { node.name: None for node in pipeline.nodes if isinstance(node, ReceiverNode) }
+
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        config = uvicorn.Config(self, host=self.host, port=self.port)
+        self.server = uvicorn.Server(config)
+        self.fastapi_thread = threading.Thread(target=self.server.run)
+
+        self.pipelines: Dict[str, LeafPipeline] = {}
+
+        @self.post("/healthcheck", status_code=status.HTTP_200_OK)
+        async def healthcheck():
+            return {"status": "ok"}
+
+        @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
+        def create_pipeline():
+            pipeline_id = uuid.uuid4().hex
+            pipeline_server = LeafPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+            self.mount(f"/{pipeline_id}", pipeline_server)
+            self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
+            leaf_data = {
+                "pipeline_id": pipeline_id
+            }
+
+            pipeline_server.pipeline.launch_nodes() 
+            self.pipelines[pipeline_id] = pipeline_server.pipeline
+            return leaf_data
+
+    def log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(f"{level}: {message}")
+
+    def run(self):
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+
+        def _kill_webserver(sig, frame):
+            print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
+            self.server.should_exit = True
+            self.fastapi_thread.join()
+            print(f"Anacostia Webservice {self.name} Killed...")
+
+            for pipeline_id, pipeline in self.pipelines.items():
+                print(f"Killing pipeline '{pipeline_id}'")
+                pipeline.terminate_nodes()
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+        self.fastapi_thread.start()
 
 
 """

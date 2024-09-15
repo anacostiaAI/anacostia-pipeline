@@ -4,7 +4,7 @@ from logging import Logger
 from typing import List
 
 from anacostia_pipeline.engine.pipeline import LeafPipeline
-#from anacostia_pipeline.dashboard.service import LeafService
+from anacostia_pipeline.dashboard.service import LeafService
 from anacostia_pipeline.dashboard.subapps.pipeline import LeafPipelineWebserver
 from anacostia_pipeline.engine.base import BaseNode, BaseActionNode
 from anacostia_pipeline.actions.network import ReceiverNode
@@ -72,9 +72,9 @@ pipeline = LeafPipeline(
     nodes=[shakespeare_eval, haiku_eval, shakespeare_eval_receiver, haiku_eval_receiver],
     loggers=logger
 )
-webserver = LeafPipelineWebserver(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
-webserver.run()
+#webserver = LeafPipelineWebserver(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
+#webserver.run()
 
-#service = LeafService(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
-#service.run()
+service = LeafService(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
+service.run()
 

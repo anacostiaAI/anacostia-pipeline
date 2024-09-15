@@ -224,7 +224,7 @@ class LeafPipelineWebserver(FastAPI):
         @asynccontextmanager
         async def lifespan(app: LeafPipelineWebserver):
             app.log(f"Starting leaf pipeline '{app.name}'")
-            app.client = httpx.AsyncClient()
+            #app.client = httpx.AsyncClient()
 
             for route in app.routes:
                 if isinstance(route, Mount):
@@ -251,7 +251,7 @@ class LeafPipelineWebserver(FastAPI):
         self.port = port
         self.server = None
         self.fastapi_thread = None
-        self.client: httpx.AsyncClient = None
+        self.client = httpx.AsyncClient()
         self.logger = logger
 
         pipeline_id = uuid.uuid4().hex
