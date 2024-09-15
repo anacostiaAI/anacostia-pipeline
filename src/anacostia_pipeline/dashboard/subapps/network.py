@@ -31,7 +31,6 @@ class SenderNodeApp(BaseNodeApp):
             signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.receiver_name}/signal_leaf"
 
         return await self.client.post(signal_url)
-        # self.node.log(f"Root node {self.node.name} signaled successors {signal_url}, result = {result}", level="INFO")
     
     # Note: we need to change the way SenderNode waits for successors otherwise, the SenderNode immediately signals the predecessor nodes 
     # because it doesn't have a successor node declared in the graph.  
@@ -41,9 +40,9 @@ class SenderNodeApp(BaseNodeApp):
 class ReceiverNodeApp(BaseNodeApp):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(node, use_default_router, *args, **kwargs)
+        self.sender_name: str = None
         self.sender_host: str = None
         self.sender_port: int = None
-        self.sender_name: str = None
 
         # http://localhost:8002/shakespearl_leaf_receiver/signal_leaf
 
@@ -56,12 +55,12 @@ class ReceiverNodeApp(BaseNodeApp):
     def set_leaf_pipeline_id(self, pipeline_id: str):
         self.leaf_pipeline_id = pipeline_id
 
-    def set_sender(self, sender_host: str, sender_port: int):
+    def set_sender(self, sender_name: str, sender_host: str, sender_port: int):
+        self.sender_name = sender_name
         self.sender_host = sender_host
         self.sender_port = sender_port
     
     async def signal_predecessors(self, result: Result):
         signal_url = f"http://{self.sender_host}:{self.sender_port}/{self.sender_name}/signal_root"
-        self.node.log(f"Leaf node {self.node.name} signaled predecessors", level="INFO")
+        self.node.log(f"Leaf node {self.node.name} signaled predecessors {signal_url}", level="INFO")
         return await self.client.post(signal_url)
-        # self.node.log(f"Root node {self.node.name} signaled successors {signal_url}, result = {result}", level="INFO")

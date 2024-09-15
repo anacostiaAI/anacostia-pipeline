@@ -54,14 +54,14 @@ class HaikuEvalNode(BaseActionNode):
         return True
 
 shakespeare_eval_receiver = ReceiverNode("shakespeare_eval_receiver", loggers=[])
-shakespeare_eval_receiver.app.sender_host = args.host
-shakespeare_eval_receiver.app.sender_port = 8000
-shakespeare_eval_receiver.app.sender_name = "shakespeare_eval_sender"
+#shakespeare_eval_receiver.app.sender_host = args.host
+#shakespeare_eval_receiver.app.sender_port = 8000
+#shakespeare_eval_receiver.app.sender_name = "shakespeare_eval_sender"
 
 haiku_eval_receiver = ReceiverNode("haiku_eval_receiver", loggers=[])
-haiku_eval_receiver.app.sender_host = args.host
-haiku_eval_receiver.app.sender_port = 8000
-haiku_eval_receiver.app.sender_name = "haiku_eval_sender"
+#haiku_eval_receiver.app.sender_host = args.host
+#haiku_eval_receiver.app.sender_port = 8000
+#haiku_eval_receiver.app.sender_name = "haiku_eval_sender"
 
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[shakespeare_eval_receiver])
 haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[haiku_eval_receiver])
