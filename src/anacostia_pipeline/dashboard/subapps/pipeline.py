@@ -35,13 +35,6 @@ class RootPipelineWebserver(FastAPI):
         @asynccontextmanager
         async def lifespan(app: RootPipelineWebserver):
             app.log(f"Opening client for root pipeline '{app.name}'", level="INFO")
-            app.client = httpx.AsyncClient()
-
-            for route in app.routes:
-                if isinstance(route, Mount):
-                    if isinstance(route.app, BaseNodeApp):
-                        app.log(f"Opening client for subapp '{route.path}'", level="INFO")
-                        route.app.client = httpx.AsyncClient()
 
             yield
 
@@ -61,7 +54,7 @@ class RootPipelineWebserver(FastAPI):
         self.host = host
         self.port = port
         self.logger = logger
-        self.client: httpx.AsyncClient = None
+        self.client = httpx.AsyncClient()
 
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
@@ -224,12 +217,6 @@ class LeafPipelineWebserver(FastAPI):
         @asynccontextmanager
         async def lifespan(app: LeafPipelineWebserver):
             app.log(f"Starting leaf pipeline '{app.name}'")
-
-            for route in app.routes:
-                if isinstance(route, Mount):
-                    if isinstance(route.app, BaseNodeApp):
-                        app.log(f"Opening client for subapp '{route.path}'", level="INFO")
-                        route.app.client = httpx.AsyncClient()
 
             yield
 
