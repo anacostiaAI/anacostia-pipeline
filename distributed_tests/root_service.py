@@ -13,7 +13,7 @@ from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
 from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.subapps.service import RootService
-from anacostia_pipeline.actions.network import SenderNode
+from anacostia_pipeline.engine.network import SenderNode
 from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
 from utils import *
