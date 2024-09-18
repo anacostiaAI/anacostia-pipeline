@@ -4,7 +4,7 @@ import threading
 import time
 import asyncio
 
-from anacostia_pipeline.engine.base import BaseActionNode, BaseNode
+from anacostia_pipeline.engine.base import BaseNode
 from anacostia_pipeline.engine.constants import Result, Work
 from anacostia_pipeline.dashboard.subapps.network import SenderNodeApp, ReceiverNodeApp
 
@@ -19,7 +19,6 @@ class SenderNode(BaseNode):
         self.leaf_host = leaf_host
         self.leaf_port = leaf_port
         self.leaf_receiver = leaf_receiver
-        self.leaf_signal_received = False
         self.wait_successor_event = threading.Event()
         self.shutdown_event = threading.Event()
         self.app = SenderNodeApp(self, leaf_host, leaf_port, leaf_receiver)
@@ -28,7 +27,6 @@ class SenderNode(BaseNode):
         return self.app
     
     async def signal_successors(self, result: Result):
-        self.log(f"Sender '{self.name}' signaling successors", level="INFO")
         return await self.app.signal_successors(result)
 
     def exit(self):
@@ -38,24 +36,18 @@ class SenderNode(BaseNode):
     
     async def run_async(self) -> None:
         while self.shutdown_event.is_set() is False:
-            self.trap_interrupts()
             self.work_list.append(Work.WAITING_PREDECESSORS)
             while self.check_predecessors_signals() is False:
                 time.sleep(0.2)
                 self.trap_interrupts()
             self.work_list.remove(Work.WAITING_PREDECESSORS)
 
-            self.trap_interrupts()
             await self.signal_successors(Result.SUCCESS)
 
-            self.trap_interrupts()
             self.work_list.append(Work.WAITING_SUCCESSORS)
             self.wait_successor_event.wait()
             self.work_list.remove(Work.WAITING_SUCCESSORS)
             
-            # self.log(f"SenderNode {self.name} received signal from successors", level="INFO")
-
-            self.trap_interrupts()
             self.signal_predecessors(Result.SUCCESS)
 
             self.wait_successor_event.clear()
@@ -79,7 +71,6 @@ class ReceiverNode(BaseNode):
         return self.app
     
     async def signal_predecessors(self, result: Result):
-        self.log(f"Receiver '{self.name}' signaling predecessors", level="INFO")
         await self.app.signal_predecessors(result)
     
     def exit(self):
@@ -88,15 +79,6 @@ class ReceiverNode(BaseNode):
         super().exit()
     
     async def run_async(self) -> None:
-        # design a new node lifecycle for ReceiverNode
-        # the node lifecycle for ReceiverNode should:
-        # 1. wait for a signal (an http post request) from the SenderNode
-        # 2. signal the successors
-        # 3. wait for signals from the successors
-        # 4. signal the predecessor (the SenderNode) via http post request to the root_url  
-        # 5. repeat steps 1-4 until the pipeline is terminated
-        # Note: the run method should be able to execute asynchronous calls
-
         while self.shutdown_event.is_set() is False:
             self.work_list.append(Work.WAITING_PREDECESSORS)
             self.wait_predecessor_event.wait()
@@ -106,14 +88,12 @@ class ReceiverNode(BaseNode):
 
             self.signal_successors(Result.SUCCESS)
 
-            self.trap_interrupts()
             self.work_list.append(Work.WAITING_SUCCESSORS)
             while self.check_successors_signals() is False:
                 time.sleep(0.2)
                 self.trap_interrupts()
             self.work_list.remove(Work.WAITING_SUCCESSORS)
 
-            self.trap_interrupts()
             await self.signal_predecessors(Result.SUCCESS)
 
     def run(self) -> None:

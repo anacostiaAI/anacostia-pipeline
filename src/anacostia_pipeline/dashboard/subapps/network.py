@@ -1,6 +1,4 @@
 from fastapi import status
-import httpx
-
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.engine.constants import Result
 
@@ -17,7 +15,6 @@ class SenderNodeApp(BaseNodeApp):
 
         @self.post("/signal_root", status_code=status.HTTP_200_OK)
         async def signal_root():
-            self.node.log(f"Root {self.node.name} received signal", level="INFO")
             self.node.wait_successor_event.set()
             return {"message": "Success"}
 
@@ -31,9 +28,6 @@ class SenderNodeApp(BaseNodeApp):
             signal_url = f"http://{self.reciever_host}:{self.reciever_port}/{self.receiver_name}/signal_leaf"
 
         return await self.client.post(signal_url)
-    
-    # Note: we need to change the way SenderNode waits for successors otherwise, the SenderNode immediately signals the predecessor nodes 
-    # because it doesn't have a successor node declared in the graph.  
 
 
 
@@ -48,7 +42,6 @@ class ReceiverNodeApp(BaseNodeApp):
 
         @self.post("/signal_leaf", status_code=status.HTTP_200_OK)
         async def signal_successor():
-            self.node.log(f"Leaf {self.node.name} signaled", level="INFO")
             self.node.wait_predecessor_event.set()
             return {"message": "Success"}
     
@@ -62,5 +55,4 @@ class ReceiverNodeApp(BaseNodeApp):
     
     async def signal_predecessors(self, result: Result):
         signal_url = f"http://{self.sender_host}:{self.sender_port}/{self.sender_name}/signal_root"
-        self.node.log(f"Leaf node {self.node.name} signaled predecessors {signal_url}", level="INFO")
         return await self.client.post(signal_url)
