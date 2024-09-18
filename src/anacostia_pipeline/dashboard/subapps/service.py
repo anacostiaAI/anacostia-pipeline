@@ -6,7 +6,7 @@ from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
 
-from fastapi import FastAPI, Request, status, HTTPException
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from anacostia_pipeline.engine.pipeline import Pipeline, LeafPipeline
 from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver, LeafPipelineWebserver
-from anacostia_pipeline.dashboard.subapps.network import SenderNodeApp, ReceiverNodeApp
+from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp
 from anacostia_pipeline.engine.network import SenderNode, ReceiverNode
 
 
@@ -40,7 +40,6 @@ class RootService(FastAPI):
         @asynccontextmanager
         async def lifespan(app: RootService):
             app.log(f"Opening client for service '{app.name}'")
-            # app.client = httpx.AsyncClient()
 
             yield
 
@@ -51,7 +50,8 @@ class RootService(FastAPI):
                         await route.app.client.aclose()
 
             app.log(f"Closing client for service '{app.name}'")
-            # await app.client.aclose()
+            # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
+            # RuntimeError: unable to perform operation on <TCPTransport closed=True reading=False 0x121fa0fd0>; the handler is close
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
@@ -197,7 +197,6 @@ class LeafService(FastAPI):
         @asynccontextmanager
         async def lifespan(app: LeafService):
             app.log(f"Opening client for service '{app.name}'")
-            #app.client = httpx.AsyncClient()
 
             yield
 
