@@ -26,7 +26,6 @@ fi
 # Define IP addresses and ports
 IP_ROOT="127.0.0.1"
 PORT_ROOT="8000"
-#IP_LEAF=$(ifconfig $INTERFACE | grep "inet " | awk '{print $2}')
 IP_LEAF="127.0.0.1"
 PORT_LEAF="8002"
 

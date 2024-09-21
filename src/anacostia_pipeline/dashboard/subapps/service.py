@@ -65,7 +65,7 @@ class RootService(FastAPI):
 
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
-        self.fastapi_thread = threading.Thread(target=self.server.run)
+        self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
     
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
@@ -231,7 +231,7 @@ class LeafService(FastAPI):
 
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
-        self.fastapi_thread = threading.Thread(target=self.server.run)
+        self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
         self.pipelines: Dict[str, LeafPipeline] = {}
 

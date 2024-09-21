@@ -184,7 +184,7 @@ class RootPipelineWebserver(FastAPI):
     def run(self):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         server = uvicorn.Server(config)
-        fastapi_thread = Thread(target=server.run)
+        fastapi_thread = Thread(target=server.run, name=self.name)
 
         original_sigint_handler = signal.getsignal(signal.SIGINT)
         
@@ -244,7 +244,7 @@ class LeafPipelineWebserver(FastAPI):
 
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
-        self.fastapi_thread = Thread(target=self.server.run)
+        self.fastapi_thread = Thread(target=self.server.run, name=self.name)
 
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
