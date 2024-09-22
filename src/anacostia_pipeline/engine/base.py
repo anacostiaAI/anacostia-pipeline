@@ -135,12 +135,11 @@ class BaseNode(Thread):
         self.work_list.append(Work.WAITING_SUCCESSORS)
         for event in self.successor_events.values():
             event.wait()
-        self.work_list.remove(Work.WAITING_SUCCESSORS)
-    
-    def clear_successors_events(self):
+        
         for event in self.successor_events.values():
             event.clear()
-
+        self.work_list.remove(Work.WAITING_SUCCESSORS)
+    
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
             predecessor.successor_events[self.name].set()
@@ -149,12 +148,11 @@ class BaseNode(Thread):
         self.work_list.append(Work.WAITING_PREDECESSORS)
         for event in self.predecessors_events.values():
             event.wait()
-        self.work_list.remove(Work.WAITING_PREDECESSORS)
-
-    def clear_predecessors_events(self):
+        
         for event in self.predecessors_events.values():
             event.clear()
-            
+        self.work_list.remove(Work.WAITING_PREDECESSORS)
+
     def pause(self):
         self.pause_event.clear()
         self.status = Status.PAUSING
@@ -164,6 +162,7 @@ class BaseNode(Thread):
         self.status = Status.RUNNING
 
     def exit(self):
+        # setting all events forces the loop to continue to the next checkpoint which will break out of the loop
         self.log(f"Node '{self.name}' exiting at {datetime.now()}")
         self.status = Status.EXITING
         
@@ -315,16 +314,11 @@ class BaseMetadataStoreNode(BaseNode):
 
             # waiting for all resource nodes to signal their resources are ready to be used
             self.wait_for_successors()
-
-            if self.exit_event.is_set(): break
-
-            self.clear_successors_events()
             # note: since the UI polls the work_list every 500ms, the UI will always display WAITING_SUCCESSORS 
             # because it doesn't (and possibly can never) poll fast enough to catch the work_list without WAITING_SUCCESSORS
 
-            if self.exit_event.is_set(): break
-
             # creating a new run
+            if self.exit_event.is_set(): break
             self.work_list.append(Work.STARTING_RUN)
             self.start_run()
             self.add_run_id()
@@ -337,13 +331,9 @@ class BaseMetadataStoreNode(BaseNode):
             # waiting for all resource nodes to signal they are done using the current state
             if self.exit_event.is_set(): break
             self.wait_for_successors()
-
-            if self.exit_event.is_set(): break
-            self.clear_successors_events()
             
-            if self.exit_event.is_set(): break
-
             # ending the run
+            if self.exit_event.is_set(): break
             self.work_list.append(Work.ENDING_RUN)
             self.add_end_time()
             self.end_run()
@@ -471,9 +461,6 @@ class BaseResourceNode(BaseNode):
             if self.exit_event.is_set(): break
             self.wait_for_predecessors()
 
-            if self.exit_event.is_set(): break
-            self.clear_predecessors_events()
-
             # signalling to all successors that the resource is ready to be used for the current run
             if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
@@ -482,9 +469,6 @@ class BaseResourceNode(BaseNode):
             if self.exit_event.is_set(): break
             self.wait_for_successors()
 
-            if self.exit_event.is_set(): break
-            self.clear_successors_events()
-
             # signal the metadata store node that the action nodes have finish using the resource for the current run
             if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
@@ -492,9 +476,6 @@ class BaseResourceNode(BaseNode):
             # wait for acknowledgement from metadata store node that the run has been ended
             if self.exit_event.is_set(): break
             self.wait_for_predecessors()
-
-            if self.exit_event.is_set(): break
-            self.clear_predecessors_events()
             
 
 
@@ -551,14 +532,9 @@ class BaseActionNode(BaseNode):
 
     def run(self) -> None:
         while self.exit_event.is_set() is False:
-
             self.wait_for_predecessors()
-
-            if self.exit_event.is_set(): break
-            self.clear_predecessors_events()
             
             if self.exit_event.is_set(): break
-
             self.work_list.append(Work.BEFORE_EXECUTION)
             self.before_execution()
             self.work_list.remove(Work.BEFORE_EXECUTION)
@@ -604,9 +580,6 @@ class BaseActionNode(BaseNode):
             # ensure all action nodes have finished using the resource for current run
             if self.exit_event.is_set(): break
             self.wait_for_successors()
-
-            if self.exit_event.is_set(): break
-            self.clear_successors_events()
 
             if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)

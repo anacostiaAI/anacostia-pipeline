@@ -1,7 +1,6 @@
 from logging import Logger
 from typing import List
 import threading
-import time
 import asyncio
 
 from anacostia_pipeline.engine.base import BaseNode
@@ -41,7 +40,6 @@ class SenderNode(BaseNode):
     async def run_async(self) -> None:
         while self.exit_event.is_set() is False:
             self.wait_for_predecessors()
-            self.clear_predecessors_events()
             
             if self.exit_event.is_set(): break
             await self.signal_successors(Result.SUCCESS)
@@ -91,7 +89,6 @@ class ReceiverNode(BaseNode):
 
             if self.exit_event.is_set(): break
             self.wait_for_successors()
-            self.clear_successors_events()
 
             if self.exit_event.is_set(): break
             await self.signal_predecessors(Result.SUCCESS)
