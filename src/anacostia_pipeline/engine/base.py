@@ -359,7 +359,7 @@ class BaseResourceNode(BaseNode):
 
     def resource_accessor(func):
         @wraps(func)
-        def resource_accessor_wrapper(self, *args, **kwargs):
+        def resource_accessor_wrapper(self: BaseResourceNode, *args, **kwargs):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
@@ -367,17 +367,6 @@ class BaseResourceNode(BaseNode):
                     result = func(self, *args, **kwargs)
                     return result
         return resource_accessor_wrapper
-    
-    # consider removing this decorator in the future. it hasn't been used for anything.
-    def monitoring_enabled(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            if self.monitoring is True:
-                return func(self, *args, **kwargs)
-            else:
-                # TODO: change this ValueError to a custom exception
-                raise ValueError(f"Cannot call '{func.__name__}' when monitoring is disabled for node 'self.name'.")
-        return wrapper
     
     @BaseNode.log_exception
     def start_monitoring(self) -> None:
