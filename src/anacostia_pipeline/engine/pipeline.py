@@ -52,10 +52,6 @@ class Pipeline:
             for predecessor in node.predecessors:
                 self.graph.add_edge(predecessor, node)
         
-        # set successors for all nodes
-        for node in nodes:
-            node.successors = list(self.graph.successors(node))
-        
         # Set logger for all nodes
         if loggers is not None:
             for node in nodes:

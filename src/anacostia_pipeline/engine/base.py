@@ -52,6 +52,9 @@ class BaseNode(Thread):
         self.successors: List[BaseNode] = list()
         self.successors_signals = SignalTable()
 
+        for predecessor in self.predecessors:
+            predecessor.successors.append(self)
+
         super().__init__(name=name)
     
     def get_app(self):
