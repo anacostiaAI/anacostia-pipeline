@@ -19,8 +19,7 @@ class SenderNode(BaseNode):
         self.leaf_host = leaf_host
         self.leaf_port = leaf_port
         self.leaf_receiver = leaf_receiver
-        self.wait_successor_event = threading.Event()
-        self.shutdown_event = threading.Event()
+        self.wait_receiver_node = threading.Event()    # Event to wait for the successor node to signal over the network
         self.app = SenderNodeApp(self, leaf_host, leaf_port, leaf_receiver)
     
     def get_app(self):
@@ -30,27 +29,31 @@ class SenderNode(BaseNode):
         return await self.app.signal_successors(result)
 
     def exit(self):
-        self.wait_successor_event.set()
-        self.shutdown_event.set()
+        self.wait_receiver_node.set()
         super().exit()
     
     async def run_async(self) -> None:
-        while self.shutdown_event.is_set() is False:
-            self.work_list.append(Work.WAITING_PREDECESSORS)
-            while self.check_predecessors_signals() is False:
-                time.sleep(0.2)
-                self.trap_interrupts()
-            self.work_list.remove(Work.WAITING_PREDECESSORS)
+        while self.exit_event.is_set() is False:
+            self.wait_for_predecessors()
 
+            if self.exit_event.is_set(): break
+            self.clear_predecessors_events()
+            
+            if self.exit_event.is_set(): break
             await self.signal_successors(Result.SUCCESS)
 
+            # Wait for the successor node to signal over the network
+            if self.exit_event.is_set(): break
             self.work_list.append(Work.WAITING_SUCCESSORS)
-            self.wait_successor_event.wait()
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            self.wait_receiver_node.wait()
             
+            # Clear the event and remove the work from the work list
+            if self.exit_event.is_set(): break
+            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            self.wait_receiver_node.clear()
+            
+            if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
-
-            self.wait_successor_event.clear()
 
     def run(self) -> None:
         asyncio.run(self.run_async())
@@ -61,9 +64,7 @@ class ReceiverNode(BaseNode):
         super().__init__(name, [], loggers)     # Note: ReceiverNodes have no predecessors because they are the root nodes in a leaf DAG
         self.root_url: str = None
         self.service = None
-        
-        self.wait_predecessor_event = threading.Event()
-        self.shutdown_event = threading.Event()
+        self.wait_sender_node = threading.Event()
 
         self.app = ReceiverNodeApp(self)
 
@@ -74,26 +75,28 @@ class ReceiverNode(BaseNode):
         await self.app.signal_predecessors(result)
     
     def exit(self):
-        self.wait_predecessor_event.set()
-        self.shutdown_event.set()
+        self.wait_sender_node.set()
         super().exit()
     
     async def run_async(self) -> None:
-        while self.shutdown_event.is_set() is False:
+        while self.exit_event.is_set() is False:
             self.work_list.append(Work.WAITING_PREDECESSORS)
-            self.wait_predecessor_event.wait()
+            self.wait_sender_node.wait()
 
+            if self.exit_event.is_set(): break
             self.work_list.remove(Work.WAITING_PREDECESSORS)
-            self.wait_predecessor_event.clear()
+            self.wait_sender_node.clear()
 
+            if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
 
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            while self.check_successors_signals() is False:
-                time.sleep(0.2)
-                self.trap_interrupts()
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_successors()
 
+            if self.exit_event.is_set(): break
+            self.clear_successors_events()
+
+            if self.exit_event.is_set(): break
             await self.signal_predecessors(Result.SUCCESS)
 
     def run(self) -> None:

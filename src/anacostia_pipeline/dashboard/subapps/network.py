@@ -15,7 +15,7 @@ class SenderNodeApp(BaseNodeApp):
 
         @self.post("/signal_root", status_code=status.HTTP_200_OK)
         async def signal_root():
-            self.node.wait_successor_event.set()
+            self.node.wait_receiver_node.set()
             return {"message": "Success"}
 
     def set_leaf_pipeline_id(self, pipeline_id: str):
@@ -42,7 +42,7 @@ class ReceiverNodeApp(BaseNodeApp):
 
         @self.post("/signal_leaf", status_code=status.HTTP_200_OK)
         async def signal_successor():
-            self.node.wait_predecessor_event.set()
+            self.node.wait_sender_node.set()
             return {"message": "Success"}
     
     def set_leaf_pipeline_id(self, pipeline_id: str):
