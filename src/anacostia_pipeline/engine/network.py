@@ -28,6 +28,12 @@ class SenderNode(BaseNode):
     async def signal_successors(self, result: Result):
         return await self.app.signal_successors(result)
 
+    def wait_for_successors(self):
+        self.work_list.append(Work.WAITING_SUCCESSORS)
+        self.wait_receiver_node.wait()
+        self.wait_receiver_node.clear()
+        self.work_list.remove(Work.WAITING_SUCCESSORS)
+
     def exit(self):
         self.wait_receiver_node.set()
         super().exit()
@@ -35,8 +41,6 @@ class SenderNode(BaseNode):
     async def run_async(self) -> None:
         while self.exit_event.is_set() is False:
             self.wait_for_predecessors()
-
-            if self.exit_event.is_set(): break
             self.clear_predecessors_events()
             
             if self.exit_event.is_set(): break
@@ -44,13 +48,7 @@ class SenderNode(BaseNode):
 
             # Wait for the successor node to signal over the network
             if self.exit_event.is_set(): break
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            self.wait_receiver_node.wait()
-            
-            # Clear the event and remove the work from the work list
-            if self.exit_event.is_set(): break
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
-            self.wait_receiver_node.clear()
+            self.wait_for_successors()
             
             if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
@@ -74,26 +72,25 @@ class ReceiverNode(BaseNode):
     async def signal_predecessors(self, result: Result):
         await self.app.signal_predecessors(result)
     
+    def wait_for_predecessors(self):
+        self.work_list.append(Work.WAITING_PREDECESSORS)
+        self.wait_sender_node.wait()
+        self.wait_sender_node.clear()
+        self.work_list.remove(Work.WAITING_PREDECESSORS)
+
     def exit(self):
         self.wait_sender_node.set()
         super().exit()
     
     async def run_async(self) -> None:
         while self.exit_event.is_set() is False:
-            self.work_list.append(Work.WAITING_PREDECESSORS)
-            self.wait_sender_node.wait()
-
-            if self.exit_event.is_set(): break
-            self.work_list.remove(Work.WAITING_PREDECESSORS)
-            self.wait_sender_node.clear()
+            self.wait_for_predecessors()
 
             if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
 
             if self.exit_event.is_set(): break
             self.wait_for_successors()
-
-            if self.exit_event.is_set(): break
             self.clear_successors_events()
 
             if self.exit_event.is_set(): break
