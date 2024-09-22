@@ -1,17 +1,14 @@
 from __future__ import annotations
-import os
-from threading import Thread, Lock, RLock
-from typing import List, Union, Optional
+from threading import Thread, Lock, RLock, Event
+from typing import List, Union, Optional, Dict
 import time
 from logging import Logger
 from datetime import datetime
 from functools import wraps
 import traceback
-import sys
 from pydantic import BaseModel, ConfigDict
 
 from .constants import Status, Result, Work
-from .utils import Signal, SignalTable
 from ..dashboard.subapps.basenode import BaseNodeApp
 
 
@@ -48,12 +45,19 @@ class BaseNode(Thread):
             predecessors = list()
         
         self.predecessors = predecessors
-        self.predecessors_signals = SignalTable()
-        self.successors: List[BaseNode] = list()
-        self.successors_signals = SignalTable()
+        self.predecessors_events: Dict[str, Event] = {predecessor.name: Event() for predecessor in self.predecessors}
 
+        self.successors: List[BaseNode] = list()
+        self.successor_events: Dict[str, Event] = {}
+
+        # add node to each predecessor's successors list and create an event for each predecessor's successor_events
         for predecessor in self.predecessors:
             predecessor.successors.append(self)
+            predecessor.successor_events[name] = Event()
+
+        self.exit_event = Event()
+        self.pause_event = Event()
+        self.pause_event.set()
 
         super().__init__(name=name)
     
@@ -111,22 +115,6 @@ class BaseNode(Thread):
                 self._status = value
                 break
 
-    def trap_interrupts(self):
-        if self.status == Status.PAUSING:
-            self.log(f"Node '{self.name}' paused at {datetime.now()}")
-            self.status = Status.PAUSED
-
-            # Wait until the node is resumed by the pipeline calling resume()
-            while self.status == Status.PAUSED:
-                time.sleep(0.1)
-
-        if self.status == Status.EXITING:
-            self.log(f"Node '{self.name}' exiting at {datetime.now()}")
-            self.on_exit()
-            self.log(f"Node '{self.name}' exited at {datetime.now()}")
-            self.status = Status.EXITED
-            sys.exit(0)
-
     def log_exception(func):
         @wraps(func)
         def log_exception_wrapper(self, *args, **kwargs):
@@ -141,84 +129,57 @@ class BaseNode(Thread):
     
     def signal_successors(self, result: Result):
         for successor in self.successors:
-            msg = Signal(
-                sender = self.name,
-                receiver = successor.name,
-                timestamp = datetime.now(),
-                result = result
-            )
-            if successor.name not in self.successors_signals.keys():
-                successor.predecessors_signals[self.name] = msg
-            else:
-                if self.successors_signals[successor.name].result != Result.SUCCESS:
-                    successor.predecessors_signals[self.name] = msg
+            successor.predecessors_events[self.name].set()
+
+    def wait_for_successors(self):
+        self.work_list.append(Work.WAITING_SUCCESSORS)
+        for event in self.successor_events.values():
+            event.wait()
+        self.work_list.remove(Work.WAITING_SUCCESSORS)
+    
+    def clear_successors_events(self):
+        for event in self.successor_events.values():
+            event.clear()
 
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
-            msg = Signal(
-                sender = self.name,
-                receiver = predecessor.name,
-                timestamp = datetime.now(),
-                result = result
-            )
-            if predecessor.name not in self.predecessors_signals.keys():
-                predecessor.successors_signals[self.name] = msg
-            else:
-                if self.predecessors_signals[predecessor.name].result != Result.SUCCESS:
-                    predecessor.successors_signals[self.name] = msg
+            predecessor.successor_events[self.name].set()
 
-    def check_predecessors_signals(self) -> bool:
-        # If there are no predecessors, then we can just return True
-        if len(self.predecessors) == 0:
-            return True
+    def wait_for_predecessors(self):
+        self.work_list.append(Work.WAITING_PREDECESSORS)
+        for event in self.predecessors_events.values():
+            event.wait()
+        self.work_list.remove(Work.WAITING_PREDECESSORS)
 
-        # If there are predecessors, but no signals, then we can return False
-        if len(self.predecessors_signals) == 0:
-            return False
-
-        # Check if all the predecessors have sent a signal
-        if len(self.predecessors_signals) == len(self.predecessors):
-
-            # Check if all predecessors have sent a success signal
-            if all([sig.result == Result.SUCCESS for sig in self.predecessors_signals.values()]):
-
-                # Reset the received signals
-                self.predecessors_signals = SignalTable()
-                return True
-            else:
-                return False
-        else:
-            return False
- 
-    def check_successors_signals(self) -> bool:
-        # If there are no successors, then we can just return True
-        if len(self.successors) == 0:
-            return True
-
-        # If there are successors, but no signals, then we can return False
-        if len(self.successors_signals) == 0:
-            return False
-
-        # Check if the signals match the execute condition
-        if len(self.successors_signals) == len(self.successors):
-            if all([sig.result == Result.SUCCESS for sig in self.successors_signals.values()]):
-
-                # Reset the received signals
-                self.successors_signals = SignalTable()
-                return True
-            else:
-                return False
-        else:
-            return False
-
+    def clear_predecessors_events(self):
+        for event in self.predecessors_events.values():
+            event.clear()
+            
     def pause(self):
+        self.pause_event.clear()
         self.status = Status.PAUSING
 
     def resume(self):
+        self.pause_event.set()
         self.status = Status.RUNNING
 
     def exit(self):
+        self.log(f"Node '{self.name}' exiting at {datetime.now()}")
         self.status = Status.EXITING
+        
+        self.on_exit()
+        
+        self.pause_event.set()
+        self.exit_event.set()
+
+        for event in self.successor_events.values():
+            event.set()
+        
+        for event in self.predecessors_events.values():
+            event.set()
+
+        self.status = Status.EXITED
+        self.log(f"Node '{self.name}' exited at {datetime.now()}")
 
     @log_exception
     def setup(self) -> None:
@@ -350,38 +311,39 @@ class BaseMetadataStoreNode(BaseNode):
         raise NotImplementedError
     
     def run(self) -> None:
-        while True:
+        while self.exit_event.is_set() is False:
+
             # waiting for all resource nodes to signal their resources are ready to be used
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            while self.check_successors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            self.wait_for_successors()
+
+            if self.exit_event.is_set(): break
+
+            self.clear_successors_events()
             # note: since the UI polls the work_list every 500ms, the UI will always display WAITING_SUCCESSORS 
             # because it doesn't (and possibly can never) poll fast enough to catch the work_list without WAITING_SUCCESSORS
 
+            if self.exit_event.is_set(): break
+
             # creating a new run
-            self.trap_interrupts()
             self.work_list.append(Work.STARTING_RUN)
             self.start_run()
             self.add_run_id()
             self.work_list.remove(Work.STARTING_RUN)
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
 
             # waiting for all resource nodes to signal they are done using the current state
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            while self.check_successors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_successors()
+
+            if self.exit_event.is_set(): break
+            self.clear_successors_events()
             
+            if self.exit_event.is_set(): break
+
             # ending the run
-            self.trap_interrupts()
             self.work_list.append(Work.ENDING_RUN)
             self.add_end_time()
             self.end_run()
@@ -389,7 +351,7 @@ class BaseMetadataStoreNode(BaseNode):
 
             self.run_id += 1
             
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
 
 
@@ -475,19 +437,18 @@ class BaseResourceNode(BaseNode):
             self.work_list.append(Work.MONITORING_RESOURCE)
             self.start_monitoring()
 
-        while True:
+        while self.exit_event.is_set() is False:
             # if the node is not monitoring the resource, then we don't need to check for new files
             if self.monitoring is True:
-                self.trap_interrupts()
                 self.work_list.append(Work.WAITING_RESOURCE)
-                while True:
-                    self.trap_interrupts()
+
+                while self.exit_event.is_set() is False:
                     try:
                         if self.trigger_condition() is True:
                             break
                         else:
-                            self.trap_interrupts()
                             time.sleep(0.1)
+
                     except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                         continue
@@ -503,40 +464,37 @@ class BaseResourceNode(BaseNode):
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run
             # e.g., there is enough new data to trigger the next run
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
 
             # wait for metadata store node to finish creating the run 
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_PREDECESSORS)
-            while self.check_predecessors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            self.work_list.remove(Work.WAITING_PREDECESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_predecessors()
+
+            if self.exit_event.is_set(): break
+            self.clear_predecessors_events()
 
             # signalling to all successors that the resource is ready to be used for the current run
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS)
 
             # waiting for all successors to finish using the the resource for the current run
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            while self.check_successors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_successors()
+
+            if self.exit_event.is_set(): break
+            self.clear_successors_events()
 
             # signal the metadata store node that the action nodes have finish using the resource for the current run
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_PREDECESSORS)
-            while self.check_predecessors_signals() is False:
-                self.trap_interrupts()
-                time.sleep(0.2)
-            self.work_list.remove(Work.WAITING_PREDECESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_predecessors()
+
+            if self.exit_event.is_set(): break
+            self.clear_predecessors_events()
             
 
 
@@ -592,62 +550,63 @@ class BaseActionNode(BaseNode):
         pass
 
     def run(self) -> None:
-        while True:
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_PREDECESSORS)
-            while self.check_predecessors_signals() is False:
-                time.sleep(0.2)
-                self.trap_interrupts()
-            self.work_list.remove(Work.WAITING_PREDECESSORS)
+        while self.exit_event.is_set() is False:
+
+            self.wait_for_predecessors()
+
+            if self.exit_event.is_set(): break
+            self.clear_predecessors_events()
             
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
+
             self.work_list.append(Work.BEFORE_EXECUTION)
             self.before_execution()
             self.work_list.remove(Work.BEFORE_EXECUTION)
 
+            if self.exit_event.is_set(): break
+
             ret = None
             try:
-                self.trap_interrupts()
+                if self.exit_event.is_set(): break
                 self.work_list.append(Work.EXECUTION)
                 ret = self.execute()
                 self.work_list.remove(Work.EXECUTION)
                 
+                if self.exit_event.is_set(): break
+                
                 if ret:
-                    self.trap_interrupts()
                     self.work_list.append(Work.ON_SUCCESS)
                     self.on_success()
                     self.work_list.remove(Work.ON_SUCCESS)
 
                 else:
                     self.work_list.append(Work.ON_FAILURE)
-                    self.trap_interrupts()
                     self.on_failure()
                     self.work_list.remove(Work.ON_FAILURE)
 
             except Exception as e:
+                if self.exit_event.is_set(): break
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
-                self.trap_interrupts()
                 self.work_list.append(Work.ON_ERROR)
                 self.on_error(e)
                 self.work_list.remove(Work.ON_ERROR)
 
             finally:
-                self.trap_interrupts()
+                if self.exit_event.is_set(): break
                 self.work_list.append(Work.AFTER_EXECUTION)
                 self.after_execution()
                 self.work_list.remove(Work.AFTER_EXECUTION)
 
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the resource for current run
-            self.trap_interrupts()
-            self.work_list.append(Work.WAITING_SUCCESSORS)
-            while self.check_successors_signals() is False:
-                time.sleep(0.2)
-                self.trap_interrupts()
-            self.work_list.remove(Work.WAITING_SUCCESSORS)
+            if self.exit_event.is_set(): break
+            self.wait_for_successors()
 
-            self.trap_interrupts()
+            if self.exit_event.is_set(): break
+            self.clear_successors_events()
+
+            if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
