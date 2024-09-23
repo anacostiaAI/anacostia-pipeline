@@ -117,12 +117,12 @@ class BaseNode(Thread):
 
     def log_exception(func):
         @wraps(func)
-        def log_exception_wrapper(self, *args, **kwargs):
+        def log_exception_wrapper(self: BaseNode, *args, **kwargs):
             try: 
                 ret = func(self, *args, **kwargs)
                 return ret
             except Exception as e:
-                self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}", level="ERROR")
                 self.status = Status.ERROR
                 return
         return log_exception_wrapper
@@ -236,7 +236,7 @@ class BaseMetadataStoreNode(BaseNode):
 
     def metadata_accessor(func):
         @wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self: BaseMetadataStoreNode, *args, **kwargs):
             # keep trying to acquire lock until function is finished
             # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
             while True:
@@ -314,8 +314,6 @@ class BaseMetadataStoreNode(BaseNode):
 
             # waiting for all resource nodes to signal their resources are ready to be used
             self.wait_for_successors()
-            # note: since the UI polls the work_list every 500ms, the UI will always display WAITING_SUCCESSORS 
-            # because it doesn't (and possibly can never) poll fast enough to catch the work_list without WAITING_SUCCESSORS
 
             # creating a new run
             if self.exit_event.is_set(): break
