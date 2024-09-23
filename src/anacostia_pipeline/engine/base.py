@@ -223,14 +223,11 @@ class BaseMetadataStoreNode(BaseNode):
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
     
-        super().__init__(name, predecessors=[], loggers=loggers)
+        super().__init__(name, predecessors=None, loggers=loggers)
         self.uri = uri
         self.run_id = 0
         self.resource_lock = RLock()
     
-    def resource_uri(self, r_node: BaseResourceNode):
-        raise NotImplementedError
-
     def get_run_id(self) -> int:
         return self.run_id
 
