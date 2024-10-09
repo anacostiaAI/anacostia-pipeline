@@ -99,6 +99,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store.set_tags(test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
+        # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
         return True
 
 
@@ -113,6 +114,7 @@ class ShakespeareEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
 class HaikuEvalNode(BaseActionNode):
@@ -126,6 +128,7 @@ class HaikuEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(haiku_test_loss=2.43)
+        # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
 
