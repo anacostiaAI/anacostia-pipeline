@@ -6,7 +6,9 @@ import shutil
 from typing import List
 from dotenv import load_dotenv
 
-from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
+from anacostia_pipeline.engine.base import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
