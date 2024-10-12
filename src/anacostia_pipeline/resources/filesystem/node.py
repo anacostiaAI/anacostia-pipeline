@@ -5,9 +5,9 @@ from logging import Logger
 from threading import Thread
 import time
 
-from ..engine.base import BaseMetadataStoreNode, BaseResourceNode
-from ..dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
-from ..engine.constants import Status
+from anacostia_pipeline.engine.base import BaseResourceNode, BaseMetadataStoreNode
+from anacostia_pipeline.dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
+from anacostia_pipeline.engine.constants import Status
 
 
 
