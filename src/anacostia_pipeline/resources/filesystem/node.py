@@ -6,7 +6,7 @@ from threading import Thread
 import time
 
 from anacostia_pipeline.engine.base import BaseResourceNode, BaseMetadataStoreNode
-from anacostia_pipeline.dashboard.subapps.filesystemstore import FilesystemStoreNodeApp
+from anacostia_pipeline.resources.filesystem.app import FilesystemStoreNodeApp
 from anacostia_pipeline.engine.constants import Status
 
 
