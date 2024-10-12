@@ -1,8 +1,8 @@
 from fastapi.responses import HTMLResponse
 from fastapi import Request
 
-from .basenode import BaseNodeApp
-from ..components.sqlmetadatastore import *
+from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.metadata.sqlite.fragments import *
 
 
 
