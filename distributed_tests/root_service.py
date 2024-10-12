@@ -3,11 +3,10 @@ import time
 import logging
 from dotenv import load_dotenv
 import argparse
-import logging
 
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
-from anacostia_pipeline.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStore
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.subapps.service import RootService
 from anacostia_pipeline.engine.network import SenderNode
@@ -127,7 +126,7 @@ haiku_data_store_path = f"{input_path}/haiku"
 model_registry_path = f"{output_path}/model_registry"
 plots_path = f"{output_path}/plots"
 
-metadata_store = SqliteMetadataStore(
+metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db"
 )

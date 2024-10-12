@@ -95,7 +95,7 @@ def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> sco
 
 
 
-class SqliteMetadataStore(BaseMetadataStoreNode):
+class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
 

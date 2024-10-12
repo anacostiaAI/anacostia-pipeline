@@ -6,16 +6,16 @@ import shutil
 from typing import List
 from dotenv import load_dotenv
 
-from anacostia_pipeline.nodes.metadata_stores.node import BaseMetadataStoreNode
+from anacostia_pipeline.engine.base import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
-from anacostia_pipeline.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 #from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStore
+from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 #from anacostia_pipeline.nodes.metadata_stores.sqlite.node import SQLiteMetadataStoreNode
 #from anacostia_pipeline.nodes.metadata_stores.sqlite.sql_metadata_store import SqliteMetadataStore
 
@@ -159,7 +159,7 @@ haiku_data_store_path = f"{path}/haiku"
 model_registry_path = f"{path}/model_registry"
 plots_path = f"{path}/plots"
 
-metadata_store = SqliteMetadataStore(
+metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db"
 )
