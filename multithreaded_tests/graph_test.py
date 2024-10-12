@@ -9,12 +9,13 @@ from dotenv import load_dotenv
 from anacostia_pipeline.nodes.metadata_stores.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+
 from anacostia_pipeline.engine.pipeline import Pipeline
 from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
 
 from anacostia_pipeline.resources.filesystem.node import FilesystemStoreNode
 #from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.metadata.sqlite.node import SqliteMetadataStore
+from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStore
 #from anacostia_pipeline.nodes.metadata_stores.sqlite.node import SQLiteMetadataStoreNode
 #from anacostia_pipeline.nodes.metadata_stores.sqlite.sql_metadata_store import SqliteMetadataStore
 
