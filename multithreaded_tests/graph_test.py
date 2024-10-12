@@ -10,8 +10,8 @@ from anacostia_pipeline.engine.base import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
-from anacostia_pipeline.engine.pipeline import Pipeline
-from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver
+from anacostia_pipeline.engine.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.pipeline import RootPipelineWebserver
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 #from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
@@ -173,7 +173,7 @@ haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_
 retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, model_registry, metadata_store)
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[retraining], metadata_store=metadata_store)
 haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[retraining], metadata_store=metadata_store)
-pipeline = Pipeline(
+pipeline = RootPipeline(
     nodes=[metadata_store, haiku_data_store, model_registry, plots_store, shakespeare_eval, haiku_eval, retraining], 
     loggers=logger
 )

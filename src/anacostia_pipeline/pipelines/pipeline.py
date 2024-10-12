@@ -15,11 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 from starlette.routing import Mount
 
-from anacostia_pipeline.dashboard.components.index import index_template
-from anacostia_pipeline.dashboard.components.node_bar import node_bar_closed, node_bar_open, node_bar_invisible
+from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
-from anacostia_pipeline.engine.pipeline import Pipeline, PipelineModel, LeafPipeline
+from anacostia_pipeline.engine.pipeline import RootPipeline, PipelineModel, LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
 
@@ -30,7 +29,7 @@ DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__fi
 
 
 class RootPipelineWebserver(FastAPI):
-    def __init__(self, name: str, pipeline: Pipeline, host="127.0.0.1", port=8000, logger: Logger = None, *args, **kwargs):
+    def __init__(self, name: str, pipeline: RootPipeline, host="127.0.0.1", port=8000, logger: Logger = None, *args, **kwargs):
 
         @asynccontextmanager
         async def lifespan(app: RootPipelineWebserver):
