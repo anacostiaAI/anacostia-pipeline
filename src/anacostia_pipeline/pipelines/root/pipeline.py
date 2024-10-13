@@ -6,7 +6,8 @@ from logging import Logger
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
-from anacostia_pipeline.nodes.node import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel, BaseActionNode
+from anacostia_pipeline.nodes.node import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel
+from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.utils.constants import Status
 
 
