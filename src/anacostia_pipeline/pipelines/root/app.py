@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from starlette.routing import Mount
 
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
-from anacostia_pipeline.nodes.basenode import BaseApp
+from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.app import SenderApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel

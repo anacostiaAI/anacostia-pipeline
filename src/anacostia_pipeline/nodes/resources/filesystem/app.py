@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 import asyncio
 from typing import List, Dict, Tuple, Union
 
-from anacostia_pipeline.nodes.basenode import BaseApp
+from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.resources.filesystem.fragments import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
 from anacostia_pipeline.utils.sse import format_html_for_sse
 

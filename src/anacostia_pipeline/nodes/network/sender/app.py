@@ -1,5 +1,5 @@
 from fastapi import status
-from anacostia_pipeline.nodes.basenode import BaseApp
+from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.utils.constants import Result
 
 
