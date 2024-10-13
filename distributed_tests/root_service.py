@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 import argparse
 
-from anacostia_pipeline.nodes.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode

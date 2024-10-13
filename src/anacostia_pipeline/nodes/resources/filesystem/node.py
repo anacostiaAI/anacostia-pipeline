@@ -5,7 +5,8 @@ from logging import Logger
 from threading import Thread
 import time
 
-from anacostia_pipeline.nodes.node import BaseResourceNode, BaseMetadataStoreNode
+from anacostia_pipeline.nodes.node import BaseResourceNode
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNodeApp
 from anacostia_pipeline.utils.constants import Status
 
