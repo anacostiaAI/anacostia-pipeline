@@ -6,7 +6,7 @@ from typing import List
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.services.leaf.app import LeafServiceApp
 from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
-from anacostia_pipeline.engine.base import BaseNode, BaseActionNode
+from anacostia_pipeline.engine.node import BaseNode, BaseActionNode
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 
 

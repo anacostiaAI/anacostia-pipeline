@@ -8,7 +8,7 @@ from typing import Tuple
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
-from anacostia_pipeline.engine.base import BaseActionNode, BaseResourceNode, BaseNode
+from anacostia_pipeline.engine.node import BaseActionNode, BaseResourceNode, BaseNode
 
 
 def create_file(file_path, content):
