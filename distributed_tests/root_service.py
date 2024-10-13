@@ -9,7 +9,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.services.root.app import RootServiceApp
-from anacostia_pipeline.engine.network import SenderNode
+from anacostia_pipeline.nodes.network.node import SenderNode
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 
 from utils import *

@@ -17,7 +17,8 @@ from starlette.routing import Mount
 
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
-from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
+from anacostia_pipeline.nodes.network.app import ReceiverNodeApp
+from anacostia_pipeline.nodes.network.sender.app import SenderApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.utils.constants import Work
@@ -67,7 +68,7 @@ class LeafPipelineApp(FastAPI):
         for node in self.pipeline.nodes:
             node_subapp = node.get_app()
 
-            if isinstance(node_subapp, ReceiverNodeApp) or isinstance(node_subapp, SenderNodeApp):
+            if isinstance(node_subapp, ReceiverNodeApp) or isinstance(node_subapp, SenderApp):
                 node_subapp.set_leaf_pipeline_id(pipeline_id)
 
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
