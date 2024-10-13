@@ -9,7 +9,7 @@ from anacostia_pipeline.nodes.fragments import default_node_page, work_template
 
 
 
-class BaseNodeApp(FastAPI):
+class BaseApp(FastAPI):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node

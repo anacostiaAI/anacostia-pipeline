@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from starlette.routing import Mount
 
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
-from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.dashboard.subapps.basenode import BaseApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.app import SenderApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel
@@ -41,9 +41,9 @@ class RootPipelineApp(FastAPI):
 
             for route in app.routes:
                 if isinstance(route, Mount):
-                    if isinstance(route.app, BaseNodeApp):
+                    if isinstance(route.app, BaseApp):
                         app.log(f"Closing client for subapp '{route.path}'", level="INFO")
-                        subapp: BaseNodeApp = route.app
+                        subapp: BaseApp = route.app
                         await subapp.client.aclose()
 
             app.log(f"Closing client for root pipeline '{app.name}'", level="INFO")
@@ -61,7 +61,7 @@ class RootPipelineApp(FastAPI):
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
         for node in self.pipeline.nodes:
-            node_subapp: BaseNodeApp = node.get_app()
+            node_subapp: BaseApp = node.get_app()
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.get('/api/')

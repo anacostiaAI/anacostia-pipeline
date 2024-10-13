@@ -1,12 +1,12 @@
 from fastapi.responses import HTMLResponse
 from fastapi import Request
 
-from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.dashboard.subapps.basenode import BaseApp
 from anacostia_pipeline.nodes.metadata.sqlite.fragments import *
 
 
 
-class SqliteMetadataStoreApp(BaseNodeApp):
+class SqliteMetadataStoreApp(BaseApp):
     def __init__(self, node, *args, **kwargs):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used

@@ -1,10 +1,10 @@
 from fastapi import status
-from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
+from anacostia_pipeline.dashboard.subapps.basenode import BaseApp
 from anacostia_pipeline.utils.constants import Result
 
 
 
-class SenderApp(BaseNodeApp):
+class SenderApp(BaseApp):
     def __init__(self, node, reciever_host: str, reciever_port: int, receiver_node_name: str, use_default_router=True, *args, **kwargs):
         super().__init__(node, use_default_router, *args, **kwargs)
         self.reciever_host = reciever_host

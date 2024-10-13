@@ -9,7 +9,7 @@ import traceback
 from pydantic import BaseModel, ConfigDict
 
 from ..utils.constants import Status, Result, Work
-from ..dashboard.subapps.basenode import BaseNodeApp
+from ..dashboard.subapps.basenode import BaseApp
 
 
 
@@ -62,7 +62,7 @@ class BaseNode(Thread):
         super().__init__(name=name)
     
     def get_app(self):
-        return BaseNodeApp(self)
+        return BaseApp(self)
 
     def __hash__(self) -> int:
         return hash(self.name)
