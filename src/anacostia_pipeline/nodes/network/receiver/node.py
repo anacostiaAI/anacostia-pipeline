@@ -3,7 +3,7 @@ from typing import List
 import threading
 import asyncio
 
-from anacostia_pipeline.engine.node import BaseNode
+from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Work
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 

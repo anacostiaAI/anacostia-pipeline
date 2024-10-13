@@ -3,10 +3,10 @@ import time
 from logging import Logger
 
 if __name__ == "__main__":
-    from anacostia_pipeline.engine.node import BaseActionNode, BaseNode
+    from anacostia_pipeline.nodes.node import BaseActionNode, BaseNode
     from anacostia_pipeline.utils.constants import Result
 else:
-    from anacostia_pipeline.engine.node import BaseActionNode, BaseNode, Message
+    from anacostia_pipeline.nodes.node import BaseActionNode, BaseNode, Message
     from anacostia_pipeline.utils.constants import Result
 
 

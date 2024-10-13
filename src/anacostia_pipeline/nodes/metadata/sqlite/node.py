@@ -8,7 +8,7 @@ import os
 from contextlib import contextmanager
 import traceback
 
-from anacostia_pipeline.engine.node import BaseMetadataStoreNode, BaseResourceNode, BaseNode
+from anacostia_pipeline.nodes.node import BaseMetadataStoreNode, BaseResourceNode, BaseNode
 from anacostia_pipeline.nodes.metadata.sqlite.app import SqliteMetadataStoreApp
 
 
