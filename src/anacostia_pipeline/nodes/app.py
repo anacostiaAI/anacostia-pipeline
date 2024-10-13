@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 import httpx
 
-from anacostia_pipeline.nodes.components import default_node_page, work_template
+from anacostia_pipeline.nodes.fragments import default_node_page, work_template
 
 
 
