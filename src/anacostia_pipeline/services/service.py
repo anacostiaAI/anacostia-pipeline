@@ -14,8 +14,9 @@ import uvicorn
 import httpx
 from pydantic import BaseModel
 
-from anacostia_pipeline.engine.pipeline import Pipeline, LeafPipeline
-from anacostia_pipeline.dashboard.subapps.pipeline import RootPipelineWebserver, LeafPipelineWebserver
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.leaf.app import RootPipelineApp, LeafPipelineWebserver
 from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp
 from anacostia_pipeline.engine.network import SenderNode, ReceiverNode
 
@@ -34,7 +35,7 @@ class RootServiceData(BaseModel):
 
 
 class RootService(FastAPI):
-    def __init__(self, name: str, pipeline: Pipeline, host: str = "localhost", port: int = 8000, logger: Logger = None, *args, **kwargs):
+    def __init__(self, name: str, pipeline: RootPipeline, host: str = "localhost", port: int = 8000, logger: Logger = None, *args, **kwargs):
 
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
@@ -45,7 +46,7 @@ class RootService(FastAPI):
 
             for route in app.routes:
                 if isinstance(route, Mount):
-                    if isinstance(route.app, RootPipelineWebserver):
+                    if isinstance(route.app, RootPipelineApp):
                         app.log(f"Closing client for webserver '{route.app.name}'")
                         await route.app.client.aclose()
 
@@ -160,7 +161,7 @@ class RootService(FastAPI):
     def run(self):
         # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
         # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
-        pipeline_server = RootPipelineWebserver(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+        pipeline_server = RootPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
         pipeline_server.client = httpx.AsyncClient()
 
         self.mount(f"/", pipeline_server)
