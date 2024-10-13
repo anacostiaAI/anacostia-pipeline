@@ -8,7 +8,8 @@ from typing import Tuple
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
-from anacostia_pipeline.nodes.node import BaseResourceNode, BaseNode
+from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
 
