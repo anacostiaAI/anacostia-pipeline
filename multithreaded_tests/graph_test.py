@@ -10,14 +10,11 @@ from anacostia_pipeline.engine.base import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
-from anacostia_pipeline.engine.pipeline import RootPipeline
-from anacostia_pipeline.pipelines.pipeline import RootPipelineWebserver
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-#from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
-#from anacostia_pipeline.nodes.metadata_stores.sqlite.node import SQLiteMetadataStoreNode
-#from anacostia_pipeline.nodes.metadata_stores.sqlite.sql_metadata_store import SqliteMetadataStore
 
 from utils import *
 
@@ -181,7 +178,7 @@ pipeline = RootPipeline(
 
 
 if __name__ == "__main__":
-    webserver = RootPipelineWebserver(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+    webserver = RootPipelineApp(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
     webserver.run()
 
     time.sleep(6)
