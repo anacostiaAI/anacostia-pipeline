@@ -19,7 +19,7 @@ def package_files(directory):
                 paths.append(pathname)
     return paths
 
-static_files = package_files("anacostia_pipeline/dashboard/static")
+static_files = package_files("anacostia_pipeline/static")
 
 # removing dist/ and anacostia_pipeline.egg-info/ directories
 shutil.rmtree("dist", ignore_errors=True)

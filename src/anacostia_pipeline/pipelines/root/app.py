@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from starlette.routing import Mount
 
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
-from anacostia_pipeline.dashboard.subapps.basenode import BaseApp
+from anacostia_pipeline.nodes.basenode import BaseApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.app import SenderApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel
@@ -26,7 +26,7 @@ from anacostia_pipeline.utils.constants import Work
 
 
 PACKAGE_NAME = "anacostia_pipeline"
-DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline.dashboard"].__file__)
+DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
 
 
 
