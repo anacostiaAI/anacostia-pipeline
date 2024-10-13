@@ -17,8 +17,8 @@ from pydantic import BaseModel
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
 from anacostia_pipeline.services.root.app import RootServiceData
-from anacostia_pipeline.nodes.network.app import ReceiverNodeApp
-from anacostia_pipeline.nodes.network.node import ReceiverNode
+from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
+from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 
 
 
@@ -81,7 +81,7 @@ class LeafServiceApp(FastAPI):
             for node_data in root_service_node_data:
                 for node in pipeline_server.pipeline.nodes:
                     if node.name == node_data.receiver_name:
-                        subapp: ReceiverNodeApp = node.get_app()
+                        subapp: ReceiverApp = node.get_app()
                         subapp.set_sender(node_data.sender_name, node_data.root_host, node_data.root_port)
                         subapp.set_leaf_pipeline_id(pipeline_id)
 

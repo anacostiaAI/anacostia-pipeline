@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
-from anacostia_pipeline.nodes.network.app import ReceiverNodeApp
+from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
 
 
