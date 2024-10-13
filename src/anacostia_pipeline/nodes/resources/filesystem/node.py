@@ -7,7 +7,7 @@ import time
 
 from anacostia_pipeline.engine.base import BaseResourceNode, BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNodeApp
-from anacostia_pipeline.engine.constants import Status
+from anacostia_pipeline.utils.constants import Status
 
 
 

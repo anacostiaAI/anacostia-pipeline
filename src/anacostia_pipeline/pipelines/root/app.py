@@ -20,7 +20,7 @@ from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
-from anacostia_pipeline.engine.constants import Work
+from anacostia_pipeline.utils.constants import Work
 
 
 

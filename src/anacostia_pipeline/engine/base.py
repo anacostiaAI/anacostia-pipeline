@@ -8,7 +8,7 @@ from functools import wraps
 import traceback
 from pydantic import BaseModel, ConfigDict
 
-from .constants import Status, Result, Work
+from ..utils.constants import Status, Result, Work
 from ..dashboard.subapps.basenode import BaseNodeApp
 
 

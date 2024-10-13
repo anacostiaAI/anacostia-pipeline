@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 import httpx
 
-from ..components.node_bar import default_node_page, work_template
+from anacostia_pipeline.dashboard.components.basenode import default_node_page, work_template
 
 
 

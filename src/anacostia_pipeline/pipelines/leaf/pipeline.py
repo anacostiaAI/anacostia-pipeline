@@ -6,7 +6,7 @@ from logging import Logger
 import networkx as nx
 
 from anacostia_pipeline.engine.base import BaseResourceNode, BaseNode, BaseActionNode
-from anacostia_pipeline.engine.constants import Status
+from anacostia_pipeline.utils.constants import Status
 
 from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
 

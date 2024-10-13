@@ -4,10 +4,10 @@ from logging import Logger
 
 if __name__ == "__main__":
     from base import BaseActionNode, BaseNode
-    from constants import Result
+    from anacostia_pipeline.utils.constants import Result
 else:
     from engine.base import BaseActionNode, BaseNode, Message
-    from engine.constants import Result
+    from anacostia_pipeline.utils.constants import Result
 
 
 

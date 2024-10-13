@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
 from anacostia_pipeline.engine.base import BaseResourceNode, BaseNode, BaseMetadataStoreNode, NodeModel, BaseActionNode
-from anacostia_pipeline.engine.constants import Status
+from anacostia_pipeline.utils.constants import Status
 
 
 class InvalidNodeDependencyError(Exception):
