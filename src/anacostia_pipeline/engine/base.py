@@ -8,8 +8,8 @@ from functools import wraps
 import traceback
 from pydantic import BaseModel, ConfigDict
 
-from ..utils.constants import Status, Result, Work
-from ..dashboard.subapps.basenode import BaseApp
+from anacostia_pipeline.utils.constants import Status, Result, Work
+from anacostia_pipeline.dashboard.subapps.basenode import BaseApp
 
 
 
