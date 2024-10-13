@@ -8,9 +8,9 @@ from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.services.service import RootService
+from anacostia_pipeline.services.root.app import RootServiceApp
 from anacostia_pipeline.engine.network import SenderNode
-from anacostia_pipeline.pipelines.leaf.app import RootPipelineApp
+from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 
 from utils import *
 
@@ -155,7 +155,7 @@ pipeline = RootPipeline(
 #pipeline_webserver = RootPipelineWebserver(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
 #pipeline_webserver.run()
 
-service = RootService(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
+service = RootServiceApp(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
 service.run()
 
 time.sleep(6)
