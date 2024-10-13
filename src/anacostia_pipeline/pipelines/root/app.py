@@ -18,7 +18,8 @@ from starlette.routing import Mount
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.dashboard.subapps.network import ReceiverNodeApp, SenderNodeApp
-from anacostia_pipeline.pipelines.pipeline import RootPipeline, PipelineModel, LeafPipeline
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline, PipelineModel
+from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.engine.constants import Work
 
 

@@ -7,10 +7,10 @@ import argparse
 from anacostia_pipeline.engine.base import BaseActionNode, BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
-from anacostia_pipeline.engine.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.dashboard.subapps.service import RootService
 from anacostia_pipeline.engine.network import SenderNode
-from anacostia_pipeline.pipelines.pipeline import RootPipelineWebserver
+from anacostia_pipeline.pipelines.leaf.app import RootPipelineApp
 
 from utils import *
 
