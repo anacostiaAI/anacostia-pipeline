@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple, Union
 
 from anacostia_pipeline.dashboard.subapps.basenode import BaseNodeApp
 from anacostia_pipeline.nodes.resources.filesystem.fragments import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
-from anacostia_pipeline.dashboard.components.utils import format_html_for_sse
+from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 
