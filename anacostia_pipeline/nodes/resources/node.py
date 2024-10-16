@@ -89,7 +89,9 @@ class BaseResourceNode(BaseNode):
             self.start_monitoring()
 
         while self.exit_event.is_set() is False:
-            # if the node is not monitoring the resource, then we don't need to check for new files
+            
+            # if the node is not monitoring the resource, then we don't need to check for new resources
+            # otherwise, we check for new resources and set the resource_event if there are new resources
             if self.monitoring is True:
                 self.work_list.append(Work.WAITING_RESOURCE)
                 self.resource_event.wait()
