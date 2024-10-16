@@ -1,9 +1,8 @@
 from typing import List, Union
 from logging import Logger
+import threading
 from threading import RLock
 from functools import wraps
-import time
-import traceback
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Work
@@ -21,6 +20,7 @@ class BaseResourceNode(BaseNode):
         self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
+        self.resource_event = threading.Event()
 
     def resource_accessor(func):
         @wraps(func)
@@ -74,6 +74,13 @@ class BaseResourceNode(BaseNode):
     @resource_accessor
     def trigger_condition(self) -> bool:
         return True
+    
+    def exit(self):
+        self.resource_event.set()
+        super().exit()
+    
+    def trigger(self) -> None:
+        self.resource_event.set()
 
     def run(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
@@ -85,24 +92,11 @@ class BaseResourceNode(BaseNode):
             # if the node is not monitoring the resource, then we don't need to check for new files
             if self.monitoring is True:
                 self.work_list.append(Work.WAITING_RESOURCE)
-
-                while self.exit_event.is_set() is False:
-                    try:
-                        if self.trigger_condition() is True:
-                            break
-                        else:
-                            time.sleep(0.1)
-
-                    except Exception as e:
-                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
-                        continue
-                        # Note: we continue here because we want to keep trying to check the resource until it is available
-                        # with that said, we should add an option for the user to specify the number of times to try before giving up
-                        # and throwing an exception
-                        # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
-                        # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
-                        # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
-                        # or just not move the file to current.
+                self.resource_event.wait()
+                
+                if self.exit_event.is_set(): break
+                
+                self.resource_event.clear()
                 self.work_list.remove(Work.WAITING_RESOURCE)
                 
             # signal to metadata store node that the resource is ready to be used for the next run

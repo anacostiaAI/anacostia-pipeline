@@ -3,6 +3,7 @@ from typing import List, Any, Union, Dict
 from datetime import datetime
 from logging import Logger
 from threading import Thread
+import traceback
 import time
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
@@ -65,6 +66,19 @@ class FilesystemStoreNode(BaseResourceNode):
                         if self.metadata_store.entry_exists(self, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}")
                             self.record_new(filepath)
+
+                try:
+                    if self.trigger_condition() is True:
+                        self.trigger()
+                except Exception as e:
+                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                        # Note: we continue here because we want to keep trying to check the resource until it is available
+                        # with that said, we should add an option for the user to specify the number of times to try before giving up
+                        # and throwing an exception
+                        # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
+                        # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
+                        # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
+                        # or just not move the file to current.
 
                 # put this sleep here so that the _monitor_thread_func stops acquiring the lock, 
                 # thus preventing _monitor_thread_func from being a greedy thread.
