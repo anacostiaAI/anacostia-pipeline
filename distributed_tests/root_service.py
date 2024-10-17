@@ -46,10 +46,6 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
     
-    def trigger_condition(self) -> bool:
-        num_new = self.get_num_artifacts("new")
-        return num_new >= 1
-
 
 class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:

@@ -68,8 +68,11 @@ class FilesystemStoreNode(BaseResourceNode):
                             self.record_new(filepath)
 
                 try:
-                    if self.trigger_condition() is True:
-                        self.trigger()
+                    self.custom_trigger()
+                
+                except NotImplementedError:
+                    self.base_trigger()
+
                 except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                         # Note: we continue here because we want to keep trying to check the resource until it is available
@@ -89,9 +92,22 @@ class FilesystemStoreNode(BaseResourceNode):
         self.observer_thread.start()
 
     @BaseResourceNode.resource_accessor
-    def trigger_condition(self) -> bool:
-        # implement the triggering logic here
-        return True
+    def custom_trigger(self) -> bool:
+        """
+        Override to implement your custom triggering logic. If the custom_trigger method is not implemented, the base_trigger method will be called.
+        """
+        raise NotImplementedError
+    
+    @BaseResourceNode.resource_accessor
+    def base_trigger(self) -> None:
+        """
+        The default trigger for the FilesystemStoreNode. 
+        base_trigger checks if there are any new files in the resource directory and triggers the node if there are.
+        base_trigger is called when the custom_trigger method is not implemented.
+        """
+
+        if self.get_num_artifacts("new") > 0:
+            self.trigger()
     
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor

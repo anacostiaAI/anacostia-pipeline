@@ -70,11 +70,6 @@ class BaseResourceNode(BaseNode):
         """
         pass
     
-    @BaseNode.log_exception
-    @resource_accessor
-    def trigger_condition(self) -> bool:
-        return True
-    
     def exit(self):
         self.resource_event.set()
         super().exit()
