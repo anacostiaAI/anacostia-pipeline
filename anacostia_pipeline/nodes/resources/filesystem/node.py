@@ -83,8 +83,8 @@ class FilesystemStoreNode(BaseResourceNode):
                         # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
                         # or just not move the file to current.
 
-                # put this sleep here so that the _monitor_thread_func stops acquiring the lock, 
-                # thus preventing _monitor_thread_func from being a greedy thread.
+                # put this sleep here to prevent the _monitor_thread_func from acquiring the lock all the time which 
+                # prevents _monitor_thread_func from being a greedy thread that causes starvation conditions.
                 # without this sleep, the @BaseResourceNode.resource_accessor will take too long to run for methods like .get_artifact()
                 time.sleep(0.1)
                 
