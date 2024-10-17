@@ -19,16 +19,13 @@ def package_files(directory):
                 paths.append(pathname)
     return paths
 
-static_files = package_files("anacostia_pipeline/dashboard/static")
+static_files = package_files("anacostia_pipeline/static")
 
 # removing dist/ and anacostia_pipeline.egg-info/ directories
 shutil.rmtree("dist", ignore_errors=True)
 shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
 
-# note: the non-web version of the package is broken because it does not install the web dependencies
-# consider making the web version of the package the default
-# remove beautifulsoup4 from the web dependencies; it's only used to implement the UI for a plotting node
 setup(
     name="anacostia_pipeline",
     version="0.2.2",
@@ -48,9 +45,9 @@ setup(
     install_requires=[
         "networkx==3.1",
         "pydantic",
-        "rich",
         "sqlalchemy",
         "fastapi", 
-        "uvicorn[standard]" 
+        "uvicorn[standard]",
+        "httpx" 
     ],
 )

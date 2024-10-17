@@ -1,1 +1,0 @@
-# implement a metadata store that logs metadata to a log file.

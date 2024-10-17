@@ -12,3 +12,5 @@ venv
 */plugin-venv
 dist/
 **.DS_Store
+**/input_artifacts/
+**/output_artifacts/
