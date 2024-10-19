@@ -90,20 +90,64 @@ twine upload dist/*
 ```
 For additional directions regarding adding a `~/.pypirc` file, see https://github.com/mdo6180/code-records/blob/main/python/packaging/guide.txt
 
-### Anacostia Pipeline Modules:
-1. Engine - defines the Anacostia Pipeline
-    - base.py:
-        - ```BaseNode```: defines methods for implementing the node lifecycles.
-        - ```BaseMetadataStoreNode```: defines the node lifecycle for metadata store nodes.
-        - ```BaseResourceNode```: defines the node lifecycle for resource nodes.
-        - ```BaseActionNode```: defines the node lifecycle for action nodes.
-    - pipeline.py: contains functions on how a pipeline is setup, launched, and terminated.
-    - utils.py:
-        - ```Signal```: defines the information nodes send to each other to trigger execution.
-        - ```SignalTable```: a thread-safe dictionary base node classes use to record signals recieved from other nodes.
-    - constants.py: defines the ```Status```, ```Work```, and ```Result``` flags. 
-2. Metadata - defines the basic metadata stores that users have access to right away:
-    - sql_metadata_store.py: a simple metadata store node implemented using SQLite.
-3. Resource - defines the basic anacostia resources that users have access to right away:
-    - filesystem_store.py: monitoring and non-monitoring resource nodes
-4. Tests - where all the tests for pipeline and nodes reside
+### Anacostia Project Structure:
+```
+anacostia_pipeline/
+    ├── nodes/
+    |   ├── node.py - contains BaseNode
+    |   ├── app.py - contains BaseApp
+    |   ├── fragments.py - contains html fragments for BaseApp
+    |   ├── actions/
+    |   |   └── node.py - contains BaseActionNode (inherits BaseNode)
+    |   ├── metadata/
+    |   |   ├── node.py - contains BaseMetadataStoreNode (inherits BaseNode)
+    |   |   └── sqlite/
+    |   |       ├── node.py - contains SqliteMetadataStoreNode (inherits BaseMetadataStoreNode)
+    |   |       ├── app.py - contains SqliteMetadataStoreApp (inherits BaseApp)
+    |   |       └── fragments.py - contains html fragments for SqliteMetadataStoreApp
+    |   ├── resources/
+    |   |   ├── node.py - contains BaseResourceNode (inherits BaseNode)
+    |   |   └── filesystem/
+    |   |       ├── node.py - contains FilesystemStoreNode (inherits BaseResourceNode)
+    |   |       ├── app.py - contains FilesystemStoreApp (inherits BaseApp)
+    |   |       └── fragments.py - contains html fragments for FilesystemStoreApp
+    |   └── network/
+    |       ├── receiver/
+    |       |   ├── node.py - contains ReceiverNode (inherits BaseNode)
+    |       |   └── app.py - contains ReceiverApp (inherits BaseApp)
+    |       └── sender/
+    |           ├── node.py - contains SenderNode (inherits BaseNode)
+    |           └── app.py - contains SenderApp (inherits BaseApp)
+    ├── graphs/ 
+    |   ├── leaf/
+    |   |   ├── graph.py - contains LeafGraph
+    |   |   └── app.py - contains LeafGraphApp
+    |   └── root/
+    |       ├── graph.py - contains RootGraph
+    |       └── app.py - contains RootApp
+    ├── services/ 
+    |   ├── leaf/
+    |   |   └── app.py - contains LeafServiceApp
+    |   └── root/
+    |       └── app.py - contains RootServiceApp
+    ├── static/ - contains css, img, and js used by the project's html fragments
+    ├── utils/ 
+    |   ├── constants.py - contains enums and constants used in the project
+    |   └── sse.py - contains functions for working with server-sent events
+    ├── distributed_tests/ 
+    └── multithreaded_tests/ 
+```
+`anacostia_pipeline` - this is the main package where all the source code for Anacostia is stored.
+
+`anacostia_pipeline/nodes` - this is where all node classes live.
+
+Notice how the `nodes/` package and all of its subpackages have a similar structure with the files:
+- `node.py`: which contains the code for the actual node itself.
+- `app.py`: which contains the code for the FastAPI sub-application that provides a custom GUI for visualizing information pertaining to the node.
+- `fragments.py` - which contains the html fragments used by the sub-application.
+
+Also notice that the node class inside each subpackage inherits from the node class inside the parent package (e.g., FilesystemStoreNode  inherits from BaseResourceNode which inherits from BaseNode). 
+
+`anacostia_pipeline/graphs` - this is where all the graphs live (e.g., `RootGraph` and `LeafGraph`)
+
+`anacostia_pipeline/services` - this is where all the services live (e.g., `RootService` and `LeafService`)
