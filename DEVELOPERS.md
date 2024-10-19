@@ -24,10 +24,10 @@ Note: See sql_metadata_store.py for an example of how to create your own metadat
     - Desired result: verify you can acquire, configure to work with the pipeline, and that the pipeline can be spun up
 5. Implement the ```start_monitoring()``` method
     - Note: you must create a new thread and run your monitoring code there
+    - Note: you must implement your triggering logic in the thread that monitors your code 
 6. Implement the ```stop_monitoring()``` method
 7. Implement the ```record_new()``` method
 8. Implement the ```record_current()``` method
-9. Implement the ```trigger_condition()``` method
 
 Note: See filesystem_store.py for an example of how to create your own resource node.
 
