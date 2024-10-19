@@ -42,12 +42,14 @@ pip install anacostia-pipeline
 
 ## Example Usage
 ```python
-from anacostia_pipeline.engine.base import BaseNode, BaseActionNode, BaseMetadataStoreNode
-from anacostia_pipeline.engine.pipeline import Pipeline
-from anacostia_pipeline.dashboard.webserver import run_background_webserver
+from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
-from anacostia_pipeline.resources.filesystem_store import FilesystemStoreNode
-from anacostia_pipeline.metadata.sql_metadata_store import SqliteMetadataStore
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
+
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 
 class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
@@ -82,7 +84,7 @@ if __name__ == "__main__":
         uri=f"sqlite:///{metadata_store_path}/metadata.db"
     )
 
-    pipeline = Pipeline(
+    pipeline = RootPipeline(
         nodes=[metadata_store, haiku_data_store, shakespeare_eval], 
         loggers=logger
     )
