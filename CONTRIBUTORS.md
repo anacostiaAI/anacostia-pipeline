@@ -118,13 +118,13 @@ anacostia_pipeline/
     |       └── sender/
     |           ├── node.py - contains SenderNode (inherits BaseNode)
     |           └── app.py - contains SenderApp (inherits BaseApp)
-    ├── graphs/ 
+    ├── pipelines/ 
     |   ├── leaf/
-    |   |   ├── graph.py - contains LeafGraph
-    |   |   └── app.py - contains LeafGraphApp
+    |   |   ├── pipeline.py - contains LeafPipeline
+    |   |   └── app.py - contains LeafPipelineApp
     |   └── root/
-    |       ├── graph.py - contains RootGraph
-    |       └── app.py - contains RootApp
+    |       ├── pipeline.py - contains RootPipeline
+    |       └── app.py - contains RootPipelineApp
     ├── services/ 
     |   ├── leaf/
     |   |   └── app.py - contains LeafServiceApp
@@ -148,6 +148,6 @@ Notice how the `nodes/` package and all of its subpackages have a similar struct
 
 Also notice that the node class inside each subpackage inherits from the node class inside the parent package (e.g., FilesystemStoreNode  inherits from BaseResourceNode which inherits from BaseNode). 
 
-`anacostia_pipeline/graphs` - this is where all the graphs live (e.g., `RootGraph` and `LeafGraph`)
+`anacostia_pipeline/pipelines` - this is where all the pipelines live (e.g., `RootPipeline` and `LeafPipeline`)
 
 `anacostia_pipeline/services` - this is where all the services live (e.g., `RootService` and `LeafService`)
