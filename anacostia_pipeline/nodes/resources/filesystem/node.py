@@ -5,11 +5,34 @@ from logging import Logger
 from threading import Thread
 import traceback
 import time
+import fcntl
+from contextlib import contextmanager
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNodeApp
 from anacostia_pipeline.utils.constants import Status
+
+
+
+@contextmanager
+def locked_file(filename, mode='r'):
+    with open(filename, mode) as file:
+        fcntl.flock(file.fileno(), fcntl.LOCK_SH if mode.startswith('r') else fcntl.LOCK_EX)
+        try:
+            yield file
+        finally:
+            fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+        # use a shared lock (fcntl.LOCK_SH) for reading:
+        # - allows multiple processes to acquire a shared lock for reading
+        # - multiple readers can access the file simultaneously
+        # - prevents any process from acquiring an exclusive lock (fcntl.LOCK_EX) for writing while readers have the file open
+
+        # use an exclusive lock (fcntl.LOCK_EX) for writing
+        # - allows only one process to acquire an exclusive lock for writing
+        # - prevents any other process from acquiring a shared or exclusive lock for reading or writing
+        # - ensures that only one writer can modify the file at a time, and no readers can access it during the write operation
 
 
 
@@ -139,9 +162,8 @@ class FilesystemStoreNode(BaseResourceNode):
     @BaseResourceNode.log_exception
     @BaseResourceNode.resource_accessor
     def load_artifact(self, artifact_path: str) -> Any:
-        with open(artifact_path, "r") as f:
-            content = f.read()
-            return content
+        with locked_file(artifact_path, "r") as file:
+            return file.read()
 
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
