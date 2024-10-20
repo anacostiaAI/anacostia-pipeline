@@ -3,7 +3,7 @@ from typing import List, Dict
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from contextlib import contextmanager
 import traceback
@@ -20,7 +20,7 @@ Base = declarative_base()
 class Run(Base):
     __tablename__ = 'runs'
     id = Column(Integer, primary_key=True)
-    start_time = Column(DateTime, default=datetime.utcnow)
+    start_time = Column(DateTime, default=datetime.now(timezone.utc))
     end_time = Column(DateTime)
 
     def as_dict(self):
@@ -64,7 +64,7 @@ class Sample(Base):
     location = Column(String)
     state = Column(String, default="new")
     end_time = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     def as_dict(self):
        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -74,7 +74,7 @@ class Node(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     type = Column(String)
-    init_time = Column(DateTime, default=datetime.utcnow)
+    init_time = Column(DateTime, default=datetime.now(timezone.utc))
 
     def as_dict(self):
        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -287,7 +287,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     node_id = session.query(Node).filter_by(name=successor.name).first().id
                     samples = session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
                     for sample in samples:
-                        sample.end_time = datetime.utcnow()
+                        sample.end_time = datetime.now(timezone.utc)
                         sample.state = "old"
                         session.commit()
 
@@ -296,11 +296,11 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             run = Run()
             session.add(run)
             session.commit()
-            self.log(f"--------------------------- started run {run.id} at {datetime.now()}")
+            self.log(f"--------------------------- started run {run.id} at {datetime.now(timezone.utc)}")
     
     def end_run(self) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
             run: Run = session.query(Run).filter_by(end_time=None).first()
-            run.end_time = datetime.utcnow()
+            run.end_time = datetime.now(timezone.utc)
             session.commit()
-            self.log(f"--------------------------- ended run {run.id} at {datetime.now()}")
+            self.log(f"--------------------------- ended run {run.id} at {datetime.now(timezone.utc)}")
