@@ -5,6 +5,7 @@ from threading import RLock
 from functools import wraps
 
 from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.utils.constants import Result, Work
 
 
@@ -12,7 +13,7 @@ from anacostia_pipeline.utils.constants import Result, Work
 class BaseResourceNode(BaseNode):
     def __init__(
         self, 
-        name: str, resource_path: str, metadata_store,
+        name: str, resource_path: str, metadata_store: BaseMetadataStoreNode,
         loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
     ) -> None:
         super().__init__(name, predecessors=[metadata_store], loggers=loggers)
