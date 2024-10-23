@@ -268,8 +268,14 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             session.add(sample)
             session.commit()
     
-    def add_run_id(self) -> None:
+    def start_run(self) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
+            run = Run()
+            session.add(run)
+            session.commit()
+            self.log(f"--------------------------- started run {run.id} at {datetime.now(timezone.utc)}")
+
+            # adding the run_id and setting the state to "current" for each sample
             for successor in self.successors:
                 if isinstance(successor, BaseResourceNode):
                     node_id = session.query(Node).filter_by(name=successor.name).first().id
@@ -278,9 +284,10 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                         sample.run_id = self.get_run_id()
                         sample.state = "current"
                         session.commit()
-
-    def add_end_time(self) -> None:
+    
+    def end_run(self) -> None:
         with scoped_session_manager(self.session_factory, self) as session:
+            # adding the end_time and setting the state to "old" for each sample
             run_id = self.get_run_id()
             for successor in self.successors:
                 if isinstance(successor, BaseResourceNode):
@@ -291,15 +298,6 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                         sample.state = "old"
                         session.commit()
 
-    def start_run(self) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run = Run()
-            session.add(run)
-            session.commit()
-            self.log(f"--------------------------- started run {run.id} at {datetime.now(timezone.utc)}")
-    
-    def end_run(self) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
             run: Run = session.query(Run).filter_by(end_time=None).first()
             run.end_time = datetime.now(timezone.utc)
             session.commit()

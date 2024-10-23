@@ -82,20 +82,6 @@ class BaseMetadataStoreNode(BaseNode):
         or create a new run in MLFlow, create a new run in Neptune, etc.
         """
         raise NotImplementedError
-
-    @metadata_accessor
-    def add_run_id(self) -> None:
-        """
-        Override to specify how to add the run_id to the resource metadata in the metadata store.
-        """
-        raise NotImplementedError
-    
-    @metadata_accessor
-    def add_end_time(self) -> None:
-        """
-        Override to specify how to add the end_time to the resource metadata in the metadata store.
-        """
-        raise NotImplementedError
     
     @metadata_accessor
     def end_run(self) -> None:
@@ -120,7 +106,6 @@ class BaseMetadataStoreNode(BaseNode):
             if self.exit_event.is_set(): break
             self.work_list.append(Work.STARTING_RUN)
             self.start_run()
-            self.add_run_id()
             self.work_list.remove(Work.STARTING_RUN)
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
@@ -134,7 +119,6 @@ class BaseMetadataStoreNode(BaseNode):
             # ending the run
             if self.exit_event.is_set(): break
             self.work_list.append(Work.ENDING_RUN)
-            self.add_end_time()
             self.end_run()
             self.work_list.remove(Work.ENDING_RUN)
 
