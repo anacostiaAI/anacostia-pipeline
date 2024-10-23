@@ -43,7 +43,7 @@ class BaseMetadataStoreNode(BaseNode):
         return wrapper
     
     @metadata_accessor
-    def create_resource_tracker(self, resource_node) -> None:
+    def add_node(self, node) -> None:
         raise NotImplementedError
     
     @metadata_accessor

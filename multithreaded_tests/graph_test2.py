@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
@@ -32,15 +33,22 @@ class DataStoreNode(FilesystemStoreNode):
 
 class EvalNode(BaseActionNode):
     def __init__(
-        self, name: str, predecessors: List[BaseNode], 
+        self, name: str, data_store: BaseResourceNode, 
         metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
     ) -> None:
         self.metadata_store = metadata_store
-        super().__init__(name, predecessors, loggers)
+        self.data_store = data_store
+        super().__init__(name, [data_store], loggers)
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        for filepath in self.data_store.list_artifacts("current"):
+            with open(filepath, 'r') as f:
+                self.log(f"Trained on {filepath}", level="INFO")
+        
+        for filepath in self.data_store.list_artifacts("old"):
+            self.log(f"Already trained on {filepath}", level="INFO")
+
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -71,7 +79,7 @@ metadata_store = SqliteMetadataStoreNode(
     uri=f"{metadata_store_path}/metadata.db"
 )
 haiku_data_store = DataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
-eval_node = EvalNode("eval_node", [haiku_data_store], metadata_store)
+eval_node = EvalNode("eval_node", haiku_data_store, metadata_store)
 pipeline = RootPipeline(
     nodes=[metadata_store, haiku_data_store, eval_node], 
     loggers=logger

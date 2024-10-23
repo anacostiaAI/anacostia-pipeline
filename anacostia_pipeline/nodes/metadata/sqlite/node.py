@@ -141,7 +141,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             else:
                 return session.query(Sample).filter_by(node_id=node_id, state=state).count()
     
-    def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
+    def add_node(self, resource_node: BaseResourceNode) -> None:
         with scoped_session_manager(self.session_factory, resource_node) as session:
             resource_name = resource_node.name
             type_name = type(resource_node).__name__

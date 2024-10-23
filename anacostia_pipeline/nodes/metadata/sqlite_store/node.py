@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from logging import Logger
 import os
 import sqlite3
-from typing import List
+from typing import List, Dict
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -62,7 +62,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             # create the runs table
             cursor.execute("""
                 CREATE TABLE runs (
-                    run_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    run_id INTEGER PRIMARY KEY, 
                     start_time DATETIME, 
                     end_time DATETIME DEFAULT NULL
                 )
@@ -117,7 +117,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     run_id INTEGER DEFAULT NULL,
                     node_id INTEGER,
-                    artifact_path TEXT, 
+                    location TEXT, 
                     created_at DATETIME,
                     end_time DATETIME DEFAULT NULL,
                     state TEXT DEFAULT 'new',
@@ -126,32 +126,29 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 )
             """)
     
-    def create_resource_tracker(self, resource_node: BaseResourceNode) -> None:
+    def add_node(self, resource_node: BaseResourceNode) -> None:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
                 """INSERT INTO nodes(node_name, node_type, init_time) VALUES (?, ?, ?)""", 
                 (resource_node.name, type(resource_node).__name__, datetime.now(timezone.utc),)
             )
-
-    def get_run_id(self) -> int:
-        with DatabaseManager(self.uri) as cursor:
-            cursor.execute("SELECT run_id FROM runs WHERE end_time IS NULL")
-            return cursor.fetchone()[0]
     
     def start_run(self) -> None:
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("INSERT INTO runs(start_time) VALUES (?)", (datetime.now(timezone.utc),))
-        
-        run_id = self.get_run_id()
+            run_id = self.get_run_id()
+            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(timezone.utc),))
+            cursor.execute("UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' ", (run_id,))
+
         self.log(f"--------------------------- started run {run_id} at {datetime.now(timezone.utc)}")
     
     def end_run(self) -> None:
-        run_id = self.get_run_id()
-        self.log(f"--------------------------- ended run {run_id} at {datetime.now(timezone.utc)}")
-
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (datetime.now(timezone.utc),))
+            end_time = datetime.now(timezone.utc)
+            cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (end_time,))
+            cursor.execute("UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' ", (end_time,))
     
+        self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now(timezone.utc)}")
+
     def get_node_id(self, resource_node: BaseResourceNode) -> int:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (resource_node.name,))
@@ -162,7 +159,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
 
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
-                "INSERT INTO artifacts(run_id, node_id, artifact_path, created_at, state) VALUES (?, ?, ?, ?, ?)", 
+                "INSERT INTO artifacts(run_id, node_id, location, created_at, state) VALUES (?, ?, ?, ?, ?)", 
                 (run_id, node_id, filepath, datetime.now(timezone.utc), state)
             )
 
@@ -170,7 +167,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         node_id = self.get_node_id(resource_node)
 
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND artifact_path = ?", (node_id, filepath))
+            cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND location = ?", (node_id, filepath))
             return cursor.fetchone() is not None
 
     def get_num_entries(self, resource_node: BaseResourceNode, state: str = "all") -> int:
@@ -183,23 +180,36 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ? AND state = ?", (node_id, state))
             return cursor.fetchone()[0]
     
-    def add_run_id(self) -> None:
-        run_id = self.get_run_id()
+    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
+        if (resource_node != "all") and (state != "all"):
+            node_id = self.get_node_id(resource_node)
+            sample_query = "SELECT * FROM artifacts WHERE node_id = ? AND state = ?"
+            sample_args = (node_id, state,)
+        elif (resource_node != "all") and (state == "all"):
+            node_id = self.get_node_id(resource_node)
+            sample_query = "SELECT * FROM artifacts WHERE node_id = ?"
+            sample_args = (node_id,)
+        elif (resource_node == "all") and (state != "all"):
+            sample_query = "SELECT * FROM artifacts WHERE state = ?"
+            sample_args = (state,)
+        else:
+            sample_query = "SELECT * FROM artifacts"
+            sample_args = ()
+        
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute(
-                """UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' """, 
-                (run_id,)
-            )
+            cursor.execute(sample_query, sample_args)
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
 
     def add_end_time(self) -> None:
-        with DatabaseManager(self.uri) as cursor:
-            cursor.execute(
-                """UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' """, 
-                (datetime.now(timezone.utc),)
-            )
+        pass
+
+    def add_run_id(self) -> None:
+        pass
 
 
 if __name__ == "__main__":
     node = SqliteMetadataStoreNode(name="sqlite_metadata_store", uri="metadata.db")
     node.setup()
-    node.create_resource_tracker(BaseResourceNode(name="resource_node", resource_path="file.txt", metadata_store=node))
+    node.add_node(BaseResourceNode(name="resource_node", resource_path="file.txt", metadata_store=node))
