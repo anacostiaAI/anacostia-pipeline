@@ -45,6 +45,7 @@ class RootPipeline:
 
         self.node_dict = dict()
         self.graph = nx.DiGraph()
+        self.nodes_setup = False
 
         # Add nodes into graph
         for node in nodes:
@@ -131,9 +132,9 @@ class RootPipeline:
             thread.join()
             node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
 
-    def launch_nodes(self):
+    def setup_nodes(self):
         """
-        Lanches all the registered nodes in topological order.
+        Sets up all the registered nodes in topological order.
         """
 
         # set up metadata store nodes
@@ -147,6 +148,16 @@ class RootPipeline:
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         self.__setup_nodes(action_nodes)
+
+        self.nodes_setup = True
+
+    def launch_nodes(self):
+        """
+        Lanches all the registered nodes in topological order.
+        """
+
+        if self.nodes_setup is False:
+            self.setup_nodes() 
 
         # start nodes
         for node in self.nodes:

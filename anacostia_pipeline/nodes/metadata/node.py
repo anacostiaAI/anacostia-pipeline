@@ -106,6 +106,10 @@ class BaseMetadataStoreNode(BaseNode):
         """
         raise NotImplementedError
     
+    @metadata_accessor
+    def entry_exists(self) -> bool:
+        raise NotImplementedError
+    
     def run(self) -> None:
         while self.exit_event.is_set() is False:
 
