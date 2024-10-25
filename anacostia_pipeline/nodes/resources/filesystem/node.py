@@ -64,17 +64,14 @@ class FilesystemStoreNode(BaseResourceNode):
     def get_app(self) -> FilesystemStoreNodeApp:
         return FilesystemStoreNodeApp(self)
 
-    @BaseResourceNode.resource_accessor
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
         self.metadata_store.add_node(self)
         self.log(f"Node '{self.name}' setup complete.")
     
-    @BaseResourceNode.resource_accessor
     def record_new(self, filepath: str) -> Dict:
         self.metadata_store.create_entry(self, filepath=filepath, state="new")
 
-    @BaseResourceNode.resource_accessor
     def record_current(self, filepath: str) -> None:
         self.metadata_store.create_entry(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
     
@@ -83,12 +80,11 @@ class FilesystemStoreNode(BaseResourceNode):
         def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
-                with self.resource_lock:
-                    for filename in os.listdir(self.path):
-                        filepath = os.path.join(self.path, filename)
-                        if self.metadata_store.entry_exists(self, filepath) is False:
-                            self.log(f"'{self.name}' detected file: {filepath}")
-                            self.record_new(filepath)
+                for filename in os.listdir(self.path):
+                    filepath = os.path.join(self.path, filename)
+                    if self.metadata_store.entry_exists(self, filepath) is False:
+                        self.log(f"'{self.name}' detected file: {filepath}")
+                        self.record_new(filepath)
 
                 if self.exit_event.is_set() is True: break
                 try:
@@ -106,24 +102,16 @@ class FilesystemStoreNode(BaseResourceNode):
                         # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
                         # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
                         # or just not move the file to current.
-
-                # put this sleep here to prevent the _monitor_thread_func from acquiring the lock all the time which 
-                # prevents _monitor_thread_func from being a greedy thread that causes starvation conditions.
-                # without this sleep, the @BaseResourceNode.resource_accessor will take too long to run for methods like .get_artifact()
-                if self.exit_event.is_set() is True: break
-                time.sleep(0.1)
                 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
 
-    @BaseResourceNode.resource_accessor
     def custom_trigger(self) -> bool:
         """
         Override to implement your custom triggering logic. If the custom_trigger method is not implemented, the base_trigger method will be called.
         """
         raise NotImplementedError
     
-    @BaseResourceNode.resource_accessor
     def base_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
@@ -135,7 +123,6 @@ class FilesystemStoreNode(BaseResourceNode):
             self.trigger()
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def create_filename(self) -> str:
         return f"file{self.get_num_artifacts('all')}.txt"
     
@@ -145,19 +132,16 @@ class FilesystemStoreNode(BaseResourceNode):
         pass
 
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def list_artifacts(self, state: str) -> List[Any]:
         entries = self.metadata_store.get_entries(self, state)
         artifacts = [entry["location"] for entry in entries]
         return artifacts
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def get_artifact(self, id: int) -> Dict:
         return self.metadata_store.get_entry(self, id)
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def get_num_artifacts(self, state: str) -> int:
         return self.metadata_store.get_num_entries(self, state)
     
