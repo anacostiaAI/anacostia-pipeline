@@ -90,6 +90,7 @@ class FilesystemStoreNode(BaseResourceNode):
                             self.log(f"'{self.name}' detected file: {filepath}")
                             self.record_new(filepath)
 
+                if self.exit_event.is_set() is True: break
                 try:
                     self.custom_trigger()
                 
@@ -109,6 +110,7 @@ class FilesystemStoreNode(BaseResourceNode):
                 # put this sleep here to prevent the _monitor_thread_func from acquiring the lock all the time which 
                 # prevents _monitor_thread_func from being a greedy thread that causes starvation conditions.
                 # without this sleep, the @BaseResourceNode.resource_accessor will take too long to run for methods like .get_artifact()
+                if self.exit_event.is_set() is True: break
                 time.sleep(0.1)
                 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
