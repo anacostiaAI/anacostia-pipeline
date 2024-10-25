@@ -82,7 +82,7 @@ class FilesystemStoreNode(BaseResourceNode):
 
         def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
-            while self.status == Status.RUNNING:
+            while self.exit_event.is_set() is False:
                 with self.resource_lock:
                     for filename in os.listdir(self.path):
                         filepath = os.path.join(self.path, filename)

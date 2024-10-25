@@ -176,8 +176,6 @@ class BaseNode(Thread):
         for event in self.predecessors_events.values():
             event.set()
 
-        self.on_exit()
-        
         self.status = Status.EXITED
         self.log(f"Node '{self.name}' exited at {datetime.now()}")
 
@@ -192,15 +190,6 @@ class BaseNode(Thread):
         therefore, it is best to the set up logic is not dependent on other nodes.
         """
         self.status = Status.INIT
-
-    @log_exception
-    def on_exit(self):
-        """
-        on_exit is called when the node is being stopped.
-        implement this method to do things like release locks, 
-        release resources, anouncing to other nodes that this node has stopped, etc.
-        """
-        pass
 
     def run(self) -> None:
         """

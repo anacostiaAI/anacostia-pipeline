@@ -72,8 +72,15 @@ class BaseResourceNode(BaseNode):
         pass
     
     def exit(self):
-        self.resource_event.set()
+        # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.
         super().exit()
+        
+        # set custom events like resource_event and implement custom exit logic after calling the parent class exit method
+        if self.monitoring is True:
+            self.stop_monitoring()
+            self.work_list.remove(Work.MONITORING_RESOURCE)
+        
+        self.resource_event.set()
     
     def trigger(self) -> None:
         self.resource_event.set()
