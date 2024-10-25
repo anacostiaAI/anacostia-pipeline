@@ -166,8 +166,7 @@ class BaseNode(Thread):
         self.log(f"Node '{self.name}' exiting at {datetime.now()}")
         self.status = Status.EXITING
         
-        self.on_exit()
-        
+        # set all events so loop can continue to next checkpoint and break out of loop
         self.pause_event.set()
         self.exit_event.set()
 
@@ -177,6 +176,8 @@ class BaseNode(Thread):
         for event in self.predecessors_events.values():
             event.set()
 
+        self.on_exit()
+        
         self.status = Status.EXITED
         self.log(f"Node '{self.name}' exited at {datetime.now()}")
 

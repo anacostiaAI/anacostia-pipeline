@@ -130,24 +130,24 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
                 """INSERT INTO nodes(node_name, node_type, init_time) VALUES (?, ?, ?)""", 
-                (resource_node.name, type(resource_node).__name__, datetime.now(timezone.utc),)
+                (resource_node.name, type(resource_node).__name__, datetime.now(),)
             )
     
     def start_run(self) -> None:
         with DatabaseManager(self.uri) as cursor:
             run_id = self.get_run_id()
-            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(timezone.utc),))
+            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(),))
             cursor.execute("UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' ", (run_id,))
 
-        self.log(f"--------------------------- started run {run_id} at {datetime.now(timezone.utc)}")
+        self.log(f"--------------------------- started run {run_id} at {datetime.now()}")
     
     def end_run(self) -> None:
         with DatabaseManager(self.uri) as cursor:
-            end_time = datetime.now(timezone.utc)
+            end_time = datetime.now()
             cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (end_time,))
             cursor.execute("UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' ", (end_time,))
     
-        self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now(timezone.utc)}")
+        self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
 
     def get_node_id(self, resource_node: BaseResourceNode) -> int:
         with DatabaseManager(self.uri) as cursor:
@@ -160,7 +160,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
                 "INSERT INTO artifacts(run_id, node_id, location, created_at, state) VALUES (?, ?, ?, ?, ?)", 
-                (run_id, node_id, filepath, datetime.now(timezone.utc), state)
+                (run_id, node_id, filepath, datetime.now(), state)
             )
 
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
@@ -202,11 +202,6 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
 
-    def add_end_time(self) -> None:
-        pass
-
-    def add_run_id(self) -> None:
-        pass
 
 
 if __name__ == "__main__":

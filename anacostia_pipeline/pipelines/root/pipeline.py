@@ -2,6 +2,7 @@ from typing import List, Iterable, Union
 from threading import Thread
 from datetime import datetime
 from logging import Logger
+import signal
 
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
@@ -45,7 +46,6 @@ class RootPipeline:
 
         self.node_dict = dict()
         self.graph = nx.DiGraph()
-        self.nodes_setup = False
 
         # Add nodes into graph
         for node in nodes:
@@ -115,53 +115,48 @@ class RootPipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
     
-    def __setup_nodes(self, nodes: List[BaseNode]):
-        """
-        Sets up all the nodes in the pipeline.
-        """
-
-        threads: List[Thread] = []
-        for node in nodes:
-            node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-            thread = Thread(target=node.setup)
-            node.status = Status.INIT
-            thread.start()
-            threads.append(thread)
-
-        for thread, node in zip(threads, nodes):
-            thread.join()
-            node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
-
     def setup_nodes(self):
         """
         Sets up all the registered nodes in topological order.
         """
 
+        def __setup_nodes(nodes: List[BaseNode]):
+            """
+            Sets up all the nodes in the pipeline.
+            """
+
+            threads: List[Thread] = []
+            for node in nodes:
+                node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
+                thread = Thread(target=node.setup)
+                node.status = Status.INIT
+                thread.start()
+                threads.append(thread)
+
+            for thread, node in zip(threads, nodes):
+                thread.join()
+                node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+
         # set up metadata store nodes
         metadata_stores = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
-        self.__setup_nodes(metadata_stores)
+        __setup_nodes(metadata_stores)
 
         # set up resource nodes
         resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
-        self.__setup_nodes(resource_nodes)
+        __setup_nodes(resource_nodes)
         
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
-        self.__setup_nodes(action_nodes)
-
-        self.nodes_setup = True
+        __setup_nodes(action_nodes)
 
     def launch_nodes(self):
         """
         Lanches all the registered nodes in topological order.
         """
+        self.setup_nodes() 
 
-        if self.nodes_setup is False:
-            self.setup_nodes() 
-
-        # start nodes
+        # Note: since node is a subclass of Thread, calling start() will run the run() method, thereby starting the node
         for node in self.nodes:
-            # Note: since node is a subclass of Thread, calling start() will run the run() method
             node.status = Status.RUNNING
             node.start()
 
@@ -177,3 +172,20 @@ class RootPipeline:
             node.exit()
             node.join()
         print("All nodes terminated")
+
+    def run(self) -> None:
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+
+        def _kill_webserver(sig, frame):
+            print("\nCTRL+C Caught!; Shutting down nodes...")
+            self.terminate_nodes()
+            print("Nodes shutdown.")
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+
+        print("Launching Pipeline...")
+        self.launch_nodes()
