@@ -66,7 +66,6 @@ class FilesystemStoreNode(BaseResourceNode):
 
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
-        self.metadata_store.add_node(self)
         self.log(f"Node '{self.name}' setup complete.")
     
     def record_new(self, filepath: str) -> Dict:

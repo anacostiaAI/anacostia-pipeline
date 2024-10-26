@@ -132,8 +132,6 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
-
-            self.add_node(self)
     
     def add_node(self, node: BaseNode) -> None:
         with DatabaseManager(self.uri) as cursor:

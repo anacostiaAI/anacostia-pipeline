@@ -138,7 +138,7 @@ class RootPipeline:
                 node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
 
         # set up metadata store nodes
-        metadata_stores = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
+        metadata_stores: List[BaseMetadataStoreNode] = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
         __setup_nodes(metadata_stores)
 
         # set up resource nodes
@@ -148,6 +148,11 @@ class RootPipeline:
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         __setup_nodes(action_nodes)
+        
+        # add nodes to metadata store's node list
+        for metadata_store in metadata_stores:
+            for node in self.nodes:
+                metadata_store.add_node(node)
 
     def launch_nodes(self):
         """
