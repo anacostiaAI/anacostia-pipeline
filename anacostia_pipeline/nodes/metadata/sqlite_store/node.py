@@ -6,6 +6,7 @@ from typing import List, Dict
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.node import BaseNode
 
 
 
@@ -68,14 +69,26 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 )
             """)
 
+            # create the nodes table
+            cursor.execute("""
+                CREATE TABLE nodes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    node_name TEXT, 
+                    node_type TEXT,
+                    init_time DATETIME
+                )
+            """)
+
             # create the metrics table
             cursor.execute("""
                 CREATE TABLE metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     run_id INTEGER,
+                    node_id INTEGER,
                     metric_name TEXT, 
                     metric_value REAL, 
-                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
 
@@ -84,9 +97,11 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 CREATE TABLE tags (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     run_id INTEGER,
+                    node_id INTEGER,
                     tag_name TEXT, 
                     tag_value TEXT, 
-                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
 
@@ -95,19 +110,11 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 CREATE TABLE params (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     run_id INTEGER,
+                    node_id INTEGER,
                     param_name TEXT, 
                     param_value TEXT, 
-                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
-                )
-            """)
-
-            # create the nodes table
-            cursor.execute("""
-                CREATE TABLE nodes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    node_name TEXT, 
-                    node_type TEXT,
-                    init_time DATETIME
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
 
@@ -125,12 +132,14 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
+
+            self.add_node(self)
     
-    def add_node(self, resource_node: BaseResourceNode) -> None:
+    def add_node(self, node: BaseNode) -> None:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
                 """INSERT INTO nodes(node_name, node_type, init_time) VALUES (?, ?, ?)""", 
-                (resource_node.name, type(resource_node).__name__, datetime.now(),)
+                (node.name, type(node).__name__, datetime.now(),)
             )
     
     def start_run(self) -> None:

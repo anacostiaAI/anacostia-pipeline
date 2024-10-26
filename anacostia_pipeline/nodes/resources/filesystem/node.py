@@ -127,7 +127,6 @@ class FilesystemStoreNode(BaseResourceNode):
         return f"file{self.get_num_artifacts('all')}.txt"
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def save_artifact(self, content: str) -> None:
         pass
 
@@ -146,7 +145,6 @@ class FilesystemStoreNode(BaseResourceNode):
         return self.metadata_store.get_num_entries(self, state)
     
     @BaseResourceNode.log_exception
-    @BaseResourceNode.resource_accessor
     def load_artifact(self, artifact_path: str) -> Any:
         with locked_file(artifact_path, "r") as file:
             return file.read()
