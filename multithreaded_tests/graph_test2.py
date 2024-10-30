@@ -88,12 +88,8 @@ pipeline = RootPipeline(
 
 
 if __name__ == "__main__":
-    pipeline.run()
-
-    """
     webserver = RootPipelineApp(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
     webserver.run()
-    """
 
     time.sleep(3)
     for i in range(10):

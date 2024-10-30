@@ -6,6 +6,7 @@ from typing import List, Dict
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sqlite_store.app import SqliteMetadataStoreApp
 from anacostia_pipeline.nodes.node import BaseNode
 
 
@@ -53,6 +54,10 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
     
+    # Note: override the get_app() method to return the custom router
+    def get_app(self) -> SqliteMetadataStoreApp:
+        return SqliteMetadataStoreApp(self)
+
     def setup(self) -> None:
         directory = os.path.dirname(self.uri)
         if directory != "" and os.path.exists(directory) is False:
@@ -205,6 +210,94 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(sample_query, sample_args)
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_runs(self) -> List[Dict]:
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute("SELECT * FROM runs")
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+
+    def log_metrics(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for metric_name, metric_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO metrics(run_id, node_id, metric_name, metric_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, metric_name, metric_value)
+                )
+    
+    def log_params(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for param_name, param_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO params(run_id, node_id, param_name, param_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, param_name, param_value)
+                )
+    
+    def set_tags(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for tag_name, tag_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO tags(run_id, node_id tag_name, tag_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, tag_name, tag_value)
+                )
+    
+    def get_metrics(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM metrics")
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_params(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM params WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM params WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM params WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM params")
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_tags(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM tags")
+
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
