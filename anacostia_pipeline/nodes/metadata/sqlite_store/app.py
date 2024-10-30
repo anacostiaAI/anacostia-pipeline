@@ -25,9 +25,9 @@ class SqliteMetadataStoreApp(BaseApp):
         async def endpoint(request: Request):
             runs = self.node.get_runs()
             for run in runs:
-                run['start_time'] = run['start_time']
+                run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 if run['end_time'] is not None:
-                    run['end_time'] = run['end_time']
+                    run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
             return sqlmetadatastore_home(data_options=self.data_options, runs=runs)
         
@@ -35,9 +35,9 @@ class SqliteMetadataStoreApp(BaseApp):
         async def runs(request: Request):
             runs = self.node.get_runs()
             for run in runs:
-                run['start_time'] = run['start_time']
+                run['start_time'] = run['start_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 if run['end_time'] is not None:
-                    run['end_time'] = run['end_time']
+                    run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
             return sqlmetadatastore_runs_table(runs, self.data_options["runs"])
         
@@ -45,9 +45,9 @@ class SqliteMetadataStoreApp(BaseApp):
         async def samples(request: Request):
             samples = self.node.get_entries(resource_node="all", state="all")
             for sample in samples:
-                sample['created_at'] = sample['created_at']
+                sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
                 if sample['end_time'] is not None:
-                    sample['end_time'] = sample['end_time']
+                    sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             
             return sqlmetadatastore_samples_table(samples, self.data_options["samples"])
         

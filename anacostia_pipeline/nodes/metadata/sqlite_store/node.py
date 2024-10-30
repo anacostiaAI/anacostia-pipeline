@@ -11,6 +11,31 @@ from anacostia_pipeline.nodes.node import BaseNode
 
 
 
+def convert_datetime(sqlite_datetime_bytes: bytes) -> datetime:
+    """
+    Converter function for SQLite datetime bytes to Python datetime object.
+    Preserves microseconds precision from the SQLite datetime string.
+    
+    Args:
+        sqlite_datetime_bytes: Bytes object containing datetime string in format 'YYYY-MM-DD HH:MM:SS.mmmmmm'
+        
+    Returns:
+        datetime.datetime object or None if input is None/empty
+    """
+
+    if sqlite_datetime_bytes is None:
+        return None
+    
+    sqlite_datetime = sqlite_datetime_bytes.decode('utf-8')     # Decode bytes to string
+    
+    return datetime.strptime(sqlite_datetime, '%Y-%m-%d %H:%M:%S.%f')
+
+
+# Register custom converter for DATETIME type.
+sqlite3.register_converter('DATETIME', convert_datetime)
+
+
+
 class DatabaseManager:
     def __init__(self, db_path: str):
         # Initialize with database path.
@@ -20,7 +45,6 @@ class DatabaseManager:
     
     def __enter__(self):
         # Create and return database cursor when entering context.
-
         self._connection = sqlite3.connect(
             database=self.db_path,
             check_same_thread=False,
@@ -48,6 +72,7 @@ class DatabaseManager:
                 self._connection.close()
                 
         return False  # Don't suppress exceptions
+
 
 
 class SqliteMetadataStoreNode(BaseMetadataStoreNode):
