@@ -272,7 +272,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         with DatabaseManager(self.uri) as cursor:
             for tag_name, tag_value in kwargs.items():
                 cursor.execute(
-                    "INSERT INTO tags(run_id, node_id tag_name, tag_value) VALUES (?, ?, ?, ?)", 
+                    "INSERT INTO tags(run_id, node_id, tag_name, tag_value) VALUES (?, ?, ?, ?)", 
                     (run_id, node_id, tag_name, tag_value)
                 )
     

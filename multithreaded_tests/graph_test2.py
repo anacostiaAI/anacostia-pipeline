@@ -52,6 +52,42 @@ class EvalNode(BaseActionNode):
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
+class ModelRetrainingNode(BaseActionNode):
+    def __init__(
+        self, name: str, 
+        data_store: DataStoreNode, metadata_store: BaseMetadataStoreNode
+    ) -> None:
+        self.data_store = data_store
+        self.metadata_store = metadata_store
+        super().__init__(name, predecessors=[data_store])
+    
+    def execute(self, *args, **kwargs) -> bool:
+        self.log(f"Executing node '{self.name}'", level="INFO")
+
+        self.metadata_store.log_metrics(self, acc=1.00)
+        
+        self.metadata_store.log_params(
+            self,
+            batch_size = 64, # how many independent sequences will we process in parallel?
+            block_size = 256, # what is the maximum context length for predictions?
+            max_iters = 2500,
+            eval_interval = 500,
+            learning_rate = 3e-4,
+            eval_iters = 200,
+            n_embd = 384,
+            n_head = 6,
+            n_layer = 6,
+            dropout = 0.2,
+            seed = 1337,
+            split = 0.9    # first 90% will be train, rest val
+        )
+
+        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
+
+        self.log(f"Node '{self.name}' executed successfully.", level="INFO")
+        # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
+        return True
+
 
 
 web_tests_path = "./testing_artifacts/sqlite_test"
@@ -80,8 +116,9 @@ metadata_store = SqliteMetadataStoreNode(
 )
 haiku_data_store = DataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 eval_node = EvalNode("eval_node", haiku_data_store, metadata_store)
+retraining_node = ModelRetrainingNode("retraining_node", haiku_data_store, metadata_store)
 pipeline = RootPipeline(
-    nodes=[metadata_store, haiku_data_store, eval_node], 
+    nodes=[metadata_store, haiku_data_store, eval_node, retraining_node], 
     loggers=logger
 )
 

@@ -43,7 +43,7 @@ class SqliteMetadataStoreApp(BaseApp):
         
         @self.get("/samples", response_class=HTMLResponse)
         async def samples(request: Request):
-            samples = self.node.get_entries(resource_node="all", state="all")
+            samples = self.node.get_entries()
             for sample in samples:
                 sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
                 if sample['end_time'] is not None:
@@ -53,15 +53,15 @@ class SqliteMetadataStoreApp(BaseApp):
         
         @self.get("/metrics", response_class=HTMLResponse)
         async def metrics(request: Request):
-            rows = self.node.get_metrics(resource_node="all", state="all")
+            rows = self.node.get_metrics()
             return sqlmetadatastore_metrics_table(rows, self.data_options["metrics"])
         
         @self.get("/params", response_class=HTMLResponse)
         async def params(request: Request):
-            rows = self.node.get_params(resource_node="all", state="all")
+            rows = self.node.get_params()
             return sqlmetadatastore_params_table(rows, self.data_options["params"])
 
         @self.get("/tags", response_class=HTMLResponse)
         async def tags(request: Request):
-            rows = self.node.get_tags(resource_node="all", state="all")
+            rows = self.node.get_tags()
             return sqlmetadatastore_tags_table(rows, self.data_options["tags"])
