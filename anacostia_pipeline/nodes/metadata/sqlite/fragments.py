@@ -20,7 +20,7 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
                     newline.join([
                         f'''
                         <tr>
-                            <th>{ run["id"] }</th>
+                            <th>{ run["run_id"] }</th>
                             <td>{ run["start_time"] }</td>
                             <td>{ run["end_time"] }</td>
                         </tr>
@@ -120,8 +120,8 @@ def sqlmetadatastore_metrics_table(metrics: List[Dict[str, str]], metrics_endpoi
                         <tr>
                             <th>{ metric["id"] }</th>
                             <td>{ metric["run_id"] }</td>
-                            <td>{ metric["key"] }</td>
-                            <td>{ metric["value"] }</td>
+                            <td>{ metric["metric_name"] }</td>
+                            <td>{ metric["metric_value"] }</td>
                         </tr>
                         ''' for metric in metrics
                     ])
@@ -150,8 +150,8 @@ def sqlmetadatastore_params_table(params: List[Dict[str, str]], params_endpoint:
                         <tr>
                             <th>{ param["id"] }</th>
                             <td>{ param["run_id"] }</td>
-                            <td>{ param["key"] }</td>
-                            <td>{ param["value"] }</td>
+                            <td>{ param["param_name"] }</td>
+                            <td>{ param["param_value"] }</td>
                         </tr>
                         ''' for param in params
                     ])
@@ -180,8 +180,8 @@ def sqlmetadatastore_tags_table(tags: List[Dict[str, str]], tags_endpoint: str):
                         <tr>
                             <th>{ tag["id"] }</th>
                             <td>{ tag["run_id"] }</td>
-                            <td>{ tag["key"] }</td>
-                            <td>{ tag["value"] }</td>
+                            <td>{ tag["tag_name"] }</td>
+                            <td>{ tag["tag_value"] }</td>
                         </tr>
                         ''' for tag in tags
                     ])

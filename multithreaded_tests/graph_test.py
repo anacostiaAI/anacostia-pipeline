@@ -14,7 +14,7 @@ from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.nodes.metadata.sqlite_store.node import SqliteMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 
 from utils import *
 

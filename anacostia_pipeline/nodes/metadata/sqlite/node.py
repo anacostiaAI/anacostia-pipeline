@@ -1,304 +1,335 @@
+from datetime import datetime
 from logging import Logger
-from typing import List, Dict
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
-from datetime import datetime, timezone
 import os
-from contextlib import contextmanager
-import traceback
+import sqlite3
+from typing import List, Dict
 
-from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.app import SqliteMetadataStoreApp
+from anacostia_pipeline.nodes.node import BaseNode
 
 
 
-Base = declarative_base()
+def convert_datetime(sqlite_datetime_bytes: bytes) -> datetime:
+    """
+    Converter function for SQLite datetime bytes to Python datetime object.
+    Preserves microseconds precision from the SQLite datetime string.
+    
+    Args:
+        sqlite_datetime_bytes: Bytes object containing datetime string in format 'YYYY-MM-DD HH:MM:SS.mmmmmm'
+        
+    Returns:
+        datetime.datetime object or None if input is None/empty
+    """
 
-class Run(Base):
-    __tablename__ = 'runs'
-    id = Column(Integer, primary_key=True)
-    start_time = Column(DateTime, default=datetime.now(timezone.utc))
-    end_time = Column(DateTime)
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-class Metric(Base):
-    __tablename__ = 'metrics'
-    id = Column(Integer, primary_key=True)
-    run_id = Column(Integer)
-    key = Column(String)
-    value = Column(Float)
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-class Param(Base):
-    __tablename__ = 'params'
-    id = Column(Integer, primary_key=True)
-    run_id = Column(Integer)
-    key = Column(String)
-    value = Column(Float)
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-class Tag(Base):
-    __tablename__ = 'tags'
-    id = Column(Integer, primary_key=True)
-    run_id = Column(Integer)
-    key = Column(String)
-    value = Column(String)
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-class Sample(Base):
-    __tablename__ = 'samples'
-    id = Column(Integer, primary_key=True)
-    run_id = Column(Integer)
-    node_id = Column(Integer)
-    location = Column(String)
-    state = Column(String, default="new")
-    end_time = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-class Node(Base):
-    __tablename__ = 'nodes'
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    type = Column(String)
-    init_time = Column(DateTime, default=datetime.now(timezone.utc))
-
-    def as_dict(self):
-       return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    if sqlite_datetime_bytes is None:
+        return None
+    
+    sqlite_datetime = sqlite_datetime_bytes.decode('utf-8')     # Decode bytes to string
+    
+    return datetime.strptime(sqlite_datetime, '%Y-%m-%d %H:%M:%S.%f')
 
 
-@contextmanager
-def scoped_session_manager(session_factory: sessionmaker, node: BaseNode) -> scoped_session: # type: ignore
-    ScopedSession = scoped_session(session_factory)
-    session = ScopedSession()
+# Register custom converter for DATETIME type.
+sqlite3.register_converter('DATETIME', convert_datetime)
 
-    try:
-        yield session
-    except Exception as e:
-        node.log(traceback.format_exc(), level="ERROR")
-        session.rollback()
-        node.log(f"Node {node.name} rolled back session.", level="ERROR")
-        raise e
-    finally:
-        ScopedSession.close()
+
+
+class DatabaseManager:
+    def __init__(self, db_path: str):
+        # Initialize with database path.
+        self.db_path = db_path
+        self._connection = None
+        self._cursor = None
+    
+    def __enter__(self):
+        # Create and return database cursor when entering context.
+        self._connection = sqlite3.connect(
+            database=self.db_path,
+            check_same_thread=False,
+            detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        self._cursor = self._connection.cursor()
+        return self._cursor
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Handle cleanup when exiting context.
+
+        if self._cursor is not None:
+            self._cursor.close()
+            
+        if self._connection is not None:
+            try:
+                if exc_type is None:
+                    self._connection.commit()               # No error occurred - commit changes
+                else:
+                    self._connection.rollback()             # Error occurred - rollback changes 
+                    print(f"Exception type: {exc_type}")    # The class of the exception
+                    print(f"Exception value: {exc_val}")    # The actual error message/details
+                    print(f"Traceback: {exc_tb}")           # Where the error occurred
+            finally:
+                self._connection.close()
+                
+        return False  # Don't suppress exceptions
 
 
 
 class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def __init__(self, name: str, uri: str, loggers: Logger | List[Logger] = None) -> None:
         super().__init__(name, uri, loggers)
-
+    
     # Note: override the get_app() method to return the custom router
     def get_app(self) -> SqliteMetadataStoreApp:
         return SqliteMetadataStoreApp(self)
 
     def setup(self) -> None:
-        path = self.uri.strip('sqlite:///')
-        path = path.split('/')[0:-1]
-        path = '/'.join(path)
-        if os.path.exists(path) is False:
-            os.makedirs(path, exist_ok=True)
+        directory = os.path.dirname(self.uri)
+        if directory != "" and os.path.exists(directory) is False:
+            os.makedirs(directory)
 
-        # Create an engine that stores data in the local directory's sqlite.db file.
-        engine = create_engine(f'{self.uri}', connect_args={"check_same_thread": False})
+        with DatabaseManager(self.uri) as cursor:
 
-        # Create all tables in the engine (this is equivalent to "Create Table" statements in raw SQL).
-        Base.metadata.create_all(engine)
+            # create the runs table
+            cursor.execute("""
+                CREATE TABLE runs (
+                    run_id INTEGER PRIMARY KEY, 
+                    start_time DATETIME, 
+                    end_time DATETIME DEFAULT NULL
+                )
+            """)
 
-        # Create a sessionmaker, binding it to the engine
-        self.session_factory = sessionmaker(bind=engine)
+            # create the nodes table
+            cursor.execute("""
+                CREATE TABLE nodes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    node_name TEXT, 
+                    node_type TEXT,
+                    init_time DATETIME
+                )
+            """)
 
-    def get_run_id(self) -> int:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run = session.query(Run).filter_by(end_time=None).first()
-            return run.id
+            # create the metrics table
+            cursor.execute("""
+                CREATE TABLE metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    run_id INTEGER,
+                    node_id INTEGER,
+                    metric_name TEXT, 
+                    metric_value REAL, 
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
+                )
+            """)
+
+            # create the tags table
+            cursor.execute("""
+                CREATE TABLE tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    run_id INTEGER,
+                    node_id INTEGER,
+                    tag_name TEXT, 
+                    tag_value TEXT, 
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
+                )
+            """)
+
+            # create the params table
+            cursor.execute("""
+                CREATE TABLE params (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    run_id INTEGER,
+                    node_id INTEGER,
+                    param_name TEXT, 
+                    param_value TEXT, 
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
+                )
+            """)
+
+            # create the artifacts table
+            cursor.execute("""
+                CREATE TABLE artifacts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    run_id INTEGER DEFAULT NULL,
+                    node_id INTEGER,
+                    location TEXT, 
+                    created_at DATETIME,
+                    end_time DATETIME DEFAULT NULL,
+                    state TEXT DEFAULT 'new',
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id),
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
+                )
+            """)
     
-    def get_runs(self) -> List[Dict]:
-        with scoped_session_manager(self.session_factory, self) as session:
-            runs = session.query(Run).all()
-            runs = [run.as_dict() for run in runs]
-            return runs
-    
-    def get_num_entries(self, resource_node: BaseResourceNode, state: str) -> int:
-        # add some assertion statements here to check if state is "new", "current", "old", or "all"
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            if state == "all":
-                return session.query(Sample).filter_by(node_id=node_id).count()
-            else:
-                return session.query(Sample).filter_by(node_id=node_id, state=state).count()
-    
-    def add_node(self, resource_node: BaseResourceNode) -> None:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            resource_name = resource_node.name
-            type_name = type(resource_node).__name__
-            node = Node(name=resource_name, type=type_name)
-            session.add(node)
-            session.commit()
-
-    def log_metrics(self, **kwargs) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run_id = self.get_run_id()
-            for key, value in kwargs.items():
-                metric = Metric(run_id=run_id, key=key, value=value)
-                session.add(metric)
-            session.commit()
-    
-    def get_metrics(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            if (resource_node != "all") and (state != "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                metrics = session.query(Metric).filter_by(node_id=node_id, state=state).all()
-        
-            elif (resource_node != "all") and (state == "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                metrics = session.query(Metric).filter_by(node_id=node_id).all()
-
-            elif (resource_node == "all") and (state == "all"):
-                metrics = session.query(Metric).all()
-        
-            elif (resource_node == "all") and (state != "all"):
-                metrics = session.query(Metric).filter_by(state=state).all()
-            
-            metrics = [metric.as_dict() for metric in metrics]
-            return metrics
-    
-    def get_params(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            if (resource_node != "all") and (state != "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                params = session.query(Param).filter_by(node_id=node_id, state=state).all()
-        
-            elif (resource_node != "all") and (state == "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                params = session.query(Param).filter_by(node_id=node_id).all()
-
-            elif (resource_node == "all") and (state == "all"):
-                params = session.query(Param).all()
-        
-            elif (resource_node == "all") and (state != "all"):
-                params = session.query(Param).filter_by(state=state).all()
-            
-            params = [param.as_dict() for param in params]
-            return params
-    
-    def get_tags(self, resource_node: BaseResourceNode, state: str = "all") -> List[Dict]:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            if (resource_node != "all") and (state != "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                tags = session.query(Tag).filter_by(node_id=node_id, state=state).all()
-        
-            elif (resource_node != "all") and (state == "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                tags = session.query(Tag).filter_by(node_id=node_id).all()
-
-            elif (resource_node == "all") and (state == "all"):
-                tags = session.query(Tag).all()
-        
-            elif (resource_node == "all") and (state != "all"):
-                tags = session.query(Tag).filter_by(state=state).all()
-            
-            tags = [tag.as_dict() for tag in tags]
-            return tags
-
-    def log_params(self, **kwargs) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run_id = self.get_run_id()
-            for key, value in kwargs.items():
-                param = Param(run_id=run_id, key=key, value=value)
-                session.add(param)
-            session.commit()
-    
-    def set_tags(self, **kwargs) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run_id = self.get_run_id()
-            for key, value in kwargs.items():
-                tag = Tag(run_id=run_id, key=key, value=value)
-                session.add(tag)
-            session.commit()
-
-    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            if (resource_node != "all") and (state != "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                samples = session.query(Sample).filter_by(node_id=node_id, state=state).all()
-
-            elif (resource_node != "all") and (state == "all"):
-                node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-                samples = session.query(Sample).filter_by(node_id=node_id).all()
-
-            elif (resource_node == "all") and (state == "all"):
-                samples = session.query(Sample).all()
-        
-            elif (resource_node == "all") and (state != "all"):
-                samples = session.query(Sample).filter_by(state=state).all()
-
-            samples = [sample.as_dict() for sample in samples]
-            return samples
-    
-    def get_entry(self, resource_node: BaseResourceNode, id: int) -> Dict:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            sample = session.query(Sample).filter_by(node_id=node_id, id=id).first()
-            return sample.as_dict()
-        
-    def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            return session.query(Sample).filter_by(node_id=node_id, location=filepath).count() > 0
-
-    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
-        with scoped_session_manager(self.session_factory, resource_node) as session:
-            # in the future, refactor this by changing filepath to uri 
-            node_id = session.query(Node).filter_by(name=resource_node.name).first().id
-            sample = Sample(node_id=node_id, location=filepath, state=state, run_id=run_id)
-            session.add(sample)
-            session.commit()
+    def add_node(self, node: BaseNode) -> None:
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute(
+                """INSERT INTO nodes(node_name, node_type, init_time) VALUES (?, ?, ?)""", 
+                (node.name, type(node).__name__, datetime.now(),)
+            )
     
     def start_run(self) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            run = Run()
-            session.add(run)
-            session.commit()
-            self.log(f"--------------------------- started run {run.id} at {datetime.now(timezone.utc)}")
+        with DatabaseManager(self.uri) as cursor:
+            run_id = self.get_run_id()
+            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(),))
+            cursor.execute("UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' ", (run_id,))
 
-            # adding the run_id and setting the state to "current" for each sample
-            for successor in self.successors:
-                if isinstance(successor, BaseResourceNode):
-                    node_id = session.query(Node).filter_by(name=successor.name).first().id
-                    samples = session.query(Sample).filter_by(node_id=node_id, run_id=None).all()
-                    for sample in samples:
-                        sample.run_id = self.get_run_id()
-                        sample.state = "current"
-                        session.commit()
+        self.log(f"--------------------------- started run {run_id} at {datetime.now()}")
     
     def end_run(self) -> None:
-        with scoped_session_manager(self.session_factory, self) as session:
-            # adding the end_time and setting the state to "old" for each sample
-            run_id = self.get_run_id()
-            for successor in self.successors:
-                if isinstance(successor, BaseResourceNode):
-                    node_id = session.query(Node).filter_by(name=successor.name).first().id
-                    samples = session.query(Sample).filter_by(node_id=node_id, run_id=run_id, end_time=None).all()
-                    for sample in samples:
-                        sample.end_time = datetime.now(timezone.utc)
-                        sample.state = "old"
-                        session.commit()
+        with DatabaseManager(self.uri) as cursor:
+            end_time = datetime.now()
+            cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (end_time,))
+            cursor.execute("UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' ", (end_time,))
+    
+        self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
 
-            run: Run = session.query(Run).filter_by(end_time=None).first()
-            run.end_time = datetime.now(timezone.utc)
-            session.commit()
-            self.log(f"--------------------------- ended run {run.id} at {datetime.now(timezone.utc)}")
+    def get_node_id(self, resource_node: BaseResourceNode) -> int:
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (resource_node.name,))
+            return cursor.fetchone()[0]
+    
+    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
+        node_id = self.get_node_id(resource_node)
+
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute(
+                "INSERT INTO artifacts(run_id, node_id, location, created_at, state) VALUES (?, ?, ?, ?, ?)", 
+                (run_id, node_id, filepath, datetime.now(), state)
+            )
+
+    def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
+        node_id = self.get_node_id(resource_node)
+
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND location = ?", (node_id, filepath))
+            return cursor.fetchone() is not None
+
+    def get_num_entries(self, resource_node: BaseResourceNode, state: str = "all") -> int:
+        node_id = self.get_node_id(resource_node)
+
+        with DatabaseManager(self.uri) as cursor:
+            if state == "all":
+                cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ? AND state = ?", (node_id, state))
+            return cursor.fetchone()[0]
+    
+    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
+        if (resource_node != "all") and (state != "all"):
+            node_id = self.get_node_id(resource_node)
+            sample_query = "SELECT * FROM artifacts WHERE node_id = ? AND state = ?"
+            sample_args = (node_id, state,)
+        elif (resource_node != "all") and (state == "all"):
+            node_id = self.get_node_id(resource_node)
+            sample_query = "SELECT * FROM artifacts WHERE node_id = ?"
+            sample_args = (node_id,)
+        elif (resource_node == "all") and (state != "all"):
+            sample_query = "SELECT * FROM artifacts WHERE state = ?"
+            sample_args = (state,)
+        else:
+            sample_query = "SELECT * FROM artifacts"
+            sample_args = ()
+        
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute(sample_query, sample_args)
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_runs(self) -> List[Dict]:
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute("SELECT * FROM runs")
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+
+    def log_metrics(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for metric_name, metric_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO metrics(run_id, node_id, metric_name, metric_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, metric_name, metric_value)
+                )
+    
+    def log_params(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for param_name, param_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO params(run_id, node_id, param_name, param_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, param_name, param_value)
+                )
+    
+    def set_tags(self, node: BaseNode, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node)
+        with DatabaseManager(self.uri) as cursor:
+            for tag_name, tag_value in kwargs.items():
+                cursor.execute(
+                    "INSERT INTO tags(run_id, node_id, tag_name, tag_value) VALUES (?, ?, ?, ?)", 
+                    (run_id, node_id, tag_name, tag_value)
+                )
+    
+    def get_metrics(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM metrics WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM metrics")
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_params(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM params WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM params WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM params WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM params")
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+    
+    def get_tags(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
+        node_id = self.get_node_id(node) if node is not None else None
+
+        with DatabaseManager(self.uri) as cursor:
+            if run_id is not None and node_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            elif run_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE run_id = ?", (run_id,))
+            elif node_id is not None:
+                cursor.execute("SELECT * FROM tags WHERE node_id = ?", (node_id,))
+            else:
+                cursor.execute("SELECT * FROM tags")
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+
+
+
+if __name__ == "__main__":
+    node = SqliteMetadataStoreNode(name="sqlite_metadata_store", uri="metadata.db")
+    node.setup()
+    node.add_node(BaseResourceNode(name="resource_node", resource_path="file.txt", metadata_store=node))
