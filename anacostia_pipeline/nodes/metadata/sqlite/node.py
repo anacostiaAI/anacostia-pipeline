@@ -186,10 +186,27 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
         self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
 
-    def get_node_id(self, resource_node: BaseResourceNode) -> int:
+    def get_node_id(self, node: BaseNode) -> int:
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (resource_node.name,))
+            cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (node.name,))
             return cursor.fetchone()[0]
+    
+    def get_nodes_info(self, node_id: int = None, node: BaseNode = None) -> List[Dict]:
+        if node_id is not None:
+            sample_query = "SELECT * FROM nodes WHERE id = ?"
+            sample_args = (node_id,)
+        elif node is not None:
+            sample_query = "SELECT * FROM nodes WHERE node_name = ?"
+            sample_args = (node.name,)
+        else:
+            sample_query = "SELECT * FROM nodes"
+            sample_args = ()
+        
+        with DatabaseManager(self.uri) as cursor:
+            cursor.execute(sample_query, sample_args)
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
     
     def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
         node_id = self.get_node_id(resource_node)

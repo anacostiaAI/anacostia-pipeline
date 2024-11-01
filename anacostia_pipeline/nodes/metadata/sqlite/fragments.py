@@ -75,6 +75,7 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                 <tr>
                     <th>Sample ID</th>
                     <th>Run ID</th>
+                    <th>Node Name</th>
                     <th>Created At</th>
                     <th>End Time</th>
                     <th>Location</th>
@@ -88,6 +89,7 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                         <tr>
                             <th>{ sample["id"] }</th>
                             <td>{ sample["run_id"] }</td>
+                            <td>{ sample["node_name"] }</td>
                             <td>{ sample["created_at"] }</td>
                             <td>{ sample["end_time"] }</td>
                             <td>{ sample["location"] }</td>
@@ -109,6 +111,7 @@ def sqlmetadatastore_metrics_table(metrics: List[Dict[str, str]], metrics_endpoi
                 <tr>
                     <th>Entry ID</th>
                     <th>Run ID</th>
+                    <th>Node Name</th>
                     <th>Metric</th>
                     <th>Value</th>
                 </tr>
@@ -120,6 +123,7 @@ def sqlmetadatastore_metrics_table(metrics: List[Dict[str, str]], metrics_endpoi
                         <tr>
                             <th>{ metric["id"] }</th>
                             <td>{ metric["run_id"] }</td>
+                            <td>{ metric["node_name"] }</td>
                             <td>{ metric["metric_name"] }</td>
                             <td>{ metric["metric_value"] }</td>
                         </tr>
@@ -139,6 +143,7 @@ def sqlmetadatastore_params_table(params: List[Dict[str, str]], params_endpoint:
                 <tr>
                     <th>Entry ID</th>
                     <th>Run ID</th>
+                    <th>Node Name</th>
                     <th>Param Name</th>
                     <th>Value</th>
                 </tr>
@@ -150,6 +155,7 @@ def sqlmetadatastore_params_table(params: List[Dict[str, str]], params_endpoint:
                         <tr>
                             <th>{ param["id"] }</th>
                             <td>{ param["run_id"] }</td>
+                            <td>{ param["node_name"] }</td>
                             <td>{ param["param_name"] }</td>
                             <td>{ param["param_value"] }</td>
                         </tr>
@@ -169,6 +175,7 @@ def sqlmetadatastore_tags_table(tags: List[Dict[str, str]], tags_endpoint: str):
                 <tr>
                     <th>Entry ID</th>
                     <th>Run ID</th>
+                    <th>Node Name</th>
                     <th>Tag Name</th>
                     <th>Value</th>
                 </tr>
@@ -180,6 +187,7 @@ def sqlmetadatastore_tags_table(tags: List[Dict[str, str]], tags_endpoint: str):
                         <tr>
                             <th>{ tag["id"] }</th>
                             <td>{ tag["run_id"] }</td>
+                            <td>{ tag["node_name"] }</td>
                             <td>{ tag["tag_name"] }</td>
                             <td>{ tag["tag_value"] }</td>
                         </tr>
