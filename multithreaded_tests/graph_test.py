@@ -14,7 +14,7 @@ from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sqlite_store.node import SqliteMetadataStoreNode
 
 from utils import *
 
@@ -76,9 +76,10 @@ class ModelRetrainingNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("old"):
             self.log(f"Already trained on {filepath}", level="INFO")
         
-        self.metadata_store.log_metrics(acc=1.00)
+        self.metadata_store.log_metrics(self, acc=1.00)
         
         self.metadata_store.log_params(
+            self,
             batch_size = 64, # how many independent sequences will we process in parallel?
             block_size = 256, # what is the maximum context length for predictions?
             max_iters = 2500,
@@ -93,7 +94,7 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(test_name="Karpathy LLM test")
+        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
@@ -110,7 +111,7 @@ class ShakespeareEvalNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        self.metadata_store.log_metrics(self, shakespeare_test_loss=1.47)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -124,7 +125,7 @@ class HaikuEvalNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
-        self.metadata_store.log_metrics(haiku_test_loss=2.43)
+        self.metadata_store.log_metrics(self, haiku_test_loss=2.43)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -154,7 +155,7 @@ plots_path = f"{path}/plots"
 
 metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
-    uri=f"sqlite:///{metadata_store_path}/metadata.db"
+    uri=f"{metadata_store_path}/metadata.db"
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
