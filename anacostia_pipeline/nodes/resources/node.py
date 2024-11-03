@@ -1,8 +1,6 @@
 from typing import List, Union
 from logging import Logger
 import threading
-from threading import RLock
-from functools import wraps
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -18,22 +16,10 @@ class BaseResourceNode(BaseNode):
     ) -> None:
         super().__init__(name, predecessors=[metadata_store], loggers=loggers)
         self.resource_path = resource_path
-        self.resource_lock = RLock()
         self.monitoring = monitoring
         self.metadata_store = metadata_store
         self.resource_event = threading.Event()
 
-    def resource_accessor(func):
-        @wraps(func)
-        def resource_accessor_wrapper(self: 'BaseResourceNode', *args, **kwargs):
-            # keep trying to acquire lock until function is finished
-            # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
-            while True:
-                with self.resource_lock:
-                    result = func(self, *args, **kwargs)
-                    return result
-        return resource_accessor_wrapper
-    
     @BaseNode.log_exception
     def start_monitoring(self) -> None:
         """
@@ -56,7 +42,6 @@ class BaseResourceNode(BaseNode):
             self.work_list.remove(Work.MONITORING_RESOURCE)
 
     @BaseNode.log_exception
-    @resource_accessor
     def record_new(self) -> None:
         """
         override to specify how to detect new files and mark the detected files as 'new'
@@ -64,7 +49,6 @@ class BaseResourceNode(BaseNode):
         raise NotImplementedError
     
     @BaseNode.log_exception
-    @resource_accessor
     def record_current(self) -> None:
         """
         override to specify how to label newly created files as 'current'

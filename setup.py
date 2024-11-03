@@ -45,7 +45,6 @@ setup(
     install_requires=[
         "networkx==3.1",
         "pydantic",
-        "sqlalchemy",
         "fastapi", 
         "uvicorn[standard]",
         "httpx" 
