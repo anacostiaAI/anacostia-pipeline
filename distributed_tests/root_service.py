@@ -125,7 +125,7 @@ plots_path = f"{output_path}/plots"
 
 metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
-    uri=f"sqlite:///{metadata_store_path}/metadata.db"
+    uri=f"{metadata_store_path}/metadata.db"
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
