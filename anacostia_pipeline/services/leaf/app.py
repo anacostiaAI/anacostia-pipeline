@@ -89,6 +89,10 @@ class LeafServiceApp(FastAPI):
 
             leaf_data = {"pipeline_id": pipeline_id}
             return leaf_data
+        
+        @self.get("/get_pipeline_config", status_code=status.HTTP_200_OK)
+        def get_pipeline_config():
+            return self.pipeline.model().model_dump()
 
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
