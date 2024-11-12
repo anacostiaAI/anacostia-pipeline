@@ -67,6 +67,16 @@ class RootServiceApp(FastAPI):
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
     
+        # Connect to the leaf services
+        asyncio.run(self.connect())
+
+        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
+        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
+        pipeline_server = RootPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+        pipeline_server.client = httpx.AsyncClient()
+
+        self.mount(f"/", pipeline_server)
+
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
             if level == "DEBUG":
@@ -158,13 +168,6 @@ class RootServiceApp(FastAPI):
             self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
             
     def run(self):
-        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
-        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
-        pipeline_server = RootPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
-        pipeline_server.client = httpx.AsyncClient()
-
-        self.mount(f"/", pipeline_server)
-
         original_sigint_handler = signal.getsignal(signal.SIGINT)
 
         def _kill_webserver(sig, frame):
@@ -186,6 +189,3 @@ class RootServiceApp(FastAPI):
 
         # Launch the root pipeline
         self.pipeline.launch_nodes()
-
-        # Connect to the leaf services
-        asyncio.run(self.connect())
