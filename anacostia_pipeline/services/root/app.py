@@ -6,7 +6,8 @@ from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
@@ -14,11 +15,15 @@ import uvicorn
 import httpx
 from pydantic import BaseModel
 
+from anacostia_pipeline.nodes.node import NodeModel
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
 
+from anacostia_pipeline.utils.constants import Work
+
+from anacostia_pipeline.services.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
 class RootServiceData(BaseModel):
@@ -162,6 +167,39 @@ class RootServiceApp(FastAPI):
                                 if connection["sender_name"] == node.name:
                                     connection["pipeline_id"] = pipeline_id
             self.log("------------- Leaf pipeline creation completed -------------")
+
+            self.log("------------- Obtaining leaf pipeline configuration -------------")
+            # obtain pipeline configuration from each leaf service and use it to render the pipeline graph
+            tasks = []
+            for ip_address in self.leaf_ip_addresses:
+                tasks.append(self.client.get(f"http://{ip_address}/get_pipeline_config"))
+
+            responses = await asyncio.gather(*tasks)
+
+            leaf_nodes_models = []
+            for response in responses:
+                response_data = response.json()
+                leaf_nodes_models.extend(response_data["nodes"])
+
+            self.log(leaf_nodes_models)
+            
+            for node in self.pipeline.nodes:
+                node_model = node.model()
+                node_model.set_origin_url(f"http://{self.host}:{self.port}")
+
+                if isinstance(node, SenderNode):
+                    # set the 'successors' attribute of the sender node to the receiver node
+                    for leaf_node_model in leaf_nodes_models:
+
+                        if leaf_node_model["name"] == node.leaf_receiver:
+                            node_model.add_successor(leaf_node_model["name"])
+
+            # TODO: convert the leaf_node_model to a NodeModel object and call self.pipeline.model().add_node(node_model)
+            for leaf_node_model in leaf_nodes_models:
+                node_model = NodeModel(**leaf_node_model)
+                #self.pipeline.pipeline_model.add_node(node_model)
+
+            self.log("------------- Leaf pipeline configuration obtained -------------")
 
         except Exception as e:
             print(f"Failed to connect to leaf at {ip_address} with error: {e}")

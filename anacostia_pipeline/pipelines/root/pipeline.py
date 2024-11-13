@@ -26,6 +26,9 @@ class PipelineModel(BaseModel):
 
     nodes: List[NodeModel]
 
+    def add_node(self, node: NodeModel):
+        self.nodes.append(node)
+
 
 class RootPipeline:
     """

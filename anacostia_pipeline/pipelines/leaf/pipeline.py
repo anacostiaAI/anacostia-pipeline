@@ -2,15 +2,26 @@ from typing import List, Iterable, Union
 from threading import Thread
 from datetime import datetime
 from logging import Logger
+from pydantic import BaseModel, ConfigDict
 
 import networkx as nx
 
-from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.utils.constants import Status
 
 from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
+
+
+
+class PipelineModel(BaseModel):
+    '''
+    A Pydantic Model for validation and serialization of a Pipeline
+    '''
+    model_config = ConfigDict(from_attributes=True)
+
+    nodes: List[NodeModel]
 
 
 
