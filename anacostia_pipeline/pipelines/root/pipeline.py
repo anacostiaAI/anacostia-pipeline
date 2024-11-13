@@ -112,11 +112,22 @@ class RootPipeline:
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
         """
 
+        self.pipeline_model = PipelineModel(nodes=[n.model() for n in self.nodes])
+
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
+    
+    def set_pipeline_model(self, pipeline_model: PipelineModel):
+        """
+        Sets the pipeline model for the pipeline. This is used by the root service to create a pipeline model from all of the leaf pipeline models.
+        """
+        self.pipeline_model = pipeline_model
 
     def model(self):
-        return PipelineModel(nodes=[n.model() for n in self.nodes])
+        if self.pipeline_model is None:
+            return PipelineModel(nodes=[n.model() for n in self.nodes])
+        else:
+            return self.pipeline_model
     
     def setup_nodes(self):
         """

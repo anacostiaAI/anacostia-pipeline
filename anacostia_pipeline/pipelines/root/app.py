@@ -139,7 +139,7 @@ class RootPipelineApp(FastAPI):
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     def __frontend_json(self):
-        model = self.pipeline.model().model_dump()
+        model = self.pipeline.pipeline_model.model_dump()
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
             node_model["id"] = node_model["name"]
