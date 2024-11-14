@@ -5,10 +5,13 @@ import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
+import os
+import sys
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.routing import Mount
 
 import uvicorn
@@ -16,8 +19,8 @@ import httpx
 from pydantic import BaseModel
 
 from anacostia_pipeline.nodes.node import NodeModel
+from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.pipelines.root.app import RootPipelineApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
 
@@ -48,12 +51,6 @@ class RootServiceApp(FastAPI):
 
             yield
 
-            for route in app.routes:
-                if isinstance(route, Mount):
-                    if isinstance(route.app, RootPipelineApp):
-                        app.log(f"Closing client for webserver '{route.app.name}'")
-                        await route.app.client.aclose()
-
             app.log(f"Closing client for service '{app.name}'")
             # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
             # RuntimeError: unable to perform operation on <TCPTransport closed=True reading=False 0x121fa0fd0>; the handler is close
@@ -68,6 +65,11 @@ class RootServiceApp(FastAPI):
         self.leaf_ip_addresses = []
         self.client = httpx.AsyncClient()
 
+        # Mount the static files directory to the webserver
+        DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
+        self.static_dir = os.path.join(DASHBOARD_DIR, "static")
+        self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
+
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
@@ -75,12 +77,70 @@ class RootServiceApp(FastAPI):
         # Connect to the leaf services
         asyncio.run(self.connect())
 
-        # Note: we do not need to create a pipeline ID for the root service because there is only one root pipeline
-        # leaf services create pipeline IDs because leaf services can connect to and spin up multiple pipelines for multiple services 
-        pipeline_server = RootPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
-        pipeline_server.client = httpx.AsyncClient()
+        # Mount the apps from the pipeline nodes to the webserver
+        for node in self.pipeline.nodes:
+            node_subapp: BaseApp = node.get_app()
+            self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
-        self.mount(f"/", pipeline_server)
+        @self.get('/', response_class=HTMLResponse)
+        async def index(request: Request):
+            frontend_json = self.__frontend_json()
+            nodes = frontend_json["nodes"]
+            return index_template(nodes, frontend_json, "/graph_sse")
+
+        @self.get("/header_bar", response_class=HTMLResponse)
+        def header_bar(node_id: str, visibility: bool = False):
+            html_responses = []
+            frontend_json = self.__frontend_json()
+
+            node_models = frontend_json["nodes"]
+            for node_model in node_models:
+                if node_model["id"] != node_id:
+                    snippet = node_bar_invisible(node_model=node_model)
+                else:
+                    if visibility is False:
+                        snippet = node_bar_closed(node_model=node_model, open_div_endpoint=f'/header_bar/?node_id={node_model["id"]}&visibility=true')
+                    else:
+                        snippet = node_bar_open(node_model=node_model, close_div_endpoint=f'/header_bar/?node_id={node_model["id"]}&visibility=false') 
+
+                html_responses.append(snippet)
+
+            return "\n".join(html_responses)
+            
+        @self.get('/graph_sse', response_class=StreamingResponse)
+        async def graph_sse(request: Request):
+            edge_color_table = {}
+            for node in self.pipeline.nodes:
+                for successor in node.successors:
+                    edge_color_table[f"{node.name}_{successor.name}"] = None
+
+            async def event_stream():
+                while True:
+                    try:
+                        for node in self.pipeline.nodes:
+                            for successor in node.successors:
+                                edge_name = f"{node.name}_{successor.name}"
+
+                                if Work.WAITING_SUCCESSORS in node.work_list:
+                                    if edge_color_table[edge_name] != "red":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: red\n\n"
+                                        edge_color_table[edge_name] = "red"
+                                else: 
+                                    if edge_color_table[edge_name] != "black":
+                                        yield f"event: {edge_name}_change_edge_color\n"
+                                        yield f"data: black\n\n"
+                                        edge_color_table[edge_name] = "black"
+                                
+                        await asyncio.sleep(0.1)
+
+                    except asyncio.CancelledError:
+                        print("event source /graph_sse closed")
+                        yield "event: close\n"
+                        yield "data: \n\n"
+                        break
+
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
@@ -205,6 +265,30 @@ class RootServiceApp(FastAPI):
             print(f"Failed to connect to leaf at {ip_address} with error: {e}")
             self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
             
+    def __frontend_json(self):
+        model = self.pipeline.pipeline_model.model_dump()
+        edges = []
+        for node_model, node in zip(model["nodes"], self.pipeline.nodes):
+            node_model["id"] = node_model["name"]
+            # label is for creating a more readable name, in the future, enable users to input their own labels
+            node_model["label"] = node_model["name"].replace("_", " ")
+            node_model["endpoint"] = node.get_app().get_endpoint()
+            node_model["status_endpoint"] = node.get_app().get_status_endpoint()
+            node_model["work_endpoint"] = node.get_app().get_work_endpoint()
+            node_model["header_bar_endpoint"] = f'''/header_bar/?node_id={node_model["id"]}'''
+
+            edges_from_node = [
+                { 
+                    "source": node_model["id"], "target": successor, 
+                    "event_name": f"{node_model['id']}_{successor}_change_edge_color" 
+                } 
+                for successor in node_model["successors"]
+            ]
+            edges.extend(edges_from_node)
+
+        model["edges"] = edges
+        return model
+
     def run(self):
         original_sigint_handler = signal.getsignal(signal.SIGINT)
 
