@@ -216,6 +216,7 @@ class RootServiceApp(FastAPI):
 
             for response in responses:
                 response_data = response.json()
+                self.log(f"leaf data: {response_data}")
                 pipeline_id = response_data["pipeline_id"]
 
                 for node in self.pipeline.nodes:
@@ -228,39 +229,6 @@ class RootServiceApp(FastAPI):
                                     connection["pipeline_id"] = pipeline_id
             self.log("------------- Leaf pipeline creation completed -------------")
 
-            self.log("------------- Obtaining leaf pipeline configuration -------------")
-            # obtain pipeline configuration from each leaf service and use it to render the pipeline graph
-            tasks = []
-            for ip_address in self.leaf_ip_addresses:
-                tasks.append(self.client.get(f"http://{ip_address}/get_pipeline_config"))
-
-            responses = await asyncio.gather(*tasks)
-
-            leaf_nodes_models = []
-            for response in responses:
-                response_data = response.json()
-                leaf_nodes_models.extend(response_data["nodes"])
-
-            self.log(leaf_nodes_models)
-            
-            for node in self.pipeline.nodes:
-                node_model = node.model()
-                node_model.set_origin_url(f"http://{self.host}:{self.port}")
-
-                if isinstance(node, SenderNode):
-                    # set the 'successors' attribute of the sender node to the receiver node
-                    for leaf_node_model in leaf_nodes_models:
-
-                        if leaf_node_model["name"] == node.leaf_receiver:
-                            node_model.add_successor(leaf_node_model["name"])
-
-            # TODO: convert the leaf_node_model to a NodeModel object and call self.pipeline.model().add_node(node_model)
-            for leaf_node_model in leaf_nodes_models:
-                node_model = NodeModel(**leaf_node_model)
-                #self.pipeline.pipeline_model.add_node(node_model)
-
-            self.log("------------- Leaf pipeline configuration obtained -------------")
-
         except Exception as e:
             print(f"Failed to connect to leaf at {ip_address} with error: {e}")
             self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
@@ -272,9 +240,11 @@ class RootServiceApp(FastAPI):
             node_model["id"] = node_model["name"]
             # label is for creating a more readable name, in the future, enable users to input their own labels
             node_model["label"] = node_model["name"].replace("_", " ")
-            node_model["endpoint"] = node.get_app().get_endpoint()
-            node_model["status_endpoint"] = node.get_app().get_status_endpoint()
-            node_model["work_endpoint"] = node.get_app().get_work_endpoint()
+
+            subapp = node.get_app()
+            node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
+            node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
+            node_model["work_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_work_endpoint()}"
             node_model["header_bar_endpoint"] = f'''/header_bar/?node_id={node_model["id"]}'''
 
             edges_from_node = [

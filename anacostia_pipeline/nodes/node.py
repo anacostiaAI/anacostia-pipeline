@@ -20,14 +20,10 @@ class NodeModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str
-    origin_url: str = ""
     type: Optional[str]
     predecessors: List[str]
     successors: List[str]
 
-    def set_origin_url(self, origin: str):
-        self.origin_url = origin
-    
     def add_successor(self, successor: str):
         self.successors.append(successor)
     

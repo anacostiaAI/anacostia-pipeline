@@ -19,6 +19,7 @@ from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
 from anacostia_pipeline.services.root.app import RootServiceData
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
+from anacostia_pipeline.nodes.app import BaseApp
 
 
 
@@ -73,6 +74,8 @@ class LeafServiceApp(FastAPI):
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
         def create_pipeline(root_service_node_data: List[RootServiceData]):
             pipeline_id = uuid.uuid4().hex
+
+            # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline
             pipeline_server = LeafPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
             self.mount(f"/{pipeline_id}", pipeline_server)
             self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
@@ -88,12 +91,17 @@ class LeafServiceApp(FastAPI):
             pipeline_server.pipeline.launch_nodes() 
 
             leaf_data = {"pipeline_id": pipeline_id}
+            leaf_data["nodes"] = pipeline_server.pipeline.model().model_dump()["nodes"]
+
+            for leaf_data_node, leaf_node in zip(leaf_data["nodes"], pipeline_server.pipeline.nodes):
+                subapp: BaseApp = leaf_node.get_app()
+                leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}/{pipeline_id}"
+                leaf_data_node["home_endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_endpoint()}"
+                leaf_data_node["status_endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_status_endpoint()}"
+                leaf_data_node["work_endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_work_endpoint()}"
+
             return leaf_data
         
-        @self.get("/get_pipeline_config", status_code=status.HTTP_200_OK)
-        def get_pipeline_config():
-            return self.pipeline.model().model_dump()
-
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
             if level == "DEBUG":
