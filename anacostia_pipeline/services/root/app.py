@@ -63,6 +63,7 @@ class RootServiceApp(FastAPI):
         self.logger = logger
         self.connections = []
         self.leaf_ip_addresses = []
+        self.leaf_configs = []
         self.client = httpx.AsyncClient()
 
         # Mount the static files directory to the webserver
@@ -216,8 +217,9 @@ class RootServiceApp(FastAPI):
 
             for response in responses:
                 response_data = response.json()
-                self.log(f"leaf data: {response_data}")
+                # self.log(f"leaf data: {response_data}")
                 pipeline_id = response_data["pipeline_id"]
+                self.leaf_configs.append(response_data)
 
                 for node in self.pipeline.nodes:
                     if isinstance(node, SenderNode):
@@ -242,6 +244,7 @@ class RootServiceApp(FastAPI):
             node_model["label"] = node_model["name"].replace("_", " ")
 
             subapp = node.get_app()
+            node_model["origin_url"] = f"http://{self.host}:{self.port}"
             node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
             node_model["work_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_work_endpoint()}"
@@ -255,6 +258,13 @@ class RootServiceApp(FastAPI):
                 for successor in node_model["successors"]
             ]
             edges.extend(edges_from_node)
+
+        for leaf_config in self.leaf_configs:
+            for leaf_data_node in leaf_config["nodes"]:
+                leaf_data_node["header_bar_endpoint"] = f'/header_bar/?node_id={leaf_data_node["id"]}'
+
+            model["nodes"].extend(leaf_config["nodes"])
+            edges.extend(leaf_config["edges"])
 
         model["edges"] = edges
         return model
