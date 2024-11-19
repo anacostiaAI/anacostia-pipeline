@@ -118,6 +118,7 @@ class RootServiceApp(FastAPI):
             async def event_stream():
                 while True:
                     try:
+                        # we can replace both these for loops with a single while loop that consumes events from a queue
                         for node in self.pipeline.nodes:
                             for successor in node.successors:
                                 edge_name = f"{node.name}_{successor.name}"
@@ -132,6 +133,15 @@ class RootServiceApp(FastAPI):
                                         yield f"event: {edge_name}_change_edge_color\n"
                                         yield f"data: black\n\n"
                                         edge_color_table[edge_name] = "black"
+                        
+                        for leaf_config in self.leaf_configs:
+                            # Check if the leaf pipeline is waiting for successors
+                            for edge in leaf_config["edges"]:
+                                edge_name = f"{edge['source']}_{edge['target']}"
+                                if edge_color_table[edge_name] != "black":
+                                    yield f"event: {edge_name}_change_edge_color\n"
+                                    yield f"data: black\n\n"
+                                    edge_color_table[edge_name] = "black"
                                 
                         await asyncio.sleep(0.1)
 
