@@ -109,6 +109,11 @@ class RootServiceApp(FastAPI):
                 html_responses.append(snippet)
 
             return "\n".join(html_responses)
+        
+        @self.post('/send_event')
+        async def send_event(event: str, data: str):
+            self.queue.put_nowait({"event": event, "data": data})
+            return {"status": "ok"}
             
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
