@@ -19,8 +19,8 @@ from pydantic import BaseModel
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
-
 from anacostia_pipeline.services.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
+
 
 
 class RootServiceData(BaseModel):
@@ -112,11 +112,6 @@ class RootServiceApp(FastAPI):
             
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
-            edge_color_table = {}
-            for node in self.pipeline.nodes:
-                for successor in node.successors:
-                    edge_color_table[f"{node.name}_{successor.name}"] = None
-
             async def event_stream():
                 while True:
                     try:
