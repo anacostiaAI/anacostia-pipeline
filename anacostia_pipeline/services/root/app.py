@@ -1,16 +1,14 @@
 import threading
 import signal
 import asyncio
-import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
-from typing import List, Dict
 import os
 import sys
+from queue import Queue
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Mount
 
@@ -18,13 +16,9 @@ import uvicorn
 import httpx
 from pydantic import BaseModel
 
-from anacostia_pipeline.nodes.node import NodeModel
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
-
-from anacostia_pipeline.utils.constants import Work
 
 from anacostia_pipeline.services.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
@@ -50,6 +44,11 @@ class RootServiceApp(FastAPI):
             app.log(f"Opening client for service '{app.name}'")
 
             yield
+            
+            for route in app.routes:
+                if isinstance(route, Mount) and isinstance(route.app, BaseApp):
+                    subapp: BaseApp = route.app
+                    subapp.stop_monitoring_work()
 
             app.log(f"Closing client for service '{app.name}'")
             # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
@@ -65,6 +64,7 @@ class RootServiceApp(FastAPI):
         self.leaf_ip_addresses = []
         self.leaf_configs = []
         self.client = httpx.AsyncClient()
+        self.queue = Queue()
 
         # Mount the static files directory to the webserver
         DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
@@ -81,6 +81,8 @@ class RootServiceApp(FastAPI):
         # Mount the apps from the pipeline nodes to the webserver
         for node in self.pipeline.nodes:
             node_subapp: BaseApp = node.get_app()
+            node_subapp.set_queue(self.queue)
+            node_subapp.start_monitoring_work()
             self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
 
         @self.get('/', response_class=HTMLResponse)
@@ -118,31 +120,11 @@ class RootServiceApp(FastAPI):
             async def event_stream():
                 while True:
                     try:
-                        # we can replace both these for loops with a single while loop that consumes events from a queue
-                        for node in self.pipeline.nodes:
-                            for successor in node.successors:
-                                edge_name = f"{node.name}_{successor.name}"
+                        if self.queue.empty() is False:
+                            message = self.queue.get_nowait()
+                            yield f"event: {message['event']}\n"
+                            yield f"data: {message['data']}\n\n"
 
-                                if Work.WAITING_SUCCESSORS in node.work_list:
-                                    if edge_color_table[edge_name] != "red":
-                                        yield f"event: {edge_name}_change_edge_color\n"
-                                        yield f"data: red\n\n"
-                                        edge_color_table[edge_name] = "red"
-                                else: 
-                                    if edge_color_table[edge_name] != "black":
-                                        yield f"event: {edge_name}_change_edge_color\n"
-                                        yield f"data: black\n\n"
-                                        edge_color_table[edge_name] = "black"
-                        
-                        for leaf_config in self.leaf_configs:
-                            # Check if the leaf pipeline is waiting for successors
-                            for edge in leaf_config["edges"]:
-                                edge_name = f"{edge['source']}_{edge['target']}"
-                                if edge_color_table[edge_name] != "black":
-                                    yield f"event: {edge_name}_change_edge_color\n"
-                                    yield f"data: black\n\n"
-                                    edge_color_table[edge_name] = "black"
-                                
                         await asyncio.sleep(0.1)
 
                     except asyncio.CancelledError:
