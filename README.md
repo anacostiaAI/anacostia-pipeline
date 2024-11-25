@@ -71,7 +71,7 @@ class ShakespeareEvalNode(BaseActionNode):
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
+        print("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
         return True
 

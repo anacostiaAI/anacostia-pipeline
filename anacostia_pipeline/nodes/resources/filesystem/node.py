@@ -4,14 +4,12 @@ from datetime import datetime
 from logging import Logger
 from threading import Thread
 import traceback
-import time
 import fcntl
 from contextlib import contextmanager
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNodeApp
-from anacostia_pipeline.utils.constants import Status
 
 
 
@@ -136,8 +134,12 @@ class FilesystemStoreNode(BaseResourceNode):
         return artifacts
     
     @BaseResourceNode.log_exception
-    def get_artifact(self, id: int) -> Dict:
-        return self.metadata_store.get_entry(self, id)
+    def get_artifact(self, id: int) -> Dict | None:
+        entries = self.metadata_store.get_entries(resource_node=self)
+        for entry in entries:
+            if entry["id"] == id:
+                return entry
+        return None
     
     @BaseResourceNode.log_exception
     def get_num_artifacts(self, state: str) -> int:
