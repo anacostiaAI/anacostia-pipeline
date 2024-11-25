@@ -13,6 +13,12 @@ from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNod
 
 
 
+class EntryNotFoundError(Exception):
+    """Raised when an entry with specified ID is not found"""
+    pass
+
+
+
 @contextmanager
 def locked_file(filename, mode='r'):
     with open(filename, mode) as file:
@@ -134,12 +140,25 @@ class FilesystemStoreNode(BaseResourceNode):
         return artifacts
     
     @BaseResourceNode.log_exception
-    def get_artifact(self, id: int) -> Dict | None:
+    def get_artifact(self, id: int) -> Dict:
+        """
+        Get artifact entry by ID.
+
+        Args:
+            id: The ID of the artifact to retrieve
+            
+        Returns:
+            Dict: The artifact entry
+            
+        Raises:
+            EntryNotFoundError: If no entry exists with the specified ID
+        """
+
         entries = self.metadata_store.get_entries(resource_node=self)
         for entry in entries:
             if entry["id"] == id:
                 return entry
-        return None
+        raise EntryNotFoundError(f"No entry found with id: {id}")
     
     @BaseResourceNode.log_exception
     def get_num_artifacts(self, state: str) -> int:
