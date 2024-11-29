@@ -75,8 +75,35 @@ class RootServiceApp(FastAPI):
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
     
+        # Extract data about leaf pipelines from the sender nodes in the pipeline
+        for node in self.pipeline.nodes:
+            if isinstance(node, SenderNode):
+                connection_dict = {
+                    "root_name": self.name,
+                    "leaf_host": node.leaf_host,
+                    "leaf_port": node.leaf_port,
+                    "root_host": self.host,
+                    "root_port": self.port,
+                    "sender_name": node.name,
+                    "receiver_name": node.leaf_receiver,
+                    "pipeline_id": ""
+                }
+                
+                if any([connection_dict["receiver_name"] == connection["receiver_name"] for connection in self.connections]):
+                    raise ValueError(f"Duplicate receiver name '{connection_dict['receiver_name']}' found in the pipeline")
+                else:
+                    self.connections.append(connection_dict)
+
+            # Extract the leaf ip addresses from the connections
+            for connection in self.connections:
+                pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
+                if pipeline_ip_address not in self.leaf_ip_addresses:
+                    self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
+                    self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
+
         # Connect to the leaf services
-        asyncio.run(self.connect())
+        if len(self.leaf_ip_addresses) > 0:
+            asyncio.run(self.connect())
 
         # Mount the apps from the pipeline nodes to the webserver
         for node in self.pipeline.nodes:
@@ -153,32 +180,6 @@ class RootServiceApp(FastAPI):
             print(f"{level}: {message}")
     
     async def connect(self):
-        # Extract data about leaf pipelines from the sender nodes in the pipeline
-        for node in self.pipeline.nodes:
-            if isinstance(node, SenderNode):
-                connection_dict = {
-                    "root_name": self.name,
-                    "leaf_host": node.leaf_host,
-                    "leaf_port": node.leaf_port,
-                    "root_host": self.host,
-                    "root_port": self.port,
-                    "sender_name": node.name,
-                    "receiver_name": node.leaf_receiver,
-                    "pipeline_id": ""
-                }
-                
-                if any([connection_dict["receiver_name"] == connection["receiver_name"] for connection in self.connections]):
-                    raise ValueError(f"Duplicate receiver name '{connection_dict['receiver_name']}' found in the pipeline")
-                else:
-                    self.connections.append(connection_dict)
-
-            # Extract the leaf ip addresses from the connections
-            for connection in self.connections:
-                pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
-                if pipeline_ip_address not in self.leaf_ip_addresses:
-                    self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
-                    self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
-
         try:
             # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
             # Instead, we use await self.client.post because we already have an httpx.AsyncClient() object 
