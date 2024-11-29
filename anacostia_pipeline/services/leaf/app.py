@@ -12,13 +12,12 @@ from starlette.routing import Mount
 
 import uvicorn
 import httpx
-from pydantic import BaseModel
 
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
-from anacostia_pipeline.services.root.app import RootServiceData
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
+from anacostia_pipeline.nodes.network.utils import ConnectionModel
 from anacostia_pipeline.nodes.app import BaseApp
 
 
@@ -72,7 +71,7 @@ class LeafServiceApp(FastAPI):
             return {"status": "ok"}
 
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
-        def create_pipeline(root_service_node_data: List[RootServiceData]):
+        def create_pipeline(root_service_node_data: List[ConnectionModel]):
             pipeline_id = uuid.uuid4().hex
 
             # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline

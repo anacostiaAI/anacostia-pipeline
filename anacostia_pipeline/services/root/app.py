@@ -14,24 +14,11 @@ from starlette.routing import Mount
 
 import uvicorn
 import httpx
-from pydantic import BaseModel
 
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.services.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
-
-
-
-class RootServiceData(BaseModel):
-    root_name: str
-    leaf_host: str
-    leaf_port: int
-    root_host: str
-    root_port: int
-    sender_name: str
-    receiver_name: str
-    pipeline_id: str
 
 
 
