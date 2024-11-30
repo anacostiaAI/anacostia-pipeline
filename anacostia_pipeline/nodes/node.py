@@ -1,7 +1,6 @@
 from __future__ import annotations
-from threading import Thread, Lock, RLock, Event
+from threading import Thread, Lock, Event
 from typing import List, Union, Optional, Dict
-import time
 from logging import Logger
 from datetime import datetime
 from functools import wraps
@@ -23,12 +22,6 @@ class NodeModel(BaseModel):
     type: Optional[str]
     predecessors: List[str]
     successors: List[str]
-
-    def add_successor(self, successor: str):
-        self.successors.append(successor)
-    
-    def add_predecessor(self, predecessor: str):
-        self.predecessors.append(predecessor)
 
 
 
@@ -202,5 +195,3 @@ class BaseNode(Thread):
         override to specify the logic of the node.
         """
         raise NotImplementedError
-
-

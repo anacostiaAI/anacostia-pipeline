@@ -15,9 +15,8 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
-from anacostia_pipeline.nodes.network.utils import ConnectionModel
+from anacostia_pipeline.pipelines.utils import ConnectionModel
 from anacostia_pipeline.nodes.app import BaseApp
-from anacostia_pipeline.utils.basics import log
 
 
 
@@ -94,7 +93,7 @@ class LeafPipelineApp(FastAPI):
 
         @asynccontextmanager
         async def lifespan(app: LeafPipelineApp):
-            log(logger, f"Opening client for service '{app.name}'")
+            app.logger.info(f"Opening client for service '{app.name}'")
 
             yield
 
@@ -103,10 +102,10 @@ class LeafPipelineApp(FastAPI):
                     subapp = route.app
 
                     if isinstance(subapp, LeafSubApp):
-                        log(logger, f"Closing client for webserver '{subapp.get_pipeline_id()}'")
+                        app.logger.info(f"Closing client for webserver '{subapp.get_pipeline_id()}'")
                         await subapp.client.aclose()
 
-            log(logger, f"Closing client for service '{app.name}'")
+            app.logger.info(f"Closing client for service '{app.name}'")
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -143,7 +142,7 @@ class LeafPipelineApp(FastAPI):
             pipeline_server = LeafSubApp(pipeline=self.pipeline, root_data=root_service_node_data, host=self.host, port=self.port)
             pipeline_id = pipeline_server.get_pipeline_id()
             self.mount(f"/{pipeline_id}", pipeline_server)
-            log(self.logger, f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
+            self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             self.pipelines[pipeline_id] = pipeline_server
 
             pipeline_server.start_pipeline()

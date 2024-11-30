@@ -28,7 +28,7 @@ class RootPipelineApp(FastAPI):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: RootPipelineApp):
-            app.log(f"Opening client for service '{app.name}'")
+            app.logger.info(f"Opening client for service '{app.name}'")
 
             yield
             
@@ -37,7 +37,7 @@ class RootPipelineApp(FastAPI):
                     subapp: BaseApp = route.app
                     subapp.stop_monitoring_work()
 
-            app.log(f"Closing client for service '{app.name}'")
+            app.logger.info(f"Closing client for service '{app.name}'")
             # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
             # RuntimeError: unable to perform operation on <TCPTransport closed=True reading=False 0x121fa0fd0>; the handler is close
         
@@ -86,7 +86,7 @@ class RootPipelineApp(FastAPI):
                 pipeline_ip_address = f"{connection['leaf_host']}:{connection['leaf_port']}"
                 if pipeline_ip_address not in self.leaf_ip_addresses:
                     self.leaf_ip_addresses.append(f"{connection['leaf_host']}:{connection['leaf_port']}")
-                    self.log(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
+                    self.logger.info(f"Root service '{self.name}' beginning connection protocol to leaf services at ip addresses: {self.leaf_ip_addresses}")
 
         # Connect to the leaf services
         if len(self.leaf_ip_addresses) > 0:
@@ -101,14 +101,14 @@ class RootPipelineApp(FastAPI):
 
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
-            frontend_json = self.__frontend_json()
+            frontend_json = self.frontend_json()
             nodes = frontend_json["nodes"]
             return index_template(nodes, frontend_json, "/graph_sse")
 
         @self.get("/header_bar", response_class=HTMLResponse)
         def header_bar(node_id: str, visibility: bool = False):
             html_responses = []
-            frontend_json = self.__frontend_json()
+            frontend_json = self.frontend_json()
 
             node_models = frontend_json["nodes"]
             for node_model in node_models:
@@ -149,23 +149,6 @@ class RootPipelineApp(FastAPI):
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    def log(self, message: str, level: str = "INFO"):
-        if self.logger is not None:
-            if level == "DEBUG":
-                self.logger.debug(message)
-            elif level == "INFO":
-                self.logger.info(message)
-            elif level == "WARNING":
-                self.logger.warning(message)
-            elif level == "ERROR":
-                self.logger.error(message)
-            elif level == "CRITICAL":
-                self.logger.critical(message)
-            else:
-                raise ValueError(f"Invalid log level: {level}")
-        else:
-            print(f"{level}: {message}")
-    
     async def connect(self):
         try:
             # Note: don't use httpx.post here, it will throw an error "object Response can't be used in 'await' expression"
@@ -174,7 +157,7 @@ class RootPipelineApp(FastAPI):
             # See this video: https://www.youtube.com/watch?v=row-SdNdHFE
 
             # Send a /healthcheck request to each leaf service
-            self.log("------------- Healthcheck started -------------")
+            self.logger.info("------------- Healthcheck started -------------")
             tasks = []
             for ip_address in self.leaf_ip_addresses:
                 tasks.append(self.client.post(f"http://{ip_address}/healthcheck"))
@@ -184,10 +167,10 @@ class RootPipelineApp(FastAPI):
             for response in responses:
                 response_data = response.json()
                 if response_data["status"] == "ok":
-                    self.log(f"Successfully connected to leaf at {ip_address}")
-            self.log("------------- Healthcheck completed -------------")
+                    self.logger.info(f"Successfully connected to leaf at {ip_address}")
+            self.logger.info("------------- Healthcheck completed -------------")
                 
-            self.log("------------- Leaf pipeline creation started -------------")
+            self.logger.info("------------- Leaf pipeline creation started -------------")
             # Send a /create_pipeline request to each leaf service and store the pipeline ID
             tasks = []
             for ip_address in self.leaf_ip_addresses:
@@ -197,7 +180,7 @@ class RootPipelineApp(FastAPI):
 
             for response in responses:
                 response_data = response.json()
-                # self.log(f"leaf data: {response_data}")
+                # self.logger.info(f"leaf data: {response_data}")
                 pipeline_id = response_data["pipeline_id"]
                 self.leaf_configs.append(response_data)
 
@@ -209,13 +192,13 @@ class RootPipelineApp(FastAPI):
                             for connection in self.connections:
                                 if connection["sender_name"] == node.name:
                                     connection["pipeline_id"] = pipeline_id
-            self.log("------------- Leaf pipeline creation completed -------------")
+            self.logger.info("------------- Leaf pipeline creation completed -------------")
 
         except Exception as e:
             print(f"Failed to connect to leaf at {ip_address} with error: {e}")
             self.logger.error(f"Failed to connect to leaf at {ip_address} with error: {e}")
             
-    def __frontend_json(self):
+    def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
