@@ -1,11 +1,7 @@
 import time
 import os
 import sys
-from threading import Thread
 import numpy as np
-import random
-from typing import Tuple
-from logging import Logger
 
 sys.path.append('..')
 sys.path.append('../anacostia_pipeline')
@@ -61,21 +57,3 @@ def run_computational_task(node: BaseNode, duration_seconds: int):
 
     node.log(f"Node {node.name} completed the computationally intensive task.")
     
-
-# move log method into utils.py
-def log(logger: Logger, message: str, level: str = "INFO"):
-    if logger is not None:
-        if level == "DEBUG":
-            logger.debug(message)
-        elif level == "INFO":
-            logger.info(message)
-        elif level == "WARNING":
-            logger.warning(message)
-        elif level == "ERROR":
-            logger.error(message)
-        elif level == "CRITICAL":
-            logger.critical(message)
-        else:
-            raise ValueError(f"Invalid log level: {level}")
-    else:
-        print(f"{level}: {message}")

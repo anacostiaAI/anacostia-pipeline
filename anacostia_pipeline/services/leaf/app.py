@@ -14,12 +14,82 @@ import uvicorn
 import httpx
 
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
-from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
 from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
+from anacostia_pipeline.nodes.network.sender.app import SenderApp
+from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.nodes.network.utils import ConnectionModel
 from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.utils.basics import log
 
+
+
+class LeafSubApp(FastAPI):
+    def __init__(
+        self, 
+        pipeline: LeafPipeline, 
+        root_data: List[ConnectionModel], 
+        host="127.0.0.1", 
+        port=8000, 
+        logger: Logger = None, 
+        *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.pipeline = pipeline
+        self.root_data = root_data
+        self.host = host
+        self.port = port
+        self.client = httpx.AsyncClient()
+        self.logger = logger
+        self.pipeline_id = uuid.uuid4().hex      # figure out a way to merge this pipeline_id with the pipeline_id in LeafServiceApp
+
+        for node_data in root_data:
+            for node in self.pipeline.nodes:
+                subapp = node.get_app()
+
+                if isinstance(node, ReceiverNode) or isinstance(node, SenderNode):
+                    subapp.set_leaf_pipeline_id(self.pipeline_id)
+                    if node.name == node_data.receiver_name:
+                        subapp.set_sender(node_data.sender_name, node_data.root_host, node_data.root_port)
+                
+                self.mount(subapp.get_node_prefix(), subapp)       # mount the BaseNodeApp to PipelineWebserver
+    
+    def get_pipeline_id(self):
+        return self.pipeline_id
+    
+    def start_pipeline(self):
+        self.pipeline.launch_nodes()
+    
+    def stop_pipeline(self):
+        self.pipeline.terminate_nodes()
+
+    def frontend_json(self):
+        leaf_data = {"pipeline_id": self.pipeline_id}
+        leaf_data["nodes"] = self.pipeline.model().model_dump()["nodes"]
+
+        edges = []
+        for leaf_data_node, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
+            subapp: BaseApp = leaf_node.get_app()
+            leaf_data_node["id"] = leaf_data_node["name"]
+            leaf_data_node["label"] = leaf_data_node["name"].replace("_", " ")
+
+            leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}/{self.pipeline_id}"
+            leaf_data_node["endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_endpoint()}"
+            leaf_data_node["status_endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_status_endpoint()}"
+            leaf_data_node["work_endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_work_endpoint()}"
+
+            edges_from_node = [
+                { 
+                    "source": leaf_data_node["id"], "target": successor, 
+                    "event_name": f"{leaf_data_node['id']}_{successor}_change_edge_color" 
+                } 
+                for successor in leaf_data_node["successors"]
+            ]
+            edges.extend(edges_from_node)
+
+        leaf_data["edges"] = edges
+        return leaf_data
+    
 
 
 class LeafServiceApp(FastAPI):
@@ -35,8 +105,8 @@ class LeafServiceApp(FastAPI):
                 if isinstance(route, Mount):
                     subapp = route.app
 
-                    if isinstance(subapp, LeafPipelineApp):
-                        app.log(f"Closing client for webserver '{subapp.name}'")
+                    if isinstance(subapp, LeafSubApp):
+                        app.log(f"Closing client for webserver '{subapp.get_pipeline_id()}'")
                         await subapp.client.aclose()
 
             app.log(f"Closing client for service '{app.name}'")
@@ -64,7 +134,7 @@ class LeafServiceApp(FastAPI):
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
-        self.pipelines: Dict[str, LeafPipeline] = {}
+        self.pipelines: Dict[str, LeafSubApp] = {}
 
         @self.post("/healthcheck", status_code=status.HTTP_200_OK)
         async def healthcheck():
@@ -73,46 +143,14 @@ class LeafServiceApp(FastAPI):
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
         def create_pipeline(root_service_node_data: List[ConnectionModel]):
             # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline
-            pipeline_server = LeafPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+            pipeline_server = LeafSubApp(pipeline=self.pipeline, root_data=root_service_node_data, host=self.host, port=self.port)
             pipeline_id = pipeline_server.get_pipeline_id()
             self.mount(f"/{pipeline_id}", pipeline_server)
             self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
-            self.pipelines[pipeline_id] = pipeline_server.pipeline
+            self.pipelines[pipeline_id] = pipeline_server
 
-            for node_data in root_service_node_data:
-                for node in pipeline_server.pipeline.nodes:
-                    if node.name == node_data.receiver_name:
-                        subapp: ReceiverApp = node.get_app()
-                        subapp.set_sender(node_data.sender_name, node_data.root_host, node_data.root_port)
-                        subapp.set_leaf_pipeline_id(pipeline_id)
-
-            pipeline_server.pipeline.launch_nodes() 
-
-            leaf_data = {"pipeline_id": pipeline_id}
-            leaf_data["nodes"] = pipeline_server.pipeline.model().model_dump()["nodes"]
-
-            edges = []
-            for leaf_data_node, leaf_node in zip(leaf_data["nodes"], pipeline_server.pipeline.nodes):
-                subapp: BaseApp = leaf_node.get_app()
-                leaf_data_node["id"] = leaf_data_node["name"]
-                leaf_data_node["label"] = leaf_data_node["name"].replace("_", " ")
-
-                leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}/{pipeline_id}"
-                leaf_data_node["endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_endpoint()}"
-                leaf_data_node["status_endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_status_endpoint()}"
-                leaf_data_node["work_endpoint"] = f"http://{self.host}:{self.port}/{pipeline_id}{subapp.get_work_endpoint()}"
-
-                edges_from_node = [
-                    { 
-                        "source": leaf_data_node["id"], "target": successor, 
-                        "event_name": f"{leaf_data_node['id']}_{successor}_change_edge_color" 
-                    } 
-                    for successor in leaf_data_node["successors"]
-                ]
-                edges.extend(edges_from_node)
-
-            leaf_data["edges"] = edges
-            return leaf_data
+            pipeline_server.start_pipeline()
+            return pipeline_server.frontend_json()
         
     def log(self, message: str, level: str = "INFO"):
         if self.logger is not None:
@@ -142,7 +180,7 @@ class LeafServiceApp(FastAPI):
 
             for pipeline_id, pipeline in self.pipelines.items():
                 print(f"Killing pipeline '{pipeline_id}'")
-                pipeline.terminate_nodes()
+                pipeline.stop_pipeline()
 
             # register the original default kill handler once the pipeline is killed
             signal.signal(signal.SIGINT, original_sigint_handler)
