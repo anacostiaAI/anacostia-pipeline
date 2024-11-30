@@ -97,7 +97,7 @@ class LeafServiceApp(FastAPI):
 
         @asynccontextmanager
         async def lifespan(app: LeafServiceApp):
-            app.log(f"Opening client for service '{app.name}'")
+            log(logger, f"Opening client for service '{app.name}'")
 
             yield
 
@@ -106,10 +106,10 @@ class LeafServiceApp(FastAPI):
                     subapp = route.app
 
                     if isinstance(subapp, LeafSubApp):
-                        app.log(f"Closing client for webserver '{subapp.get_pipeline_id()}'")
+                        log(logger, f"Closing client for webserver '{subapp.get_pipeline_id()}'")
                         await subapp.client.aclose()
 
-            app.log(f"Closing client for service '{app.name}'")
+            log(logger, f"Closing client for service '{app.name}'")
             await app.client.aclose()
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
@@ -146,29 +146,12 @@ class LeafServiceApp(FastAPI):
             pipeline_server = LeafSubApp(pipeline=self.pipeline, root_data=root_service_node_data, host=self.host, port=self.port)
             pipeline_id = pipeline_server.get_pipeline_id()
             self.mount(f"/{pipeline_id}", pipeline_server)
-            self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
+            log(self.logger, f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             self.pipelines[pipeline_id] = pipeline_server
 
             pipeline_server.start_pipeline()
             return pipeline_server.frontend_json()
         
-    def log(self, message: str, level: str = "INFO"):
-        if self.logger is not None:
-            if level == "DEBUG":
-                self.logger.debug(message)
-            elif level == "INFO":
-                self.logger.info(message)
-            elif level == "WARNING":
-                self.logger.warning(message)
-            elif level == "ERROR":
-                self.logger.error(message)
-            elif level == "CRITICAL":
-                self.logger.critical(message)
-            else:
-                raise ValueError(f"Invalid log level: {level}")
-        else:
-            print(f"{level}: {message}")
-
     def run(self):
         original_sigint_handler = signal.getsignal(signal.SIGINT)
 
