@@ -72,10 +72,9 @@ class LeafServiceApp(FastAPI):
 
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
         def create_pipeline(root_service_node_data: List[ConnectionModel]):
-            pipeline_id = uuid.uuid4().hex
-
             # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline
             pipeline_server = LeafPipelineApp(name="pipeline", pipeline=self.pipeline, host=self.host, port=self.port)
+            pipeline_id = pipeline_server.get_pipeline_id()
             self.mount(f"/{pipeline_id}", pipeline_server)
             self.log(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
             self.pipelines[pipeline_id] = pipeline_server.pipeline
