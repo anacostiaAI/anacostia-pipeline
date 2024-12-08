@@ -90,22 +90,10 @@ text.append("tspan")
 // setting color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
 arrowhead.attr("fill", "#333");
-arrowhead.attr("_", (e) => { 
-    return `
-    on ${g.edge(e).event_name} from EventStream
-        set my @fill to event.data
-    end`; 
-});
 
 const edge = inner.selectAll(".edgePath path.path");
 edge.attr("stroke-width", "1.5");
 edge.attr("stroke", "#333");
-edge.attr("_", (e) => { 
-    return `
-    on ${g.edge(e).event_name} from EventStream
-        set my @stroke to event.data 
-    end`;
-});
 
 var initialScale = 1;
 

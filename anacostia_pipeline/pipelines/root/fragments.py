@@ -78,9 +78,6 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <!-- non-minified Htmx -->
             <script src="/static/js/third_party/htmx.js" type="text/javascript"></script>
 
-            <!-- minified _Hyperscript (Whole 9 Yards version) -->
-            <script src="/static/js/third_party/_hyperscript_w9y.min.js"></script>
-
             <!-- htmx server-sent events extension -->
             <script src="/static/js/third_party/sse.js"></script>
         </head>
@@ -111,23 +108,12 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
                     ) 
                 }
             </div>
-            <div id="page_content" 
-                _=" eventsource EventStream from {graph_sse_endpoint}
-                        on open 
-                            log 'event source {graph_sse_endpoint} connected'
-                        end
-                    end
-                    on htmx:beforeSwap
-                        if event.detail.target == htmx.find('#page_content')
-                            log 'event source {graph_sse_endpoint} closed'
-                            EventStream.close() 
-                        end
-                    end">
+            <div id="page_content">
                 
                 <!-- Load CSS for DAG before <svg> and D3, Dagre, Dagre-D3 to allow page to load quicker -->
                 <link rel="stylesheet" type="text/css" href="/static/css/styles/dag.css">
 
-                <div id="graph">
+                <div id="graph" hx-ext="sse" sse-connect="{graph_sse_endpoint}" sse-swap="EdgeColorChange">
                     <svg width="960" height="700"><g/></svg> 
                     <section id="footer">
                         <p>Potomac AI Inc.</p>
