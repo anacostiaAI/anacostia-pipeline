@@ -37,7 +37,8 @@ edges.forEach((edge) => {
     g.setEdge(
         edge.source, 
         edge.target, 
-        { 
+        {
+            id: `edge_${edge.source}_${edge.target}`, 
             arrowhead: "vee",
             event_name: edge.event_name
         }
@@ -87,13 +88,16 @@ text.append("tspan")
     .attr("hx-trigger", "load, every 1s")
     .attr("hx-swap", "innerHTML");
 
-// setting color of edge and arrowhead
+// setting initial color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
 arrowhead.attr("fill", "#333");
 
 const edge = inner.selectAll(".edgePath path.path");
 edge.attr("stroke-width", "1.5");
 edge.attr("stroke", "#333");
+edge.attr("id", (e) => {
+    return `path_${g.edge(e).id}`; 
+});
 
 document.body.addEventListener('htmx:sseOpen', (event) => {
     const sse_element = event.detail.elt;
@@ -106,7 +110,17 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
             event.preventDefault();     // call preventDefault() to prevent the sse-swap="EdgeColorChange" from swapping in the data
 
             const data = JSON.parse(event.detail.data);
-            console.log(data);
+
+            //const edge_element = document.getElementById(`path_edge_${data.source}_${data.target}`);
+            //edge_element.setAttribute("stroke", data.color); 
+
+            const edge_container = document.getElementById(`edge_${data.source}_${data.target}`);
+
+            const arrow = edge_container.querySelector("defs marker");
+            arrow.setAttribute("fill", data.color);
+
+            const edge_path = edge_container.querySelector("path.path");
+            edge_path.setAttribute("stroke", data.color);
         });
     }
 });
