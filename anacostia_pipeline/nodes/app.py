@@ -1,6 +1,7 @@
 from queue import Queue
 from threading import Thread, Event
 import time
+import json
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -75,9 +76,15 @@ class BaseApp(FastAPI):
         self.work_monitor_thread.join()
     
     def send_edge_color_change_event(self, source: str, target: str, color: str):
+        data = {
+            "source": source,
+            "target": target,
+            "color": color
+        }
+
         self.queue.put_nowait(
             {
-                "event": f"{source}_{target}_change_edge_color",
-                "data": color
+                "event": f"EdgeColorChange",
+                "data": json.dumps(data)
             }
         )
