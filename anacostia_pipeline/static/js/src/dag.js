@@ -38,9 +38,8 @@ edges.forEach((edge) => {
         edge.source, 
         edge.target, 
         {
-            id: `edge_${edge.source}_${edge.target}`, 
-            arrowhead: "vee",
-            event_name: edge.event_name
+            id: edge.id, 
+            arrowhead: "vee"
         }
     );
 });
@@ -74,7 +73,7 @@ const rect = inner.selectAll("rect");
 rect.attr("rx", 10);
 rect.attr("ry", 10);
 rect.attr("fill", "white");
-rect.attr("stroke", "#333");
+rect.attr("stroke", "black");
 rect.attr("stroke-width", "1.5");
 rect.attr("cursor", "pointer");
 

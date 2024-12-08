@@ -219,7 +219,7 @@ class RootPipelineApp(FastAPI):
             edges_from_node = [
                 { 
                     "source": node_model["id"], "target": successor, 
-                    "event_name": f"{node_model['id']}_{successor}_change_edge_color" 
+                    "id": f"edge_{node_model['id']}_{successor}" 
                 } 
                 for successor in node_model["successors"]
             ]
