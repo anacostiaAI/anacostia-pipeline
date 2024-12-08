@@ -90,14 +90,11 @@ text.append("tspan")
 
 // setting initial color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
-arrowhead.attr("fill", "#333");
+arrowhead.attr("fill", "black");
 
 const edge = inner.selectAll(".edgePath path.path");
 edge.attr("stroke-width", "1.5");
-edge.attr("stroke", "#333");
-edge.attr("id", (e) => {
-    return `path_${g.edge(e).id}`; 
-});
+edge.attr("stroke", "black");
 
 document.body.addEventListener('htmx:sseOpen', (event) => {
     const sse_element = event.detail.elt;
@@ -110,9 +107,6 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
             event.preventDefault();     // call preventDefault() to prevent the sse-swap="EdgeColorChange" from swapping in the data
 
             const data = JSON.parse(event.detail.data);
-
-            //const edge_element = document.getElementById(`path_edge_${data.source}_${data.target}`);
-            //edge_element.setAttribute("stroke", data.color); 
 
             const edge_container = document.getElementById(`edge_${data.source}_${data.target}`);
 
