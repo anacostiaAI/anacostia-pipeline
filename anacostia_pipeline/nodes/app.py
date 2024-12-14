@@ -20,20 +20,13 @@ class BaseApp(FastAPI):
         self.queue: Queue | None = None
         self.is_running = False
         self.shutdown_event = Event()
-        self.edge_color = "black"
 
         def __monitoring_work():
             while self.shutdown_event.is_set() is False:
                 if Work.WAITING_SUCCESSORS in self.node.work_list:
-                    if self.edge_color == "black":
-                        self.edge_color = "red"
-                        for successor in self.node.successors:
-                            self.send_edge_color_change_event(self.node.name, successor.name, self.edge_color)
+                    pass
                 else:
-                    if self.edge_color == "red":
-                        self.edge_color = "black"
-                        for successor in self.node.successors:
-                            self.send_edge_color_change_event(self.node.name, successor.name, self.edge_color)
+                    pass
                 
                 time.sleep(0.1)
             
@@ -41,7 +34,7 @@ class BaseApp(FastAPI):
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint():
-            return f"{repr(self.node.status)}"
+            return f'''{repr(self.node.status)}'''
         
         @self.get("/work", response_class=HTMLResponse)
         async def work_endpoint():
@@ -75,16 +68,3 @@ class BaseApp(FastAPI):
         self.shutdown_event.set()
         self.work_monitor_thread.join()
     
-    def send_edge_color_change_event(self, source: str, target: str, color: str):
-        data = {
-            "source": source,
-            "target": target,
-            "color": color
-        }
-
-        self.queue.put_nowait(
-            {
-                "event": f"EdgeColorChange",
-                "data": json.dumps(data)
-            }
-        )

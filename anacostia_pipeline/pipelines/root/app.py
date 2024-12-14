@@ -202,11 +202,9 @@ class RootPipelineApp(FastAPI):
         model = self.pipeline.pipeline_model.model_dump()
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
-            node_model["id"] = node_model["name"]
-            # label is for creating a more readable name, in the future, enable users to input their own labels
-            node_model["label"] = node_model["name"].replace("_", " ")
-
             subapp = node.get_app()
+            node_model["id"] = node_model["name"]
+            node_model["label"] = node_model["name"]
             node_model["origin_url"] = f"http://{self.host}:{self.port}"
             node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
