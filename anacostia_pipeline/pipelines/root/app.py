@@ -257,3 +257,9 @@ class RootPipelineApp(FastAPI):
 
         # Launch the root pipeline
         self.pipeline.launch_nodes()
+
+        # keep the main thread open; this is done to avoid "RuntimeError: can't create new thread at interpreter shutdown"
+        for thread in threading.enumerate():
+            if thread.daemon or thread is threading.current_thread():
+                continue
+            thread.join()

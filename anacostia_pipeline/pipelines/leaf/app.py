@@ -5,7 +5,7 @@ from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
@@ -137,16 +137,24 @@ class LeafPipelineApp(FastAPI):
             return {"status": "ok"}
 
         @self.post("/create_pipeline", status_code=status.HTTP_200_OK)
-        def create_pipeline(root_service_node_data: List[ConnectionModel]):
-            # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline
-            pipeline_server = LeafSubApp(pipeline=self.pipeline, root_data=root_service_node_data, host=self.host, port=self.port)
-            pipeline_id = pipeline_server.get_pipeline_id()
-            self.mount(f"/{pipeline_id}", pipeline_server)
-            self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
-            self.pipelines[pipeline_id] = pipeline_server
+        async def create_pipeline(connections: List[ConnectionModel]):
+            try:
+                # Note: be careful here with passing self.pipeline to the LeafPipelineApp, we want to create a new instance of the pipeline
+                pipeline_server = LeafSubApp(pipeline=self.pipeline, root_data=connections, host=self.host, port=self.port)
+                pipeline_id = pipeline_server.get_pipeline_id()
+                self.mount(f"/{pipeline_id}", pipeline_server)
+                self.logger.info(f"Leaf service '{self.name}' created pipeline '{pipeline_id}'")
+                self.pipelines[pipeline_id] = pipeline_server
 
-            pipeline_server.start_pipeline()
-            return pipeline_server.frontend_json()
+                pipeline_server.start_pipeline()
+                return pipeline_server.frontend_json()
+
+            except Exception as e:
+                self.logger.error(f"Leaf error: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to create pipeline: {str(e)}"
+                )
         
     def run(self):
         original_sigint_handler = signal.getsignal(signal.SIGINT)
@@ -167,3 +175,9 @@ class LeafPipelineApp(FastAPI):
         # register the kill handler for the webserver
         signal.signal(signal.SIGINT, _kill_webserver)
         self.fastapi_thread.start()
+
+        # keep the main thread open; this is done to avoid "RuntimeError: can't create new thread at interpreter shutdown"
+        for thread in threading.enumerate():
+            if thread.daemon or thread is threading.current_thread():
+                continue
+            thread.join()

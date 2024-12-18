@@ -1,5 +1,4 @@
 import os
-import time
 import logging
 from dotenv import load_dotenv
 import argparse
@@ -151,8 +150,3 @@ pipeline = RootPipeline(
 
 service = RootPipelineApp(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger)
 service.run()
-
-time.sleep(6)
-for i in range(10):
-    create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
-    time.sleep(1.5)
