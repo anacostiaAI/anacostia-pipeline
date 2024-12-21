@@ -76,15 +76,35 @@ rect.attr("fill", "white");
 rect.attr("stroke", "black");
 rect.attr("stroke-width", "1.5");
 rect.attr("cursor", "pointer");
+rect.attr("class", "outer-rect");
+
+// drawing the rectangle for the status of the node
+node_container.append("rect")
+              .attr("class", "status-rect")
+              .attr("width", "40")
+              .attr("height", "20")
+              .attr("fill", "red")
+              .attr("opacity", "0.5");
+
+let node_text = inner.selectAll(".node .label g");
+let status_rect = inner.selectAll(".status-rect");
+status_rect.attr("transform", function(d, i) {
+    // Get the transform attribute from the corresponding node_text element at the same index
+    const transform_str = node_text.nodes()[i].getAttribute("transform");
+    const first_part = transform_str.split(',')[0];     // yields a string like 'translate(x'
+    return `${first_part},5)`;
+});
+
 
 const text = inner.selectAll(".node .label g text");
 text.append("tspan")
+    .attr("class", "status-text")
     .attr("space", "preserve")
     .attr("dy", "1em")
     .attr("x", "1")
     .attr("hx-get", (v) => { return g.node(v).status_endpoint; })
     .attr("hx-target", "this")
-    .attr("hx-trigger", "load, every 1s")
+    .attr("hx-trigger", "load")
     .attr("hx-swap", "innerHTML");
 
 // setting initial color of edge and arrowhead
@@ -94,29 +114,6 @@ arrowhead.attr("fill", "black");
 const edge = inner.selectAll(".edgePath path.path");
 edge.attr("stroke-width", "1.5");
 edge.attr("stroke", "black");
-
-document.body.addEventListener('htmx:sseOpen', (event) => {
-    const sse_element = event.detail.elt;
-
-    if (sse_element.id === "graph") {
-        console.log('/graph_sse event source opened');
-
-        const graph = document.getElementById("graph");
-        graph.addEventListener('htmx:sseBeforeMessage', (event) => {
-            event.preventDefault();     // call preventDefault() to prevent the sse-swap="EdgeColorChange" from swapping in the data
-
-            const data = JSON.parse(event.detail.data);
-
-            const edge_container = document.getElementById(`edge_${data.source}_${data.target}`);
-
-            const arrow = edge_container.querySelector("defs marker");
-            arrow.setAttribute("fill", data.color);
-
-            const edge_path = edge_container.querySelector("path.path");
-            edge_path.setAttribute("stroke", data.color);
-        });
-    }
-});
 
 var initialScale = 1;
 
