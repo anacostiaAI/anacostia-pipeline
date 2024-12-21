@@ -104,9 +104,7 @@ class BaseMetadataStoreNode(BaseNode):
 
             # creating a new run
             if self.exit_event.is_set(): break
-            self.work_list.append(Work.STARTING_RUN)
             self.start_run()
-            self.work_list.remove(Work.STARTING_RUN)
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             if self.exit_event.is_set(): break
@@ -118,9 +116,7 @@ class BaseMetadataStoreNode(BaseNode):
             
             # ending the run
             if self.exit_event.is_set(): break
-            self.work_list.append(Work.ENDING_RUN)
             self.end_run()
-            self.work_list.remove(Work.ENDING_RUN)
 
             self.run_id += 1
             

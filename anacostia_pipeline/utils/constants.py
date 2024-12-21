@@ -9,7 +9,6 @@ class Status(Enum):
     PAUSED = 9,
     EXITING = 10,
     EXITED = 11,
-    DISCONNECTED = 15,
     ERROR = 2,
 
     def __repr__(self) -> str:
@@ -22,7 +21,6 @@ class Status(Enum):
             Status.EXITED: "EXITED",
             Status.INIT: "INITIALIZING",
             Status.OFF: "OFF",
-            Status.DISCONNECTED: "DISCONNECTED",
             Status.ERROR: "ERROR",
         }
         return status_words[self]
@@ -44,34 +42,24 @@ class Work(Enum):
     WAITING_RESOURCE = 0,
     WAITING_SUCCESSORS = 1,
     WAITING_PREDECESSORS = 2,
-    UPDATING_STATE = 3,
-    BEFORE_EXECUTION = 4,
-    EXECUTION = 5,
-    AFTER_EXECUTION = 6
-    ON_SUCCESS = 7,
-    ON_FAILURE = 8,
-    ON_ERROR = 9,
-    WAITING_EXTERNAL_EVENT = 10,
-    MONITORING_RESOURCE = 11,
-    STARTING_RUN = 12,
-    ENDING_RUN = 13,
+    BEFORE_EXECUTION = 3,
+    EXECUTION = 4,
+    AFTER_EXECUTION = 5
+    ON_SUCCESS = 6,
+    ON_FAILURE = 7,
+    ON_ERROR = 8,
 
     def __repr__(self) -> str:
         status_words = {
             Work.WAITING_RESOURCE: "WAITING_RESOURCE",
             Work.WAITING_SUCCESSORS: "WAITING_SUCCESSORS",
             Work.WAITING_PREDECESSORS: "WAITING_PREDECESSORS",
-            Work.WAITING_EXTERNAL_EVENT: "WAITING_EXTERNAL_EVENT",
-            Work.MONITORING_RESOURCE: "MONITORING_RESOURCE",
-            Work.UPDATING_STATE: "UPDATE_STATE",
             Work.BEFORE_EXECUTION: "BEFORE_EXECUTION",
             Work.EXECUTION: "EXECUTION",
             Work.AFTER_EXECUTION: "AFTER_EXECUTION",
             Work.ON_SUCCESS: "ON_SUCCESS",
             Work.ON_FAILURE: "ON_FAILURE",
             Work.ON_ERROR: "ON_ERROR",
-            Work.STARTING_RUN: "STARTING_RUN",
-            Work.ENDING_RUN: "ENDING_RUN",
         }
         return status_words[self]
     

@@ -39,7 +39,6 @@ class BaseResourceNode(BaseNode):
     def on_exit(self):
         if self.monitoring is True:
             self.stop_monitoring()
-            self.work_list.remove(Work.MONITORING_RESOURCE)
 
     @BaseNode.log_exception
     def record_new(self) -> None:
@@ -62,7 +61,6 @@ class BaseResourceNode(BaseNode):
         # set custom events like resource_event and implement custom exit logic after calling the parent class exit method
         if self.monitoring is True:
             self.stop_monitoring()
-            self.work_list.remove(Work.MONITORING_RESOURCE)
         
         self.resource_event.set()
     
@@ -72,7 +70,6 @@ class BaseResourceNode(BaseNode):
     def run(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
-            self.work_list.append(Work.MONITORING_RESOURCE)
             self.start_monitoring()
 
         while self.exit_event.is_set() is False:
