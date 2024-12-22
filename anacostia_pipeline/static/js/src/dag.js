@@ -79,12 +79,14 @@ rect.attr("cursor", "pointer");
 rect.attr("class", "outer-rect");
 
 // drawing the rectangle for the status of the node
-node_container.append("rect")
-              .attr("class", "status-rect")
-              .attr("width", "40")
-              .attr("height", "20")
-              .attr("fill", "red")
-              .attr("opacity", "0.5");
+let labels = inner.selectAll(".node .label");
+labels.insert("rect", ":first-child")
+      .attr("class", "status-rect")
+      .attr("width", "80")
+      .attr("height", "15")
+      .attr("fill", "red")
+      .attr("opacity", "1.0")
+      .attr("rx", 10);
 
 let node_text = inner.selectAll(".node .label g");
 let status_rect = inner.selectAll(".status-rect");
@@ -92,7 +94,7 @@ status_rect.attr("transform", function(d, i) {
     // Get the transform attribute from the corresponding node_text element at the same index
     const transform_str = node_text.nodes()[i].getAttribute("transform");
     const first_part = transform_str.split(',')[0];     // yields a string like 'translate(x'
-    return `${first_part},5)`;
+    return `${first_part},10)`;
 });
 
 
@@ -102,6 +104,7 @@ text.append("tspan")
     .attr("space", "preserve")
     .attr("dy", "1em")
     .attr("x", "1")
+    .attr("fill", "white")
     .attr("hx-get", (v) => { return g.node(v).status_endpoint; })
     .attr("hx-target", "this")
     .attr("hx-trigger", "load")
