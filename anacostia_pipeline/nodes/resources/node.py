@@ -77,13 +77,13 @@ class BaseResourceNode(BaseNode):
             # if the node is not monitoring the resource, then we don't need to check for new resources
             # otherwise, we check for new resources and set the resource_event if there are new resources
             if self.monitoring is True:
-                self.work_list.append(Work.WAITING_RESOURCE)
+                self.work_set.add(Work.WAITING_RESOURCE)
                 self.resource_event.wait()
                 
                 if self.exit_event.is_set(): break
                 
                 self.resource_event.clear()
-                self.work_list.remove(Work.WAITING_RESOURCE)
+                self.work_set.remove(Work.WAITING_RESOURCE)
                 
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run

@@ -23,7 +23,7 @@ class BaseApp(FastAPI):
 
         def __monitoring_work():
             while self.shutdown_event.is_set() is False:
-                if Work.WAITING_SUCCESSORS in self.node.work_list:
+                if Work.WAITING_SUCCESSORS in self.node.work_set:
                     pass
                 else:
                     pass
@@ -38,7 +38,7 @@ class BaseApp(FastAPI):
         
         @self.get("/work", response_class=HTMLResponse)
         async def work_endpoint():
-            return work_template(self.node.work_list)
+            return work_template(self.node.work_set)
         
         if use_default_router is True:
             @self.get("/home", response_class=HTMLResponse)

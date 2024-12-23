@@ -29,7 +29,7 @@ class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
         self._status_lock = Lock()
         self._status = Status.OFF
-        self.work_list = list()
+        self.work_set = set()
         
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -131,26 +131,26 @@ class BaseNode(Thread):
             successor.predecessors_events[self.name].set()
 
     def wait_for_successors(self):
-        self.work_list.append(Work.WAITING_SUCCESSORS)
+        self.work_set.add(Work.WAITING_SUCCESSORS)
         for event in self.successor_events.values():
             event.wait()
         
         for event in self.successor_events.values():
             event.clear()
-        self.work_list.remove(Work.WAITING_SUCCESSORS)
+        self.work_set.remove(Work.WAITING_SUCCESSORS)
     
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
             predecessor.successor_events[self.name].set()
 
     def wait_for_predecessors(self):
-        self.work_list.append(Work.WAITING_PREDECESSORS)
+        self.work_set.add(Work.WAITING_PREDECESSORS)
         for event in self.predecessors_events.values():
             event.wait()
         
         for event in self.predecessors_events.values():
             event.clear()
-        self.work_list.remove(Work.WAITING_PREDECESSORS)
+        self.work_set.remove(Work.WAITING_PREDECESSORS)
 
     def pause(self):
         self.pause_event.clear()

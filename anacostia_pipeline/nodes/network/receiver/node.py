@@ -25,10 +25,10 @@ class ReceiverNode(BaseNode):
         await self.app.signal_predecessors(result)
     
     def wait_for_predecessors(self):
-        self.work_list.append(Work.WAITING_PREDECESSORS)
+        self.work_set.add(Work.WAITING_PREDECESSORS)
         self.wait_sender_node.wait()
         self.wait_sender_node.clear()
-        self.work_list.remove(Work.WAITING_PREDECESSORS)
+        self.work_set.remove(Work.WAITING_PREDECESSORS)
 
     def exit(self):
         self.wait_sender_node.set()

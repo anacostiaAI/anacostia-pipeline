@@ -63,43 +63,43 @@ class BaseActionNode(BaseNode):
             self.wait_for_predecessors()
             
             if self.exit_event.is_set(): break
-            self.work_list.append(Work.BEFORE_EXECUTION)
+            self.work_set.add(Work.BEFORE_EXECUTION)
             self.before_execution()
-            self.work_list.remove(Work.BEFORE_EXECUTION)
+            self.work_set.remove(Work.BEFORE_EXECUTION)
 
             if self.exit_event.is_set(): break
 
             ret = None
             try:
                 if self.exit_event.is_set(): break
-                self.work_list.append(Work.EXECUTION)
+                self.work_set.add(Work.EXECUTION)
                 ret = self.execute()
-                self.work_list.remove(Work.EXECUTION)
+                self.work_set.remove(Work.EXECUTION)
                 
                 if self.exit_event.is_set(): break
                 
                 if ret:
-                    self.work_list.append(Work.ON_SUCCESS)
+                    self.work_set.add(Work.ON_SUCCESS)
                     self.on_success()
-                    self.work_list.remove(Work.ON_SUCCESS)
+                    self.work_set.remove(Work.ON_SUCCESS)
 
                 else:
-                    self.work_list.append(Work.ON_FAILURE)
+                    self.work_set.add(Work.ON_FAILURE)
                     self.on_failure()
-                    self.work_list.remove(Work.ON_FAILURE)
+                    self.work_set.remove(Work.ON_FAILURE)
 
             except Exception as e:
                 if self.exit_event.is_set(): break
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
-                self.work_list.append(Work.ON_ERROR)
+                self.work_set.add(Work.ON_ERROR)
                 self.on_error(e)
-                self.work_list.remove(Work.ON_ERROR)
+                self.work_set.remove(Work.ON_ERROR)
 
             finally:
                 if self.exit_event.is_set(): break
-                self.work_list.append(Work.AFTER_EXECUTION)
+                self.work_set.add(Work.AFTER_EXECUTION)
                 self.after_execution()
-                self.work_list.remove(Work.AFTER_EXECUTION)
+                self.work_set.remove(Work.AFTER_EXECUTION)
 
             if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)

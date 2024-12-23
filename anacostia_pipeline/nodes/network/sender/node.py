@@ -28,10 +28,10 @@ class SenderNode(BaseNode):
         return await self.app.signal_successors(result)
 
     def wait_for_successors(self):
-        self.work_list.append(Work.WAITING_SUCCESSORS)
+        self.work_set.add(Work.WAITING_SUCCESSORS)
         self.wait_receiver_node.wait()
         self.wait_receiver_node.clear()
-        self.work_list.remove(Work.WAITING_SUCCESSORS)
+        self.work_set.remove(Work.WAITING_SUCCESSORS)
 
     def exit(self):
         self.wait_receiver_node.set()

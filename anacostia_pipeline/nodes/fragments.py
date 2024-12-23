@@ -1,4 +1,4 @@
-from typing import List
+from typing import Set
 
 
 def default_node_page() -> str:
@@ -8,6 +8,6 @@ def default_node_page() -> str:
     </div>
     """
 
-def work_template(work_list: List[str]) -> str:
+def work_template(work_set: Set[str]) -> str:
     newline = "\n"
-    return newline.join([f"""<div class="work">{ work }</div>""" for work in work_list])
+    return newline.join([f"""<div class="work">{ work }</div>""" for work in work_set])
