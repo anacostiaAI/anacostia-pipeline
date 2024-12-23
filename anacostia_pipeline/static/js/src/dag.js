@@ -80,6 +80,7 @@ rect.attr("class", "outer-rect");
 
 // drawing the rectangle for the status of the node
 let labels = inner.selectAll(".node .label");
+labels.attr("transform", "translate(0, -30)");
 labels.insert("rect", ":first-child")
       .attr("class", "status-rect")
       .attr("width", "80")
@@ -109,6 +110,7 @@ text.append("tspan")
     .attr("hx-target", "this")
     .attr("hx-trigger", "load")
     .attr("hx-swap", "innerHTML");
+// append tspan elements for additional status updates
 
 // setting initial color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
