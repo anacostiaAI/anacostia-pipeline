@@ -1,6 +1,6 @@
 from typing import List, Union
 from logging import Logger
-from threading import RLock
+from threading import RLock, Event
 from functools import wraps
 
 from anacostia_pipeline.nodes.node import BaseNode
@@ -27,6 +27,7 @@ class BaseMetadataStoreNode(BaseNode):
         self.uri = uri
         self.run_id = 0
         self.resource_lock = RLock()
+        self.trigger_event = Event()
     
     def get_run_id(self) -> int:
         return self.run_id
@@ -96,11 +97,35 @@ class BaseMetadataStoreNode(BaseNode):
     def entry_exists(self) -> bool:
         raise NotImplementedError
     
+    def trigger(self) -> None:
+        self.trigger_event.set()
+        self.work_set.remove(Work.WAITING_RESOURCE)
+
+    def start_monitoring(self) -> None:
+        pass
+
+    def stop_monitoring(self) -> None:
+        pass
+
+    def exit(self):
+        # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.
+        super().exit()
+        self.stop_monitoring()    
+        self.trigger_event.set()
+    
     def run(self) -> None:
+        # start monitoring thread for metadata store node
+        self.start_monitoring()
+
         while self.exit_event.is_set() is False:
 
             # waiting for all resource nodes to signal their resources are ready to be used
             self.wait_for_successors()
+
+            # wait for all metrics to meet trigger conditions
+            self.trigger_event.wait()
+            if self.exit_event.is_set(): break
+            self.trigger_event.clear()
 
             # creating a new run
             if self.exit_event.is_set(): break
