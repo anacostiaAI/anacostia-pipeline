@@ -4,7 +4,7 @@ import threading
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.utils.constants import Result, Work
+from anacostia_pipeline.utils.constants import Result, Status
 
 
 
@@ -35,10 +35,6 @@ class BaseResourceNode(BaseNode):
         Typically, this method will be used to start an observer that runs in a child thread spawned by the thread running the node.
         """
         pass
-
-    def on_exit(self):
-        if self.monitoring is True:
-            self.stop_monitoring()
 
     @BaseNode.log_exception
     def record_new(self) -> None:
@@ -77,13 +73,13 @@ class BaseResourceNode(BaseNode):
             # if the node is not monitoring the resource, then we don't need to check for new resources
             # otherwise, we check for new resources and set the resource_event if there are new resources
             if self.monitoring is True:
-                self.work_set.add(Work.WAITING_RESOURCE)
+                self.status = Status.WAITING_RESOURCE
                 self.resource_event.wait()
-                
+
                 if self.exit_event.is_set(): break
-                
+
                 self.resource_event.clear()
-                self.work_set.remove(Work.WAITING_RESOURCE)
+                self.status = Status.TRIGGERED
                 
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run

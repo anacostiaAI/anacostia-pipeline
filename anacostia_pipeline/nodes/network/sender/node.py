@@ -4,7 +4,7 @@ import threading
 import asyncio
 
 from anacostia_pipeline.nodes.node import BaseNode
-from anacostia_pipeline.utils.constants import Result, Work
+from anacostia_pipeline.utils.constants import Result, Status
 from anacostia_pipeline.nodes.network.sender.app import SenderApp
 
 
@@ -28,10 +28,8 @@ class SenderNode(BaseNode):
         return await self.app.signal_successors(result)
 
     def wait_for_successors(self):
-        self.work_set.add(Work.WAITING_SUCCESSORS)
         self.wait_receiver_node.wait()
         self.wait_receiver_node.clear()
-        self.work_set.remove(Work.WAITING_SUCCESSORS)
 
     def exit(self):
         self.wait_receiver_node.set()

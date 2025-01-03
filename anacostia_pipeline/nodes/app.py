@@ -2,13 +2,13 @@ from queue import Queue
 from threading import Thread, Event
 import time
 import json
+import copy
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import httpx
 
 from anacostia_pipeline.nodes.fragments import default_node_page, work_template
-from anacostia_pipeline.utils.constants import Work
 
 
 
@@ -23,11 +23,6 @@ class BaseApp(FastAPI):
 
         def __monitoring_work():
             while self.shutdown_event.is_set() is False:
-                if Work.WAITING_SUCCESSORS in self.node.work_set:
-                    pass
-                else:
-                    pass
-                
                 time.sleep(0.1)
             
         self.work_monitor_thread = Thread(target=__monitoring_work)
@@ -68,3 +63,15 @@ class BaseApp(FastAPI):
         self.shutdown_event.set()
         self.work_monitor_thread.join()
     
+    def send_work_update_event(self):
+        data = {
+            "id": self.node.name,
+            "work_set": "Hello"
+        }
+
+        self.queue.put(
+            {
+                "event": "WorkUpdate",
+                "data": json.dumps(data)
+            }
+        )

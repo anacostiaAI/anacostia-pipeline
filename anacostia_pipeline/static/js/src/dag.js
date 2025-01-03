@@ -120,6 +120,22 @@ const edge = inner.selectAll(".edgePath path.path");
 edge.attr("stroke-width", "1.5");
 edge.attr("stroke", "black");
 
+document.body.addEventListener('htmx:sseOpen', (event) => {
+    const sse_element = event.detail.elt;
+
+    if (sse_element.id === "graph") {
+        console.log('/graph_sse event source opened');
+
+        const graph = document.getElementById("graph");
+        graph.addEventListener('htmx:sseBeforeMessage', (event) => {
+            event.preventDefault();     // call preventDefault() to prevent the sse-swap="WorkUpdateEvent" from swapping in the data
+
+            const data = JSON.parse(event.detail.data);
+            console.log(data);
+        });
+    }
+});
+
 var initialScale = 1;
 
 // Center the graph horizontally in the svg container

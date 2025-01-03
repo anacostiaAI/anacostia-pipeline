@@ -144,7 +144,6 @@ class LeafPipeline:
         # start nodes
         for node in self.nodes:
             # Note: since node is a subclass of Thread, calling start() will run the run() method
-            node.status = Status.RUNNING
             node.start()
 
     def terminate_nodes(self) -> None:

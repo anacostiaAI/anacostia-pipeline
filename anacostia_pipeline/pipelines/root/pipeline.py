@@ -176,7 +176,6 @@ class RootPipeline:
 
         # Note: since node is a subclass of Thread, calling start() will run the run() method, thereby starting the node
         for node in self.nodes:
-            node.status = Status.RUNNING
             node.start()
 
     def terminate_nodes(self) -> None:

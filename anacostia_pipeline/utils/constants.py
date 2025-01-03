@@ -1,27 +1,35 @@
 from enum import Enum
 
 class Status(Enum):
-    OFF = 14
-    INIT = 12,
-    RUNNING = 6,
-    SKIPPED = 7,
-    PAUSING = 8,
-    PAUSED = 9,
-    EXITING = 10,
-    EXITED = 11,
-    ERROR = 2,
+    WAITING_RESOURCE = 0,
+    WAITING_METRICS = 1,
+    QUEUED = 2,
+    PREPARATION = 3,
+    EXECUTING = 4,
+    CLEANUP = 5
+    COMPLETE = 6,
+    FAILURE = 7,
+    ERROR = 8,
+    TRIGGERED = 9,
+    INIT = 10,
+    SKIPPED = 11,
+    PAUSED = 12,
 
     def __repr__(self) -> str:
         status_words = {
-            Status.RUNNING: "RUNNING",
-            Status.SKIPPED: "SKIPPED",
-            Status.PAUSING: "PAUSING",
-            Status.PAUSED: "PAUSED",
-            Status.EXITING: "EXITING",
-            Status.EXITED: "EXITED",
-            Status.INIT: "INITIALIZING",
-            Status.OFF: "OFF",
+            Status.WAITING_RESOURCE: "WAITING_RESOURCE",
+            Status.WAITING_METRICS: "WAITING_METRICS",
+            Status.QUEUED: "QUEUED",
+            Status.PREPARATION: "PREPARATION",
+            Status.EXECUTING: "EXECUTING",
+            Status.CLEANUP: "CLEANUP",
+            Status.COMPLETE: "COMPLETE",
+            Status.FAILURE: "FAILURE",
             Status.ERROR: "ERROR",
+            Status.TRIGGERED: "TRIGGERED",
+            Status.INIT: "INITIALIZING",
+            Status.SKIPPED: "SKIPPED",
+            Status.PAUSED: "PAUSED",
         }
         return status_words[self]
     
@@ -29,44 +37,6 @@ class Status(Enum):
         return self.value
     
     def __eq__(self, other: 'Status') -> bool:
-        if other.value == self.value:
-            return True
-        else:
-            return False
-    
-    def __hash__(self) -> int:
-        return super().__hash__()
-
-
-class Work(Enum):
-    WAITING_RESOURCE = 0,
-    WAITING_SUCCESSORS = 1,
-    WAITING_PREDECESSORS = 2,
-    BEFORE_EXECUTION = 3,
-    EXECUTION = 4,
-    AFTER_EXECUTION = 5
-    ON_SUCCESS = 6,
-    ON_FAILURE = 7,
-    ON_ERROR = 8,
-
-    def __repr__(self) -> str:
-        status_words = {
-            Work.WAITING_RESOURCE: "WAITING_RESOURCE",
-            Work.WAITING_SUCCESSORS: "WAITING_SUCCESSORS",
-            Work.WAITING_PREDECESSORS: "WAITING_PREDECESSORS",
-            Work.BEFORE_EXECUTION: "BEFORE_EXECUTION",
-            Work.EXECUTION: "EXECUTION",
-            Work.AFTER_EXECUTION: "AFTER_EXECUTION",
-            Work.ON_SUCCESS: "ON_SUCCESS",
-            Work.ON_FAILURE: "ON_FAILURE",
-            Work.ON_ERROR: "ON_ERROR",
-        }
-        return status_words[self]
-    
-    def __int__(self) -> int:
-        return self.value
-    
-    def __eq__(self, other: 'Work') -> bool:
         if other.value == self.value:
             return True
         else:

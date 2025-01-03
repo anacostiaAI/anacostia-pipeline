@@ -7,7 +7,7 @@ from functools import wraps
 import traceback
 from pydantic import BaseModel, ConfigDict
 
-from anacostia_pipeline.utils.constants import Status, Result, Work
+from anacostia_pipeline.utils.constants import Status, Result, Status
 from anacostia_pipeline.nodes.app import BaseApp
 
 
@@ -28,7 +28,6 @@ class NodeModel(BaseModel):
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
         self._status_lock = Lock()
-        self._status = Status.OFF
         self.work_set = set()
         
         if loggers is None:
@@ -122,7 +121,6 @@ class BaseNode(Thread):
                 return ret
             except Exception as e:
                 self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}", level="ERROR")
-                self.status = Status.ERROR
                 return
         return log_exception_wrapper
     
@@ -131,39 +129,33 @@ class BaseNode(Thread):
             successor.predecessors_events[self.name].set()
 
     def wait_for_successors(self):
-        self.work_set.add(Work.WAITING_SUCCESSORS)
         for event in self.successor_events.values():
             event.wait()
         
         for event in self.successor_events.values():
             event.clear()
-        self.work_set.remove(Work.WAITING_SUCCESSORS)
     
     def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
             predecessor.successor_events[self.name].set()
 
     def wait_for_predecessors(self):
-        self.work_set.add(Work.WAITING_PREDECESSORS)
         for event in self.predecessors_events.values():
             event.wait()
         
         for event in self.predecessors_events.values():
             event.clear()
-        self.work_set.remove(Work.WAITING_PREDECESSORS)
 
     def pause(self):
+        self.status = Status.PAUSED
         self.pause_event.clear()
-        self.status = Status.PAUSING
 
     def resume(self):
         self.pause_event.set()
-        self.status = Status.RUNNING
 
     def exit(self):
         # setting all events forces the loop to continue to the next checkpoint which will break out of the loop
         self.log(f"Node '{self.name}' exiting at {datetime.now()}")
-        self.status = Status.EXITING
         
         # set all events so loop can continue to next checkpoint and break out of loop
         self.pause_event.set()
@@ -175,7 +167,6 @@ class BaseNode(Thread):
         for event in self.predecessors_events.values():
             event.set()
 
-        self.status = Status.EXITED
         self.log(f"Node '{self.name}' exited at {datetime.now()}")
 
     @log_exception

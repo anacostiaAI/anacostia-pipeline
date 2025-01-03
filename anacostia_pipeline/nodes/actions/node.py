@@ -3,7 +3,7 @@ from logging import Logger
 import traceback
 
 from anacostia_pipeline.nodes.node import BaseNode
-from anacostia_pipeline.utils.constants import Result, Work
+from anacostia_pipeline.utils.constants import Result, Status
 
 
 
@@ -60,46 +60,40 @@ class BaseActionNode(BaseNode):
 
     def run(self) -> None:
         while self.exit_event.is_set() is False:
+            self.status = Status.QUEUED
             self.wait_for_predecessors()
             
             if self.exit_event.is_set(): break
-            self.work_set.add(Work.BEFORE_EXECUTION)
+            self.status = Status.PREPARATION
             self.before_execution()
-            self.work_set.remove(Work.BEFORE_EXECUTION)
 
             if self.exit_event.is_set(): break
 
             ret = None
             try:
                 if self.exit_event.is_set(): break
-                self.work_set.add(Work.EXECUTION)
+                self.status = Status.EXECUTING
                 ret = self.execute()
-                self.work_set.remove(Work.EXECUTION)
                 
                 if self.exit_event.is_set(): break
                 
                 if ret:
-                    self.work_set.add(Work.ON_SUCCESS)
+                    self.status = Status.COMPLETE
                     self.on_success()
-                    self.work_set.remove(Work.ON_SUCCESS)
-
                 else:
-                    self.work_set.add(Work.ON_FAILURE)
+                    self.status = Status.FAILURE
                     self.on_failure()
-                    self.work_set.remove(Work.ON_FAILURE)
 
             except Exception as e:
                 if self.exit_event.is_set(): break
                 self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
-                self.work_set.add(Work.ON_ERROR)
+                self.status = Status.ERROR
                 self.on_error(e)
-                self.work_set.remove(Work.ON_ERROR)
 
             finally:
                 if self.exit_event.is_set(): break
-                self.work_set.add(Work.AFTER_EXECUTION)
+                self.status = Status.CLEANUP
                 self.after_execution()
-                self.work_set.remove(Work.AFTER_EXECUTION)
 
             if self.exit_event.is_set(): break
             self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)

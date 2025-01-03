@@ -4,7 +4,7 @@ from threading import RLock, Event
 from functools import wraps
 
 from anacostia_pipeline.nodes.node import BaseNode
-from anacostia_pipeline.utils.constants import Result, Work
+from anacostia_pipeline.utils.constants import Result, Status
 
 
 
@@ -99,7 +99,6 @@ class BaseMetadataStoreNode(BaseNode):
     
     def trigger(self) -> None:
         self.trigger_event.set()
-        self.work_set.remove(Work.WAITING_RESOURCE)
 
     def start_monitoring(self) -> None:
         pass
@@ -123,9 +122,13 @@ class BaseMetadataStoreNode(BaseNode):
             self.wait_for_successors()
 
             # wait for all metrics to meet trigger conditions
+            self.status = Status.WAITING_METRICS
             self.trigger_event.wait()
+            
             if self.exit_event.is_set(): break
+            
             self.trigger_event.clear()
+            self.status = Status.TRIGGERED
 
             # creating a new run
             if self.exit_event.is_set(): break
