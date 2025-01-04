@@ -128,7 +128,7 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
 
         const graph = document.getElementById("graph");
         graph.addEventListener('htmx:sseBeforeMessage', (event) => {
-            event.preventDefault();     // call preventDefault() to prevent the sse-swap="WorkUpdateEvent" from swapping in the data
+            event.preventDefault();     // call preventDefault() to prevent the sse-swap="WorkUpdate" from swapping in the data
 
             const data = JSON.parse(event.detail.data);
             console.log(data);

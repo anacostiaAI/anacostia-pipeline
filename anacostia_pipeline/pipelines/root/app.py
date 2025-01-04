@@ -35,7 +35,6 @@ class RootPipelineApp(FastAPI):
             for route in app.routes:
                 if isinstance(route, Mount) and isinstance(route.app, BaseApp):
                     subapp: BaseApp = route.app
-                    subapp.stop_monitoring_work()
 
             app.logger.info(f"Closing client for service '{app.name}'")
             # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
@@ -96,8 +95,8 @@ class RootPipelineApp(FastAPI):
         for node in self.pipeline.nodes:
             node_subapp: BaseApp = node.get_app()
             node_subapp.set_queue(self.queue)
-            node_subapp.start_monitoring_work()
-            self.mount(node_subapp.get_node_prefix(), node_subapp)       # mount the BaseNodeApp to PipelineWebserver
+            self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
+            node.set_queue(self.queue)                                      # set the queue for the node
 
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):

@@ -1,9 +1,4 @@
 from queue import Queue
-from threading import Thread, Event
-import time
-import json
-import copy
-
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import httpx
@@ -19,13 +14,6 @@ class BaseApp(FastAPI):
         self.client = httpx.AsyncClient()
         self.queue: Queue | None = None
         self.is_running = False
-        self.shutdown_event = Event()
-
-        def __monitoring_work():
-            while self.shutdown_event.is_set() is False:
-                time.sleep(0.1)
-            
-        self.work_monitor_thread = Thread(target=__monitoring_work)
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint():
@@ -54,24 +42,3 @@ class BaseApp(FastAPI):
     
     def set_queue(self, queue: Queue):
         self.queue = queue
-
-    def start_monitoring_work(self):
-        self.shutdown_event.clear()
-        self.work_monitor_thread.start()
-    
-    def stop_monitoring_work(self):
-        self.shutdown_event.set()
-        self.work_monitor_thread.join()
-    
-    def send_work_update_event(self):
-        data = {
-            "id": self.node.name,
-            "work_set": "Hello"
-        }
-
-        self.queue.put(
-            {
-                "event": "WorkUpdate",
-                "data": json.dumps(data)
-            }
-        )

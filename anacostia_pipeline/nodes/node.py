@@ -1,11 +1,13 @@
 from __future__ import annotations
 from threading import Thread, Lock, Event
+from queue import Queue
 from typing import List, Union, Optional, Dict
 from logging import Logger
 from datetime import datetime
 from functools import wraps
 import traceback
 from pydantic import BaseModel, ConfigDict
+import json
 
 from anacostia_pipeline.utils.constants import Status, Result, Status
 from anacostia_pipeline.nodes.app import BaseApp
@@ -56,11 +58,14 @@ class BaseNode(Thread):
         self.exit_event = Event()
         self.pause_event = Event()
         self.pause_event.set()
+        self.queue: Queue | None = None
+        self.app: BaseApp | None = None
 
         super().__init__(name=name)
     
     def get_app(self):
-        return BaseApp(self)
+        self.app = BaseApp(self)
+        return self.app
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -111,7 +116,25 @@ class BaseNode(Thread):
         while True:
             with self._status_lock:
                 self._status = value
+
+                # if pipeline app has set the queue, send a message to the queue when the status changes
+                if self.queue is not None:
+                    data = {
+                        "id": self.name,
+                        "status": repr(value)
+                    }
+
+                    self.queue.put(
+                        {
+                            "event": "WorkUpdate",
+                            "data": json.dumps(data)
+                        }
+                    )
+
                 break
+
+    def set_queue(self, queue: Queue):
+        self.queue = queue
 
     def log_exception(func):
         @wraps(func)
