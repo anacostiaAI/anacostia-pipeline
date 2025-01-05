@@ -124,7 +124,7 @@ class BaseNode(Thread):
                         "status": repr(value)
                     }
 
-                    self.queue.put(
+                    self.queue.put_nowait(
                         {
                             "event": "WorkUpdate",
                             "data": json.dumps(data)
