@@ -12,7 +12,6 @@ class BaseApp(FastAPI):
         super().__init__(*args, **kwargs)
         self.node = node
         self.client = httpx.AsyncClient()
-        self.queue: Queue | None = None
         self.is_running = False
 
         @self.get("/status", response_class=HTMLResponse)
@@ -40,5 +39,3 @@ class BaseApp(FastAPI):
     def get_work_endpoint(self):
         return f"{self.get_node_prefix()}/work"
     
-    def set_queue(self, queue: Queue):
-        self.queue = queue

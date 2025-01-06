@@ -9,7 +9,7 @@ import traceback
 from pydantic import BaseModel, ConfigDict
 import json
 
-from anacostia_pipeline.utils.constants import Status, Result, Status
+from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
 
 
