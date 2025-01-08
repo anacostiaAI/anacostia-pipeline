@@ -37,8 +37,8 @@ else
 fi
 
 # Configure the interface 
-sudo ifconfig $INTERFACE alias $IP_LEAF netmask 255.255.255.0 up
-ifconfig $INTERFACE
+#sudo ifconfig $INTERFACE alias $IP_LEAF netmask 255.255.255.0 up
+#ifconfig $INTERFACE
 
 # Set up testing environment
 echo "Setting up distributed tests"
@@ -50,6 +50,9 @@ python $FILEPATH_ROOT $IP_ROOT $PORT_ROOT $IP_LEAF $PORT_LEAF &
 PID1=$!
 python $FILEPATH_LEAF $IP_LEAF $PORT_LEAF &
 PID2=$!
+
+# Start creating files and placing them into the ./root-artifacts/input_artifacts folder
+python create_files.py &
 
 # Function to ping an IP address
 ping_ip() {
@@ -83,11 +86,11 @@ wait $PID1
 wait $PID2
 
 # remove an IP address from en0
-echo "Removing IP address $IP_LEAF from $INTERFACE..."
-sudo ifconfig $INTERFACE -alias $IP_LEAF
+#echo "Removing IP address $IP_LEAF from $INTERFACE..."
+#sudo ifconfig $INTERFACE -alias $IP_LEAF
 
 # Bring the interface down:
-echo "Bringing $INTERFACE down..."
-sudo ifconfig $INTERFACE down
+#echo "Bringing $INTERFACE down..."
+#sudo ifconfig $INTERFACE down
 
 echo "Done."

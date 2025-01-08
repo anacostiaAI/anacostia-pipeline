@@ -9,6 +9,7 @@ import networkx as nx
 from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 from anacostia_pipeline.utils.constants import Status
 
 from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
@@ -137,6 +138,10 @@ class LeafPipeline:
         resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
         self.__setup_nodes(resource_nodes)
         
+        # set up receiver nodes
+        receiver_nodes = [node for node in self.nodes if isinstance(node, ReceiverNode) is True]
+        self.__setup_nodes(receiver_nodes)
+
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         self.__setup_nodes(action_nodes)
