@@ -11,6 +11,7 @@ from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.utils.constants import Status
 
 
@@ -162,6 +163,10 @@ class RootPipeline:
         # set up action nodes
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         __setup_nodes(action_nodes)
+
+        # set up sender nodes
+        sender_nodes = [node for node in self.nodes if isinstance(node, SenderNode) is True]
+        __setup_nodes(sender_nodes)
         
         # add nodes to metadata store's node list
         for metadata_store in metadata_stores:
