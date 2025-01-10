@@ -83,11 +83,10 @@ let labels = inner.selectAll(".node .label");
 labels.attr("transform", "translate(0, -30)");
 labels.insert("rect", ":first-child")
       .attr("class", "status-rect")
-      .attr("width", "80")
-      .attr("height", "15")
-      .attr("fill", "red")
       .attr("opacity", "1.0")
-      .attr("rx", 10);
+      .attr("rx", 10)
+      .attr("font-size", "10")
+      .attr("id", (v) => { return `${g.node(v).id}-pill` });
 
 let node_text = inner.selectAll(".node .label g");
 let status_rect = inner.selectAll(".status-rect");
@@ -98,19 +97,14 @@ status_rect.attr("transform", function(d, i) {
     return `${first_part},10)`;
 });
 
-
+// append tspan elements for additional status updates
 const text = inner.selectAll(".node .label g text");
 text.append("tspan")
-    .attr("class", "status-text")
     .attr("space", "preserve")
     .attr("dy", "1em")
     .attr("x", "1")
     .attr("fill", "white")
-    .attr("hx-get", (v) => { return g.node(v).status_endpoint; })
-    .attr("hx-target", "this")
-    .attr("hx-trigger", "load")
-    .attr("hx-swap", "innerHTML");
-// append tspan elements for additional status updates
+    .attr("id", (v) => { return `${g.node(v).id}-status` });
 
 // setting initial color of edge and arrowhead
 const arrowhead = inner.selectAll(".edgePath defs marker");
@@ -131,7 +125,14 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
             event.preventDefault();     // call preventDefault() to prevent the sse-swap="WorkUpdate" from swapping in the data
 
             const data = JSON.parse(event.detail.data);
-            console.log(data);
+
+            const status_text = document.getElementById(`${data.id}-status`);
+            status_text.innerHTML = data.status;
+
+            const status_pill = document.getElementById(`${data.id}-pill`);
+            status_pill.setAttribute("fill", "red");
+            status_pill.setAttribute("width", "80");
+            status_pill.setAttribute("height", "15");
         });
     }
 });

@@ -4,6 +4,7 @@ import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
+import sys
 
 from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -176,8 +177,9 @@ class LeafPipelineApp(FastAPI):
         signal.signal(signal.SIGINT, _kill_webserver)
         self.fastapi_thread.start()
 
-        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
-        for thread in threading.enumerate():
-            if thread.daemon or thread is threading.current_thread():
-                continue
-            thread.join()
+        if sys.version_info == (3, 12):
+            # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
+            for thread in threading.enumerate():
+                if thread.daemon or thread is threading.current_thread():
+                    continue
+                thread.join()
