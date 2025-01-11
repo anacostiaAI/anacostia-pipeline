@@ -202,7 +202,7 @@ class BaseNode(Thread):
         this is the main difference between setting up the node using setup() and __init__()
         therefore, it is best to the set up logic is not dependent on other nodes.
         """
-        self.status = Status.INIT
+        self.status = Status.INITIALIZING
 
     def run(self) -> None:
         """

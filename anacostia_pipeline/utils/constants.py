@@ -11,7 +11,7 @@ class Status(Enum):
     FAILURE = 7,
     ERROR = 8,
     TRIGGERED = 9,
-    INIT = 10,
+    INITIALIZING = 10,
     SKIPPED = 11,
     PAUSED = 12,
 
@@ -27,7 +27,7 @@ class Status(Enum):
             Status.FAILURE: "FAILURE",
             Status.ERROR: "ERROR",
             Status.TRIGGERED: "TRIGGERED",
-            Status.INIT: "INITIALIZING",
+            Status.INITIALIZING: "INITIALIZING",
             Status.SKIPPED: "SKIPPED",
             Status.PAUSED: "PAUSED",
         }

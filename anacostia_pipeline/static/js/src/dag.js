@@ -10,6 +10,29 @@ var edges = graph_data.edges;
 var viewport_width = window.innerWidth;
 var viewport_height = window.innerHeight;
 
+status_colors = {
+    // Waiting/Inactive States (Darker grays for contrast with white)
+    "WAITING_RESOURCE": {"color": "#4B5563", "width": 80, "height": 15},  // Darker gray
+    "WAITING_METRICS": {"color": "#4B5563", "width": 80, "height": 15},   // Darker gray
+    "QUEUED": {"color": "#475569", "width": 80, "height": 15},            // Darker slate
+    "PAUSED": {"color": "#4B5563", "width": 80, "height": 15},            // Darker gray
+    
+    // Active States (Darker blues)
+    "INITIALIZING": {"color": "#2563EB", "width": 80, "height": 15},      // Darker blue
+    "PREPARATION": {"color": "#1D4ED8", "width": 80, "height": 15},       // Deep blue
+    "EXECUTING": {"color": "#1E40AF", "width": 80, "height": 15},         // Navy blue
+    "CLEANUP": {"color": "#4338CA", "width": 80, "height": 15},           // Deep indigo
+    
+    // Completion States
+    "COMPLETE": {"color": "#16A34A", "width": 80, "height": 15},          // Darker green
+    "SKIPPED": {"color": "#64748B", "width": 80, "height": 15},           // Medium slate
+    
+    // Warning/Error States
+    "TRIGGERED": {"color": "#D97706", "width": 80, "height": 15},         // Darker amber
+    "FAILURE": {"color": "#DC2626", "width": 80, "height": 15},           // Vivid red
+    "ERROR": {"color": "#B91C1C", "width": 80, "height": 15}              // Darker red
+}
+
 // Create a new directed graph 
 var g = new dagre.graphlib.Graph({ directed: true, compound: false, multigraph: false });
 
@@ -130,8 +153,8 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
             status_text.innerHTML = data.status;
 
             const status_pill = document.getElementById(`${data.id}-pill`);
-            status_pill.setAttribute("fill", "red");
-            status_pill.setAttribute("width", "80");
+            status_pill.setAttribute("fill", status_colors[data.status]["color"]);
+            status_pill.setAttribute("width", status_colors[data.status]["width"]);
             status_pill.setAttribute("height", "15");
         });
     }
