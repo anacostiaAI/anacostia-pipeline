@@ -105,7 +105,7 @@ rect.attr("stroke-width", "1.5");
 rect.attr("cursor", "pointer");
 rect.attr("class", "outer-rect");
 
-// drawing the rectangle for the status of the node
+// drawing the "pill" that provides the background for the status text of the node
 let labels = inner.selectAll(".node .label");
 labels.attr("transform", "translate(0, -30)");
 labels.insert("rect", ":first-child")
