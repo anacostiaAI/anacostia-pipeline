@@ -12,29 +12,29 @@ var viewport_height = window.innerHeight;
 
 status_gui_info = {
     // Pre-execution States
-    "INITIALIZING": {"color": "#7C3AED", "width": 80, "height": 15},      // Purple - setup/initialization
+    "INITIALIZING": {"color": "#7C3AED", "width": 62},      // Purple - setup/initialization
     
     // Waiting States
-    "WAITING_RESOURCE": {"color": "#4B5563", "width": 80, "height": 15},  // Darker gray
-    "WAITING_METRICS": {"color": "#4B5563", "width": 80, "height": 15},   // Darker gray
-    "QUEUED": {"color": "#475569", "width": 80, "height": 15},            // Darker slate
-    "PAUSED": {"color": "#4B5563", "width": 80, "height": 15},            // Darker gray
+    "WAITING_RESOURCE": {"color": "#4B5563", "width": 98},  // Darker gray
+    "WAITING_METRICS": {"color": "#4B5563", "width": 92},   // Darker gray
+    "QUEUED": {"color": "#475569", "width": 51},            // Darker slate
+    "PAUSED": {"color": "#4B5563", "width": 51},            // Darker gray
     
     // Active States
-    "PREPARATION": {"color": "#1D4ED8", "width": 80, "height": 15},       // Deep blue
-    "EXECUTING": {"color": "#1E40AF", "width": 80, "height": 15},         // Navy blue
-    "CLEANUP": {"color": "#4338CA", "width": 80, "height": 15},           // Deep indigo
+    "PREPARATION": {"color": "#1D4ED8", "width": 72},       // Deep blue
+    "EXECUTING": {"color": "#1E40AF", "width": 62},         // Navy blue
+    "CLEANUP": {"color": "#4338CA", "width": 52},           // Deep indigo
     
     // Completion States
-    "COMPLETE": {"color": "#16A34A", "width": 80, "height": 15},          // Darker green
-    "TRIGGERED": {"color": "#16A34A", "width": 80, "height": 15},         // Same as complete (green)
+    "COMPLETE": {"color": "#16A34A", "width": 60},          // Darker green
+    "TRIGGERED": {"color": "#16A34A", "width": 60},         // Same as complete (green)
     
     // Skipped State
-    "SKIPPED": {"color": "#6B7280", "width": 80, "height": 15},          // Medium gray
+    "SKIPPED": {"color": "#6B7280", "width": 52},           // Medium gray
     
     // Error States
-    "FAILURE": {"color": "#DC2626", "width": 80, "height": 15},          // Vivid red
-    "ERROR": {"color": "#B91C1C", "width": 80, "height": 15}             // Darker red
+    "FAILURE": {"color": "#DC2626", "width": 43},           // Vivid red
+    "ERROR": {"color": "#B91C1C", "width": 36}              // Darker red
 }
 
 // Create a new directed graph 
@@ -112,7 +112,7 @@ labels.insert("rect", ":first-child")
       .attr("class", "status-rect")
       .attr("opacity", "1.0")
       .attr("rx", 10)
-      .attr("font-size", "10")
+      .attr("height", "15")
       .attr("id", (v) => { return `${g.node(v).id}-pill` });
 
 let node_text = inner.selectAll(".node .label g");
@@ -128,8 +128,9 @@ status_rect.attr("transform", function(d, i) {
 const text = inner.selectAll(".node .label g text");
 text.append("tspan")
     .attr("space", "preserve")
-    .attr("dy", "1em")
-    .attr("x", "1")
+    .attr("dy", "14")
+    .attr("x", "5")
+    .attr("font-size", "11")
     .attr("fill", "white")
     .attr("id", (v) => { return `${g.node(v).id}-status` });
 
@@ -154,12 +155,11 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
             const data = JSON.parse(event.detail.data);
 
             const status_text = document.getElementById(`${data.id}-status`);
-            status_text.innerHTML = data.status;
+            status_text.innerHTML = data.status.toLowerCase().replace("_", " ");
 
             const status_pill = document.getElementById(`${data.id}-pill`);
             status_pill.setAttribute("fill", status_gui_info[data.status]["color"]);
             status_pill.setAttribute("width", status_gui_info[data.status]["width"]);
-            status_pill.setAttribute("height", "15");
         });
     }
 });
