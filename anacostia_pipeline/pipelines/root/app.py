@@ -208,18 +208,13 @@ class RootPipelineApp(FastAPI):
             node_model["origin_url"] = f"http://{self.host}:{self.port}"
             node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
-            node_model["work_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_work_endpoint()}"
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
             if isinstance(node, SenderNode):
                 node_model["successors"].append(node.leaf_receiver)
 
             edges_from_node = [
-                { 
-                    "source": node_model["id"], "target": successor, 
-                    "id": f"edge_{node_model['id']}_{successor}" 
-                } 
-                for successor in node_model["successors"]
+                {"source": node_model["id"], "target": successor} for successor in node_model["successors"]
             ]
             edges.extend(edges_from_node)
 

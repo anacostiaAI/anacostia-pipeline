@@ -33,7 +33,6 @@ def node_bar_open(node_model: Dict[str, str], close_div_endpoint: str) -> str:
             <div>Node name: { node_model['id'] }</div>
             <!-- Note: add another div to display node type information -->
             <div hx-get="{ node_model['status_endpoint'] }" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML"></div>
-            <div hx-get="{ node_model['work_endpoint'] }" hx-trigger="load, every 500ms" hx-target="this" hx-swap="innerHTML"></div>
         </div>
         <div class="node_header_bar_btn">
             <div class="collapse-btn">▲</div>

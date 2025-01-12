@@ -98,19 +98,13 @@ class LeafSubApp(FastAPI):
         for leaf_data_node, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
             subapp: BaseApp = leaf_node.get_app()
             leaf_data_node["id"] = leaf_data_node["name"]
-            leaf_data_node["label"] = leaf_data_node["name"].replace("_", " ")
-
+            leaf_data_node["label"] = leaf_data_node["name"]
             leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}/{self.pipeline_id}"
             leaf_data_node["endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_endpoint()}"
             leaf_data_node["status_endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_status_endpoint()}"
-            leaf_data_node["work_endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_work_endpoint()}"
 
             edges_from_node = [
-                { 
-                    "source": leaf_data_node["id"], "target": successor, 
-                    "event_name": f"{leaf_data_node['id']}_{successor}_change_edge_color" 
-                } 
-                for successor in leaf_data_node["successors"]
+                {"source": leaf_data_node["id"], "target": successor} for successor in leaf_data_node["successors"]
             ]
             edges.extend(edges_from_node)
 

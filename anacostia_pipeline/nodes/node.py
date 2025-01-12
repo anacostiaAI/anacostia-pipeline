@@ -30,7 +30,6 @@ class NodeModel(BaseModel):
 class BaseNode(Thread):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
         self._status_lock = Lock()
-        self.work_set = set()
         
         if loggers is None:
             self.loggers: List[Logger] = list()
