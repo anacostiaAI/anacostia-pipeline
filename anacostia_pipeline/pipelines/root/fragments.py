@@ -31,6 +31,8 @@ def node_bar_open(node_model: Dict[str, str], close_div_endpoint: str) -> str:
         hx-swap-oob="true">
         <div id="node_header_bar">
             <div>Node name: { node_model['id'] }</div>
+            <div>Server Origin: { node_model['origin_url'] }</div>
+            <div>Node Type: { node_model['type'] }</div>
             <!-- Note: add another div to display node type information -->
             <div hx-get="{ node_model['status_endpoint'] }" hx-trigger="load, every 1s" hx-target="this" hx-swap="innerHTML"></div>
         </div>

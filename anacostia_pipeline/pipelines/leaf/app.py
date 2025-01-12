@@ -100,6 +100,7 @@ class LeafSubApp(FastAPI):
             leaf_data_node["id"] = leaf_data_node["name"]
             leaf_data_node["label"] = leaf_data_node["name"]
             leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}/{self.pipeline_id}"
+            leaf_data_node["type"] = type(leaf_node).__name__
             leaf_data_node["endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_endpoint()}"
             leaf_data_node["status_endpoint"] = f"http://{self.host}:{self.port}/{self.pipeline_id}{subapp.get_status_endpoint()}"
 

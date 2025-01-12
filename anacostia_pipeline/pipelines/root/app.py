@@ -206,6 +206,7 @@ class RootPipelineApp(FastAPI):
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model["name"]
             node_model["origin_url"] = f"http://{self.host}:{self.port}"
+            node_model["type"] = type(node).__name__
             node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
