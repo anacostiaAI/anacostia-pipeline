@@ -5,8 +5,10 @@ from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List, Dict
 import sys
+from queue import Queue
+import asyncio
 
-from fastapi import FastAPI, status, HTTPException
+from fastapi import FastAPI, status, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
@@ -16,7 +18,7 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
-from anacostia_pipeline.pipelines.utils import ConnectionModel
+from anacostia_pipeline.pipelines.utils import ConnectionModel, EventModel
 from anacostia_pipeline.nodes.app import BaseApp
 
 
@@ -34,11 +36,14 @@ class LeafSubApp(FastAPI):
         super().__init__(*args, **kwargs)
         self.pipeline = pipeline
         self.root_data = root_data
+        self.root_host = root_data[0].root_host
+        self.root_port = root_data[0].root_port
         self.host = host
         self.port = port
         self.client = httpx.AsyncClient()
         self.logger = logger
         self.pipeline_id = uuid.uuid4().hex      # figure out a way to merge this pipeline_id with the pipeline_id in LeafServiceApp
+        self.queue = Queue()
 
         for node_data in root_data:
             for node in self.pipeline.nodes:
@@ -49,8 +54,33 @@ class LeafSubApp(FastAPI):
                     if node.name == node_data.receiver_name:
                         subapp.set_sender(node_data.sender_name, node_data.root_host, node_data.root_port)
                 
-                self.mount(subapp.get_node_prefix(), subapp)       # mount the BaseNodeApp to PipelineWebserver
+                self.mount(subapp.get_node_prefix(), subapp)        # mount the BaseNodeApp to PipelineWebserver
+                node.set_queue(self.queue)                          # set the queue for the node
     
+        self.background_task = asyncio.create_task(self.process_queue())
+    
+    async def process_queue(self):
+        while True:
+            if self.queue.empty() is False:
+                message = self.queue.get()
+                
+                try:
+                    await self.client.post(f"http://{self.root_host}:{self.root_port}/send_event", json=message)
+                
+                except Exception as e:
+                    print(f"Error forwarding message: {str(e)}")
+                    self.queue.put(message)
+                
+                finally:
+                    self.queue.task_done()
+            
+            # Check if we've been cancelled
+            try:
+                await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                print("Background task was cancelled; breaking out of queue processing loop")
+                break
+
     def get_pipeline_id(self):
         return self.pipeline_id
     
@@ -104,6 +134,7 @@ class LeafPipelineApp(FastAPI):
 
                     if isinstance(subapp, LeafSubApp):
                         app.logger.info(f"Closing client for webserver '{subapp.get_pipeline_id()}'")
+                        subapp.background_task.cancel()
                         await subapp.client.aclose()
 
             app.logger.info(f"Closing client for service '{app.name}'")

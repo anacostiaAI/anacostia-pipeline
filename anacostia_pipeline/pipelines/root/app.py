@@ -18,6 +18,7 @@ import httpx
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
+from anacostia_pipeline.pipelines.utils import EventModel
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
@@ -124,8 +125,8 @@ class RootPipelineApp(FastAPI):
             return "\n".join(html_responses)
         
         @self.post('/send_event')
-        async def send_event(event: str, data: str):
-            self.queue.put_nowait({"event": event, "data": data})
+        async def send_event(message: EventModel):
+            self.queue.put_nowait(message.model_dump())
             return {"status": "ok"}
             
         @self.get('/graph_sse', response_class=StreamingResponse)

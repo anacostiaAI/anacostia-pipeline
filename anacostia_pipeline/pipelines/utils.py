@@ -11,3 +11,8 @@ class ConnectionModel(BaseModel):
     sender_name: str
     receiver_name: str
     pipeline_id: str
+
+
+class EventModel(BaseModel):
+    event: str
+    data: str
