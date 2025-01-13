@@ -18,7 +18,7 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
-from anacostia_pipeline.pipelines.utils import ConnectionModel, EventModel
+from anacostia_pipeline.pipelines.utils import ConnectionModel
 from anacostia_pipeline.nodes.app import BaseApp
 
 
