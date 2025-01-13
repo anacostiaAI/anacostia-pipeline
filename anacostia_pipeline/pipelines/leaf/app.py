@@ -8,7 +8,7 @@ import sys
 from queue import Queue
 import asyncio
 
-from fastapi import FastAPI, status, HTTPException, BackgroundTasks
+from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
@@ -74,11 +74,10 @@ class LeafSubApp(FastAPI):
                 finally:
                     self.queue.task_done()
             
-            # Check if we've been cancelled
             try:
                 await asyncio.sleep(0.1)
             except asyncio.CancelledError:
-                print("Background task was cancelled; breaking out of queue processing loop")
+                print("Background task cancelled; breaking out of queue processing loop")
                 break
 
     def get_pipeline_id(self):
