@@ -1,44 +1,89 @@
-/* styles.css */
-.toolbar {
-    background-color: #fbfbfb66;
-    color: #fff;
+/* Navbar styling */
+.home-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    background-color: #333;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #333;
-    margin-bottom: 10px;
-    margin-right: 10px;
 }
 
-.navbar {
-    padding: 0px;
-    border-bottom: 1px solid #333;
+/* setting the max-height of the image to 3.7rem because that's the height of the .navbar-title element (aka the 'Anacostia Pipeline' title) */
+.home-navbar img {
+    max-height: calc(1.7rem + 2rem);
+    cursor: pointer;
 }
 
-.title {
-    font-size: 20px; /* Adjust the font size as needed */
-    text-align: center;
-    flex-grow: 1; /* Allows the title to take up remaining space in the middle */
-    color: #333;
+.home-navbar img:hover {
+    background-color: #a9a9a9;
 }
 
-.navbar-item img {
-    max-height: 50px;
-    max-width: 50px;
-    border-right: 1px solid #333;
-    padding-top: 0px;
-    padding-bottom: 0px;
+/* the 'Anacostia Pipeine' title */
+.home-navbar-title {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1.5rem;
+    text-decoration: none;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
-.navbar-item.dag-icon {
-    padding-top: 0px;
-    padding-bottom: 0px;
-
+/* Dropdown button styling */
+.dropdown-button {
+    background-color: #333;
+    color: white;
+    font-size: 1rem;
+    padding: 1.1rem;
+    height: auto;
+    border: none;
+    cursor: pointer;
+    margin: 0;
 }
 
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 4px;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    cursor: pointer;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* Change color of dropdown button and color of button text on hover */
+.dropdown:hover .dropdown-button {
+    background-color: #a9a9a9;
+    color: black;
+}
+
+/* Add some spacing below navbar */
 body {
-    background-color: #fbfbfb;
-    font-weight: 300;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serf;
-    margin: 0px;
+    margin-top: 59px;
+    margin-left: 0;
+    margin-right: 0;
 }

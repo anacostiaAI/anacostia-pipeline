@@ -66,8 +66,9 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <meta charset="UTF-8">
             <title>Anacostia Console</title>
             
-            <!-- Bulma CSS -->
+            <!-- Bulma CSS 
             <link rel="stylesheet" href="/static/css/third_party/bulma.css">
+            -->
             
             <!-- custom CSS for Anacostia landing page -->
             <link rel="stylesheet" type="text/css" href="/static/css/styles/home.css">
@@ -83,22 +84,19 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
             <script src="/static/js/third_party/sse.js"></script>
         </head>
         <body>
-            <nav class="navbar" role="navigation" aria-label="main navigation">
-                <div class="navbar-brand">
-                    <a class="navbar-item dag-icon" href="/"><img src="/static/img/dag-black.svg" alt="Home"></a>
-                    <h1 class="navbar-item title">Anacostia Pipeline</h1>
-                </div>
-                <div class="navbar-end">
-                    <div class="navbar-item has-dropdown is-hoverable">
-                        <a class="navbar-link">Nodes</a>
-                        <div class="navbar-dropdown is-right">
-                            {newline.join(
-                                [
-                                    f'''<a id="{node["id"]}_tab" class="navbar-item" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
-                                    for node in nodes
-                                ])
-                            }
-                        </div>
+            <nav class="home-navbar">
+                <img src="/static/img/dag-black.svg" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
+                <a href="#" class="home-navbar-title">Anacostia Pipeline</a>
+                <div class="dropdown">
+                <div class="home-navbar-end">
+                    <button class="dropdown-button">Nodes ▽</button>
+                    <div class="dropdown-content">
+                        {newline.join(
+                            [
+                                f'''<a id="{node["id"]}_tab" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
+                                for node in nodes
+                            ])
+                        }
                     </div>
                 </div>
             </nav>

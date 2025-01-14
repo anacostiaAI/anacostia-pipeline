@@ -7,7 +7,7 @@ import os
 import sys
 from queue import Queue
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.routing import Mount
@@ -148,6 +148,10 @@ class RootPipelineApp(FastAPI):
                         break
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+        @self.get('/dag_page', response_class=HTMLResponse)
+        def dag_page(response: Response):
+            response.headers["HX-Redirect"] = "/"
 
     async def connect(self):
         try:
