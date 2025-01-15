@@ -81,6 +81,11 @@
     color: black;
 }
 
+#page_content {
+    height: 95vh;
+    width: 100vw;
+}
+
 /* Add some spacing below navbar */
 body {
     margin-top: 59px;

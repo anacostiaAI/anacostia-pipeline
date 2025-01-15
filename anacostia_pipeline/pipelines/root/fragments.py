@@ -113,7 +113,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
                 <link rel="stylesheet" type="text/css" href="/static/css/styles/dag.css">
 
                 <div id="graph" hx-ext="sse" sse-connect="{graph_sse_endpoint}" sse-swap="WorkUpdate">
-                    <svg width="960" height="700"><g/></svg> 
+                    <svg><g/></svg> 
                     <section id="footer">
                         <p>Potomac AI Inc.</p>
                     </section>

@@ -71,7 +71,11 @@ edges.forEach((edge) => {
     );
 });
 
+var graph_bounds = document.getElementById("graph").getBoundingClientRect();
 var svg = d3.select("svg");
+svg.attr("width", graph_bounds.width * 0.9);
+svg.attr("height", graph_bounds.height);
+
 var inner = svg.select("g");
 
 // Set up zoom support
