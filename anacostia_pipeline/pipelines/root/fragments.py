@@ -44,6 +44,37 @@ def node_bar_open(node_model: Dict[str, str], close_div_endpoint: str) -> str:
 
 
 
+def head_template(user_elements: str = ""):
+    return f"""
+    <head hx-head="merge">
+        <meta hx-preserve="true" charset="UTF-8">
+        <meta hx-preserve="true" name="viewport" content="width=device-width, initial-scale=1">
+        <title hx-preserve="true">Anacostia Console</title>
+        
+        <!-- non-minified Htmx -->
+        <script hx-preserve="true" src="/static/js/third_party/htmx.js" type="text/javascript"></script>
+
+        <!-- htmx server-sent events extension -->
+        <script hx-preserve="true" src="/static/js/third_party/sse.js"></script>
+
+        <!-- htmx head-support extension -->
+        <script hx-preserve="true" src="/static/js/third_party/head-support.js"></script>
+        
+        <!-- start of user-defined CSS -->
+        {user_elements}
+        <!-- end of user-defined CSS -->
+        
+        <!-- custom CSS for Anacostia landing page -->
+        <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/home.css">
+        <link hx-head="re-eval" rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+
+        <!-- custom CSS for node bar -->
+        <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/node_bar.css">
+    </head> 
+    """
+
+
+
 def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str) -> str:
     """
     The template for the Anacostia Pipeline landing page
@@ -62,33 +93,12 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
     return f"""
     <!DOCTYPE html>
     <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Anacostia Console</title>
-            
-            <!-- Bulma CSS 
-            <link rel="stylesheet" href="/static/css/third_party/bulma.css">
-            -->
-            
-            <!-- custom CSS for Anacostia landing page -->
-            <link rel="stylesheet" type="text/css" href="/static/css/styles/home.css">
-            <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
-
-            <!-- custom CSS for node bar -->
-            <link rel="stylesheet" type="text/css" href="/static/css/styles/node_bar.css">
-            
-            <!-- non-minified Htmx -->
-            <script src="/static/js/third_party/htmx.js" type="text/javascript"></script>
-
-            <!-- htmx server-sent events extension -->
-            <script src="/static/js/third_party/sse.js"></script>
-        </head>
-        <body>
+        { head_template() }
+        <body hx-ext="head-support">
             <nav class="home-navbar">
                 <img src="/static/img/dag-black.svg" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
                 <a href="#" class="home-navbar-title">Anacostia Pipeline</a>
                 <div class="dropdown">
-                <div class="home-navbar-end">
                     <button class="dropdown-button">Nodes ▽</button>
                     <div class="dropdown-content">
                         {newline.join(
