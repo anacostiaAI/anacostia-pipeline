@@ -1,4 +1,5 @@
 from typing import List, Dict
+from anacostia_pipeline.pipelines.root.fragments import head_template
 
 
 
@@ -24,7 +25,15 @@ def create_table_rows(file_entries: List[Dict[str, str]]):
 
 def filesystemstore_home(sse_endpoint: str, event_name: str, file_entries: List[Dict[str, str]]):
     return f"""
-        <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
+        {head_template(
+            '''
+            <!-- Bulma CSS --> 
+            <link rel="stylesheet" href="/static/css/third_party/bulma.css">
+
+            <!-- CSS for filesystem store node -->
+            <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
+            '''
+        )}
         <div id="table_container" class="container">
             <table class="table is-bordered is-striped is-hoverable">
                 <thead>
