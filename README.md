@@ -58,9 +58,9 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
     
-    def trigger_condition(self) -> bool:
-        num_new = self.get_num_artifacts("new")
-        return num_new >= 1
+    def custom_trigger(self):
+        if self.get_num_artifacts("new") >= 1:
+            self.trigger()
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
