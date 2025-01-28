@@ -12,29 +12,29 @@ var viewport_height = window.innerHeight;
 
 status_gui_info = {
     // Pre-execution States
-    "INITIALIZING": {"color": "#7C3AED", "width": 62},      // Purple - setup/initialization
+    "INITIALIZING": {"color": "#7C3AED", "width": 51},      // Purple - setup/initialization
     
     // Waiting States
-    "WAITING_RESOURCE": {"color": "#4B5563", "width": 98},  // Darker gray
-    "WAITING_METRICS": {"color": "#4B5563", "width": 92},   // Darker gray
-    "QUEUED": {"color": "#475569", "width": 51},            // Darker slate
-    "PAUSED": {"color": "#4B5563", "width": 51},            // Darker gray
+    "WAITING_RESOURCE": {"color": "#4B5563", "width": 84},  // Darker gray
+    "WAITING_METRICS": {"color": "#4B5563", "width": 78},   // Darker gray
+    "QUEUED": {"color": "#475569", "width": 46},            // Darker slate
+    "PAUSED": {"color": "#4B5563", "width": 46},            // Darker gray
     
     // Active States
-    "PREPARATION": {"color": "#1D4ED8", "width": 72},       // Deep blue
-    "EXECUTING": {"color": "#1E40AF", "width": 62},         // Navy blue
-    "CLEANUP": {"color": "#4338CA", "width": 52},           // Deep indigo
+    "PREPARATION": {"color": "#1D4ED8", "width": 60},       // Deep blue
+    "EXECUTING": {"color": "#1E40AF", "width": 54},         // Navy blue
+    "CLEANUP": {"color": "#4338CA", "width": 46},           // Deep indigo
     
     // Completion States
-    "COMPLETE": {"color": "#16A34A", "width": 60},          // Darker green
-    "TRIGGERED": {"color": "#16A34A", "width": 60},         // Same as complete (green)
+    "COMPLETE": {"color": "#16A34A", "width": 52},          // Darker green
+    "TRIGGERED": {"color": "#16A34A", "width": 52},         // Same as complete (green)
     
     // Skipped State
-    "SKIPPED": {"color": "#6B7280", "width": 52},           // Medium gray
+    "SKIPPED": {"color": "#6B7280", "width": 47},           // Medium gray
     
     // Error States
-    "FAILURE": {"color": "#DC2626", "width": 43},           // Vivid red
-    "ERROR": {"color": "#B91C1C", "width": 36}              // Darker red
+    "FAILURE": {"color": "#DC2626", "width": 37},           // Vivid red
+    "ERROR": {"color": "#B91C1C", "width": 31}              // Darker red
 }
 
 // Create a new directed graph 

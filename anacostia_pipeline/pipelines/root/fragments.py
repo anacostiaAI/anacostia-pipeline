@@ -44,7 +44,14 @@ def node_bar_open(node_model: Dict[str, str], close_div_endpoint: str) -> str:
 
 
 
-def head_template(user_elements: str = ""):
+def head_template(user_elements: str = "") -> str:
+    """
+    The template for the <head> tag of the Anacostia Pipeline landing page
+
+    args:
+        user_elements: str - The user's custom elements to be included in the <head> tag
+    """
+
     return f"""
     <head hx-head="merge">
         <meta hx-preserve="true" charset="UTF-8">
