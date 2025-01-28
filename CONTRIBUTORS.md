@@ -62,11 +62,7 @@ venv\Scripts\activate
 cd anacostia
 pip install -e .
 ```
-3. pip install packages for running tests
-```
-pip install requirements-test.txt
-```
-4. Run test
+3. Run test
 ```
 cd tests
 python3 graph_test.py
