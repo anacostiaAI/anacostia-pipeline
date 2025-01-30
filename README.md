@@ -16,16 +16,13 @@ The edges of the DAG dictates which child nodes are listening for signals from w
 There are fundamentally three types of nodes in Anacostia:
 1. Metadata store nodes: stores tracking information about each time the pipeline executes (i.e., a *run*).
     - The metadata store is responsible for storing information like the start/end time of the run, metadata information about all the nodes in the pipeline, etc. 
-    - All metadata store nodes must implement the following methods: ...
 2. Resource nodes: think of a "resource" as the inputs and outputs of your pipeline.
     - A resource can be a folder on a local filesystem, an S3 bucket, an API endpoint, a database, etc.
     - An "input resource" is a resource that is monitored for changes. When there is enough data in the input resource, it triggers the pipeline to start executing.
     - An "output resource" is a resource that is not monitored for changes. This is a resource that stores artifacts produced by the pipeline. 
     - The data in each resource resides only in that resource, it is never moved to another resource.
     - Other nodes can interact with the data in that resource via calls to its API.
-    - All resource nodes must implement the following methods: ...
 3. Action nodes: executes a job in your pipeline. Examples of jobs include tasks like: data preprocessing, retraining a model on new data, evaluating a model on new data, etc.
-    - All action nodes must implement the following methods: ...
 
 Every node in Anacostia is inherited from these three basic nodes.
 
