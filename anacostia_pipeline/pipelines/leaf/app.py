@@ -202,7 +202,7 @@ class LeafPipelineApp(FastAPI):
         signal.signal(signal.SIGINT, _kill_webserver)
         self.fastapi_thread.start()
 
-        if sys.version_info == (3, 12):
+        if sys.version_info.major == 3 and sys.version_info.minor >= 12:
             # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
             for thread in threading.enumerate():
                 if thread.daemon or thread is threading.current_thread():
