@@ -59,22 +59,25 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
         if self.get_num_artifacts("new") >= 1:
             self.trigger()
 
-class ShakespeareEvalNode(BaseActionNode):
+class EmailNode(BaseActionNode):
     def __init__(
         self, name: str, predecessors: List[BaseNode], 
-        metadata_store: BaseMetadataStoreNode, loggers: Logger | List[Logger] = None
+        metadata_store: BaseMetadataStoreNode, 
+        sender_email: str, recipient_email: str, 
+        loggers: Logger | List[Logger] = None
     ) -> None:
         self.metadata_store = metadata_store
+        self.sender_email = sender_email
+        self.recipient_email = recipient_email
         super().__init__(name, predecessors, loggers)
     
     def execute(self, *args, **kwargs) -> bool:
-        print("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        self.metadata_store.log_metrics(shakespeare_test_loss=1.47)
+        # send email to boss
         return True
 
 if __name__ == "__main__":
     haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
-    shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", predecessors=[retraining], metadata_store=metadata_store)
+    email_boss_node = EmailNode("email_boss_node", predecessors=[retraining], metadata_store=metadata_store)
 
     metadata_store = SqliteMetadataStore(
         name="metadata_store", 
@@ -82,7 +85,7 @@ if __name__ == "__main__":
     )
 
     pipeline = RootPipeline(
-        nodes=[metadata_store, haiku_data_store, shakespeare_eval], 
+        nodes=[metadata_store, haiku_data_store, email_boss_node], 
         loggers=logger
     )
 ```
