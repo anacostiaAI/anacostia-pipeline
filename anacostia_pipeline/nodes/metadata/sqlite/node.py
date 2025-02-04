@@ -196,8 +196,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
     def base_trigger(self) -> None:
         """
-        The default trigger for the FilesystemStoreNode. 
-        base_trigger checks if there are any new files in the resource directory and triggers the node if there are.
+        The default trigger for the SqliteMetadataStoreNode. 
+        base_trigger does not check any metric, it just simply triggers the pipeline.
         base_trigger is called when the custom_trigger method is not implemented.
         """
         self.trigger()

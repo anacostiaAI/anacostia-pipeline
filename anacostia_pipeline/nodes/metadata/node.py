@@ -101,9 +101,17 @@ class BaseMetadataStoreNode(BaseNode):
         self.trigger_event.set()
 
     def start_monitoring(self) -> None:
+        """
+        Override to specify how to start monitoring the metadata store.
+        E.g., start a thread that monitors the metadata store for new entries, etc.
+        """
         pass
 
     def stop_monitoring(self) -> None:
+        """
+        Override to specify how to stop monitoring the metadata store.
+        E.g., stop the thread that monitors the metadata store for new entries, etc.
+        """
         pass
 
     def exit(self):
