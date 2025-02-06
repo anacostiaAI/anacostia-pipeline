@@ -136,9 +136,10 @@ class RootPipelineApp(FastAPI):
         async def graph_sse(request: Request):
             async def event_stream():
                 for node_id, node_status in self.recent_messages.items():
-                    message_data = json.dumps({"id": node_id, "status": node_status})
-                    yield f"event: WorkUpdate\n"
-                    yield f"data: {message_data}\n\n"
+                    if node_status != "INITIALIZING":
+                        message_data = json.dumps({"id": node_id, "status": node_status})
+                        yield f"event: WorkUpdate\n"
+                        yield f"data: {message_data}\n\n"
 
                 while True:
                     try:
