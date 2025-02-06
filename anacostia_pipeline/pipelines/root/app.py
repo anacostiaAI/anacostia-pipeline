@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import os
 import sys
 from queue import Queue
+import json
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -128,14 +129,24 @@ class RootPipelineApp(FastAPI):
         async def send_event(message: EventModel):
             self.queue.put_nowait(message.model_dump())
             return {"status": "ok"}
+        
+        self.recent_messages = {}
             
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
             async def event_stream():
+                for node_id, node_status in self.recent_messages.items():
+                    message_data = json.dumps({"id": node_id, "status": node_status})
+                    yield f"event: WorkUpdate\n"
+                    yield f"data: {message_data}\n\n"
+
                 while True:
                     try:
                         if self.queue.empty() is False:
                             message = self.queue.get_nowait()
+                            message_data = json.loads(message["data"])
+                            self.recent_messages[message_data["id"]] = message_data["status"]
+
                             yield f"event: {message['event']}\n"
                             yield f"data: {message['data']}\n\n"
 
