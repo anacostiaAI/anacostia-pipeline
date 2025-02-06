@@ -10,6 +10,7 @@ from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNod
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.pipelines.root.app import RootPipelineApp
+from senders import ShakespeareEvalSender, ShakespeareEvalSenderApp
 
 from utils import *
 
@@ -134,9 +135,9 @@ plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode("retraining", haiku_data_store, plots_store, model_registry, metadata_store)
 
-shakespeare_eval_sender = SenderNode(
+shakespeare_eval_sender = ShakespeareEvalSender(
     "shakespeare_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="shakespeare_eval_receiver", 
-    predecessors=[retraining]
+    metadata_store=metadata_store, predecessors=[retraining]
 )
 haiku_eval_sender = SenderNode(
     "haiku_eval_sender", leaf_host=args.leaf_host, leaf_port=args.leaf_port, leaf_receiver="haiku_eval_receiver",
