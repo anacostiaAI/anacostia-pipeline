@@ -135,12 +135,15 @@ class RootPipelineApp(FastAPI):
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
             async def event_stream():
+
+                # when the home page loads, if the queue is empty, display the most recent status of each node
                 for node_id, node_status in self.recent_messages.items():
                     if node_status != "INITIALIZING":
                         message_data = json.dumps({"id": node_id, "status": node_status})
                         yield f"event: WorkUpdate\n"
                         yield f"data: {message_data}\n\n"
 
+                # if the queue is not empty, display the status of the nodes in the queue
                 while True:
                     try:
                         if self.queue.empty() is False:
