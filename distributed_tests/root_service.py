@@ -91,9 +91,12 @@ class ModelRetrainingNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("old"):
             self.log(f"Already trained on {filepath}", level="INFO")
         
-        self.metadata_store.log_metrics(acc=1.00)
+        # must pass self to log_metrics and log_params in order for the metadata store to know which node is logging
+        # if you don't pass self, the metadata store will not know which node is logging and will not enter the data into the database
+        self.metadata_store.log_metrics(self, acc=1.00)
         
         self.metadata_store.log_params(
+            self,
             batch_size = 64, # how many independent sequences will we process in parallel?
             block_size = 256, # what is the maximum context length for predictions?
             max_iters = 2500,
@@ -108,7 +111,7 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(test_name="Karpathy LLM test")
+        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         return True
