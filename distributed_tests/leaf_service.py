@@ -50,20 +50,21 @@ class ShakespeareEvalNode(BaseActionNode):
 
 class HaikuEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, predecessors: List[BaseNode], 
+        self, name: str, receiver: CustomReceiverNode, predecessors: List[BaseNode], 
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name, predecessors, loggers)
+        self.receiver = receiver
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
-        #self.metadata_store.log_metrics(haiku_test_loss=2.43)
+        self.receiver.log_metrics(haiku_test_loss=2.43)
         return True
 
 shakespeare_eval_receiver = CustomReceiverNode("shakespeare_eval_receiver", loggers=[])
-haiku_eval_receiver = ReceiverNode("haiku_eval_receiver", loggers=[])
+haiku_eval_receiver = CustomReceiverNode("haiku_eval_receiver", loggers=[])
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", receiver=shakespeare_eval_receiver, predecessors=[shakespeare_eval_receiver])
-haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[haiku_eval_receiver])
+haiku_eval = HaikuEvalNode("haiku_eval", receiver=haiku_eval_receiver, predecessors=[haiku_eval_receiver])
 
 pipeline = LeafPipeline(
     name="leaf_pipeline",
