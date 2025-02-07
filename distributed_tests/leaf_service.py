@@ -8,7 +8,7 @@ from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
-from receivers import ShakespeareEvalReceiver
+from receivers import CustomReceiverNode
 
 
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, receiver, predecessors: List[BaseNode], 
+        self, name: str, receiver: CustomReceiverNode, predecessors: List[BaseNode], 
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name, predecessors, loggers)
@@ -60,7 +60,7 @@ class HaikuEvalNode(BaseActionNode):
         #self.metadata_store.log_metrics(haiku_test_loss=2.43)
         return True
 
-shakespeare_eval_receiver = ShakespeareEvalReceiver("shakespeare_eval_receiver", loggers=[])
+shakespeare_eval_receiver = CustomReceiverNode("shakespeare_eval_receiver", loggers=[])
 haiku_eval_receiver = ReceiverNode("haiku_eval_receiver", loggers=[])
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", receiver=shakespeare_eval_receiver, predecessors=[shakespeare_eval_receiver])
 haiku_eval = HaikuEvalNode("haiku_eval", predecessors=[haiku_eval_receiver])

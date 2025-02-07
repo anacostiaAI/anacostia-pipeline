@@ -8,7 +8,7 @@ from anacostia_pipeline.nodes.network.receiver.app import ReceiverApp
 
 
 
-class ShakespeareEvalReceiverApp(ReceiverApp):
+class CustomReceiverApp(ReceiverApp):
     def __init__(self, node) -> None:
         super().__init__(node)
 
@@ -19,10 +19,10 @@ class ShakespeareEvalReceiverApp(ReceiverApp):
 
 
 
-class ShakespeareEvalReceiver(ReceiverNode):
+class CustomReceiverNode(ReceiverNode):
     def __init__(self, name, loggers: List[Logger] = None) -> None:
         super().__init__(name, loggers=loggers)
-        self.app = ShakespeareEvalReceiverApp(self)
+        self.app = CustomReceiverApp(self)
     
     def get_app(self):
         return self.app
