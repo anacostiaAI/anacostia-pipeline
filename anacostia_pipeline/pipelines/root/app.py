@@ -206,7 +206,6 @@ class RootPipelineApp(FastAPI):
                 for node in self.pipeline.nodes:
                     if isinstance(node, SenderNode):
                         if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
-                            node.get_app().set_leaf_pipeline_id(pipeline_id)
 
                             for connection in self.connections:
                                 if connection["sender_name"] == node.name:

@@ -96,7 +96,7 @@ class LeafPipelineApp(FastAPI):
 
                 self.root_host = connections[0].root_host
                 self.root_port = connections[0].root_port 
-                self.logger.info(f"Leaf service '{self.name}' created pipeline '{self.pipeline_id}'")
+                self.logger.info(f"Leaf service '{self.name}' created pipeline")
                 return self.frontend_json()
 
             except Exception as e:

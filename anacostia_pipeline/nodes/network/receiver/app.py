@@ -17,9 +17,6 @@ class ReceiverApp(BaseApp):
         async def signal_successor():
             self.node.wait_sender_node.set()
             return {"message": "Success"}
-    
-    def set_leaf_pipeline_id(self, pipeline_id: str):
-        self.leaf_pipeline_id = pipeline_id
 
     def set_sender(self, sender_name: str, sender_host: str, sender_port: int):
         self.sender_name = sender_name
