@@ -75,7 +75,6 @@ class RootPipelineApp(FastAPI):
                     "root_port": self.port,
                     "sender_name": node.name,
                     "receiver_name": node.leaf_receiver,
-                    "pipeline_id": ""
                 }
                 
                 if any([connection_dict["receiver_name"] == connection["receiver_name"] for connection in self.connections]):
@@ -200,16 +199,8 @@ class RootPipelineApp(FastAPI):
             for response in responses:
                 response_data = response.json()
                 # self.logger.info(f"leaf data: {response_data}")
-                pipeline_id = response_data["pipeline_id"]
                 self.leaf_configs.append(response_data)
 
-                for node in self.pipeline.nodes:
-                    if isinstance(node, SenderNode):
-                        if f"{node.leaf_host}:{node.leaf_port}" == ip_address:
-
-                            for connection in self.connections:
-                                if connection["sender_name"] == node.name:
-                                    connection["pipeline_id"] = pipeline_id
             self.logger.info("------------- Leaf pipeline creation completed -------------")
 
         except Exception as e:

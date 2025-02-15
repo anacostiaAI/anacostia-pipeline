@@ -57,7 +57,6 @@ class LeafPipelineApp(FastAPI):
         self.pipeline = pipeline
         self.logger = logger
         self.client = httpx.AsyncClient()
-        self.pipeline_id = uuid.uuid4().hex
         self.queue = Queue()
         self.background_task = None
 
@@ -130,7 +129,7 @@ class LeafPipelineApp(FastAPI):
                 break
 
     def frontend_json(self):
-        leaf_data = {"pipeline_id": self.pipeline_id}
+        leaf_data = {}
         leaf_data["nodes"] = self.pipeline.model().model_dump()["nodes"]
 
         edges = []
