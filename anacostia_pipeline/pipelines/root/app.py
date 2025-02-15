@@ -190,10 +190,10 @@ class RootPipelineApp(FastAPI):
             self.logger.info("------------- Healthcheck completed -------------")
                 
             self.logger.info("------------- Leaf pipeline creation started -------------")
-            # Send a /create_pipeline request to each leaf service and store the pipeline ID
+            # Send a /connect request to each leaf service and store the pipeline ID
             tasks = []
             for ip_address in self.leaf_ip_addresses:
-                tasks.append(self.client.post(f"http://{ip_address}/create_pipeline", json=self.connections))
+                tasks.append(self.client.post(f"http://{ip_address}/connect", json=self.connections))
             
             responses = await asyncio.gather(*tasks)
 
