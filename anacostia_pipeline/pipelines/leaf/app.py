@@ -1,16 +1,14 @@
 import threading
 import signal
-import uuid
 from logging import Logger
 from contextlib import asynccontextmanager
-from typing import List, Dict
+from typing import List
 import sys
 from queue import Queue
 import asyncio
 
 from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.routing import Mount
 
 import uvicorn
 import httpx
