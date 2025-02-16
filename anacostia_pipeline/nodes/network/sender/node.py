@@ -4,7 +4,7 @@ import threading
 import asyncio
 
 from anacostia_pipeline.nodes.node import BaseNode
-from anacostia_pipeline.utils.constants import Result, Status
+from anacostia_pipeline.utils.constants import Result
 from anacostia_pipeline.nodes.network.sender.app import SenderApp
 
 

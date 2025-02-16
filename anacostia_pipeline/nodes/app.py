@@ -1,4 +1,3 @@
-from queue import Queue
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import httpx
@@ -12,7 +11,6 @@ class BaseApp(FastAPI):
         super().__init__(*args, **kwargs)
         self.node = node
         self.client = httpx.AsyncClient()
-        self.is_running = False
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint():
