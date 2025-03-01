@@ -28,7 +28,7 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
 setup(
     name="anacostia_pipeline",
-    version="0.2.2",
+    version="0.3.1",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
@@ -49,4 +49,7 @@ setup(
         "uvicorn[standard]",
         "httpx" 
     ],
+    extras_require={
+        "aws": ["boto3"]
+    }
 )
