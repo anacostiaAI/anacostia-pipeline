@@ -3,7 +3,6 @@ import signal
 from logging import Logger
 from contextlib import asynccontextmanager
 from typing import List
-import sys
 from queue import Queue
 import asyncio
 
@@ -168,9 +167,9 @@ class LeafPipelineApp(FastAPI):
 
         self.pipeline.launch_nodes()
 
-        if sys.version_info.major == 3 and sys.version_info.minor >= 12:
-            # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
-            for thread in threading.enumerate():
-                if thread.daemon or thread is threading.current_thread():
-                    continue
-                thread.join()
+        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
+        # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9
+        for thread in threading.enumerate():
+            if thread.daemon or thread is threading.current_thread():
+                continue
+            thread.join()
