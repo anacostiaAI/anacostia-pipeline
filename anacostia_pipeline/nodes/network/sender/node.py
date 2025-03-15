@@ -39,12 +39,12 @@ class SenderNode(BaseNode):
         while self.exit_event.is_set() is False:
             self.wait_for_predecessors()
             
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)
 
             # Wait for the successor node to signal over the network
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_successors()
             
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_predecessors(Result.SUCCESS)

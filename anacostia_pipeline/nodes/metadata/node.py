@@ -133,28 +133,28 @@ class BaseMetadataStoreNode(BaseNode):
             self.status = Status.WAITING_METRICS
             self.trigger_event.wait()
             
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             
             self.trigger_event.clear()
             self.status = Status.TRIGGERED
 
             # creating a new run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.start_run()
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_successors(Result.SUCCESS)
 
             # waiting for all resource nodes to signal they are done using the current state
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_successors()
             
             # ending the run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.end_run()
 
             self.run_id += 1
             
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_successors(Result.SUCCESS)

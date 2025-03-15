@@ -76,7 +76,7 @@ class BaseResourceNode(BaseNode):
                 self.status = Status.WAITING_RESOURCE
                 self.resource_event.wait()
 
-                if self.exit_event.is_set(): break
+                if self.exit_event.is_set(): return
 
                 self.resource_event.clear()
                 self.status = Status.TRIGGERED
@@ -84,26 +84,26 @@ class BaseResourceNode(BaseNode):
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run
             # e.g., there is enough new data to trigger the next run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_predecessors(Result.SUCCESS)
 
             # wait for metadata store node to finish creating the run 
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_predecessors()
 
             # signalling to all successors that the resource is ready to be used for the current run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_successors(Result.SUCCESS)
 
             # waiting for all successors to finish using the the resource for the current run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_successors()
 
             # signal the metadata store node that the action nodes have finish using the resource for the current run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_predecessors()
             

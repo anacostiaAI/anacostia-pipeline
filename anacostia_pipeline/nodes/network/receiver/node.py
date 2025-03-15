@@ -36,11 +36,11 @@ class ReceiverNode(BaseNode):
         while self.exit_event.is_set() is False:
             self.wait_for_predecessors()
 
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.signal_successors(Result.SUCCESS)
 
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_successors()
 
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             await self.signal_predecessors(Result.SUCCESS)
