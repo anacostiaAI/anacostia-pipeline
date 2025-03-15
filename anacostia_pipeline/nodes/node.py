@@ -11,6 +11,7 @@ import json
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.nodes.connector import Connector
 
 
 
@@ -28,7 +29,15 @@ class NodeModel(BaseModel):
 
 
 class BaseNode(Thread):
-    def __init__(self, name: str, predecessors: List[BaseNode] = None, loggers: Union[Logger, List[Logger]] = None) -> None:
+    def __init__(
+        self, 
+        name: str, 
+        predecessors: List[BaseNode] = None, 
+        remote_predecessors: List[str] = None, 
+        remote_successors: List[str] = None, 
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
+
         self._status_lock = Lock()
         
         if loggers is None:
@@ -40,13 +49,12 @@ class BaseNode(Thread):
                 self.loggers: List[Logger] = loggers
         
         # TODO: replace list with tuple
-        if predecessors is None:
-            predecessors = list()
-        
-        self.predecessors = predecessors
+        self.predecessors = list() if predecessors is None else predecessors
+        self.remote_predecessors = list() if remote_predecessors is None else remote_predecessors
         self.predecessors_events: Dict[str, Event] = {predecessor.name: Event() for predecessor in self.predecessors}
 
         self.successors: List[BaseNode] = list()
+        self.remote_successors = list() if remote_successors is None else remote_successors
         self.successor_events: Dict[str, Event] = {}
 
         # add node to each predecessor's successors list and create an event for each predecessor's successor_events
@@ -62,6 +70,15 @@ class BaseNode(Thread):
 
         super().__init__(name=name)
     
+    def add_remote_predecessor(self, url: str):
+        if url not in self.remote_predecessors:
+            self.remote_predecessors.append(url)
+            self.predecessors_events[url] = Event()
+    
+    def setup_connector(self):
+        self.app = Connector(self)
+        return self.app
+
     def get_app(self):
         self.app = BaseApp(self)
         return self.app
