@@ -58,7 +58,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    def run(self) -> None:
+    async def run_async(self) -> None:
         while self.exit_event.is_set() is False:
             self.status = Status.QUEUED
             self.wait_for_predecessors()

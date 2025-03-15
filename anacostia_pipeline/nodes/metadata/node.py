@@ -120,7 +120,7 @@ class BaseMetadataStoreNode(BaseNode):
         self.stop_monitoring()    
         self.trigger_event.set()
     
-    def run(self) -> None:
+    async def run_async(self) -> None:
         # start monitoring thread for metadata store node
         self.start_monitoring()
 

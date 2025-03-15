@@ -63,7 +63,7 @@ class BaseResourceNode(BaseNode):
     def trigger(self) -> None:
         self.resource_event.set()
 
-    def run(self) -> None:
+    async def run_async(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
             self.start_monitoring()

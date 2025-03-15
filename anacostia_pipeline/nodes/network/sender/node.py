@@ -48,6 +48,3 @@ class SenderNode(BaseNode):
             
             if self.exit_event.is_set(): break
             self.signal_predecessors(Result.SUCCESS)
-
-    def run(self) -> None:
-        asyncio.run(self.run_async())

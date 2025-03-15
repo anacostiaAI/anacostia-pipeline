@@ -8,6 +8,7 @@ from functools import wraps
 import traceback
 from pydantic import BaseModel, ConfigDict
 import json
+import asyncio
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
@@ -222,8 +223,11 @@ class BaseNode(Thread):
         """
         self.status = Status.INITIALIZING
 
-    def run(self) -> None:
+    async def run_async(self) -> None:
         """
         override to specify the logic of the node.
         """
         raise NotImplementedError
+    
+    def run(self) -> None:
+        asyncio.run(self.run_async())
