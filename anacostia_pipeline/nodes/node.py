@@ -48,14 +48,16 @@ class BaseNode(Thread):
             else:
                 self.loggers: List[Logger] = loggers
         
-        # TODO: replace list with tuple
         self.predecessors = list() if predecessors is None else predecessors
         self.remote_predecessors = list() if remote_predecessors is None else remote_predecessors
         self.predecessors_events: Dict[str, Event] = {predecessor.name: Event() for predecessor in self.predecessors}
 
         self.successors: List[BaseNode] = list()
         self.remote_successors = list() if remote_successors is None else remote_successors
-        self.successor_events: Dict[str, Event] = {}
+        self.successor_events: Dict[str, Event] = {url: Event() for url in self.remote_successors}
+
+        for event in self.successor_events.values():
+            event.set()
 
         # add node to each predecessor's successors list and create an event for each predecessor's successor_events
         for predecessor in self.predecessors:
