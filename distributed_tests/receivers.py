@@ -28,8 +28,7 @@ class MetadataStoreReceiverNode(ReceiverNode):
         return self.app
     
     def log_metrics(self, **data):
-        return asyncio.run(self.app.log_metrics(**data))
-
+        task = asyncio.create_task(self.app.log_metrics(**data))
 
 
 class FilesystemReceiverApp(ReceiverApp):

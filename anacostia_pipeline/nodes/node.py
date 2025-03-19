@@ -166,7 +166,7 @@ class BaseNode(Thread):
                 return
         return log_exception_wrapper
     
-    def signal_successors(self, result: Result):
+    async def signal_successors(self, result: Result):
         for successor in self.successors:
             successor.predecessors_events[self.name].set()
 
@@ -177,7 +177,7 @@ class BaseNode(Thread):
         for event in self.successor_events.values():
             event.clear()
     
-    def signal_predecessors(self, result: Result):
+    async def signal_predecessors(self, result: Result):
         for predecessor in self.predecessors:
             predecessor.successor_events[self.name].set()
 

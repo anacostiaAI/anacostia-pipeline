@@ -47,4 +47,4 @@ class SenderNode(BaseNode):
             self.wait_for_successors()
             
             if self.exit_event.is_set(): return
-            self.signal_predecessors(Result.SUCCESS)
+            await self.signal_predecessors(Result.SUCCESS)

@@ -37,7 +37,7 @@ class ReceiverNode(BaseNode):
             self.wait_for_predecessors()
 
             if self.exit_event.is_set(): return
-            self.signal_successors(Result.SUCCESS)
+            await self.signal_successors(Result.SUCCESS)
 
             if self.exit_event.is_set(): return
             self.wait_for_successors()

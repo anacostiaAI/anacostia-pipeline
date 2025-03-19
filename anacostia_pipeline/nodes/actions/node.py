@@ -96,7 +96,7 @@ class BaseActionNode(BaseNode):
                 self.after_execution()
 
             if self.exit_event.is_set(): return
-            self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
+            await self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the resource for current run
@@ -104,4 +104,4 @@ class BaseActionNode(BaseNode):
             self.wait_for_successors()
 
             if self.exit_event.is_set(): return
-            self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
+            await self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
