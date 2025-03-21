@@ -5,7 +5,7 @@ from typing import List, Union
 
 
 
-class LeafConnectionNode(BaseNode):
+class BaseRPCNode(BaseNode):
     def __init__(self, name: str, loggers: Union[Logger, List[Logger]] =None):
         super().__init__(name=name, loggers=loggers)
     
