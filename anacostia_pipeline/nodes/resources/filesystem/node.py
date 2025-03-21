@@ -62,8 +62,16 @@ def locked_file(filename, mode='r'):
 
 class FilesystemStoreNode(BaseResourceNode):
     def __init__(
-        self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
-        init_state: str = "new", max_old_samples: int = None, loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
+        self, 
+        name: str, 
+        resource_path: str, 
+        metadata_store: BaseMetadataStoreNode, 
+        init_state: str = "new", 
+        max_old_samples: int = None, 
+        remote_predecessors: List[str] = None,
+        remote_successors: List[str] = None,
+        loggers: Union[Logger, List[Logger]] = None, 
+        monitoring: bool = True
     ) -> None:
 
         # TODO: add max_old_samples functionality
@@ -83,7 +91,15 @@ class FilesystemStoreNode(BaseResourceNode):
         self.init_state = init_state
         self.init_time = str(datetime.now())
         
-        super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
+        super().__init__(
+            name=name, 
+            resource_path=resource_path, 
+            metadata_store=metadata_store, 
+            remote_predecessors=remote_predecessors,
+            remote_successors=remote_successors,
+            loggers=loggers, 
+            monitoring=monitoring
+        )
     
     def get_app(self) -> FilesystemStoreNodeApp:
         return FilesystemStoreNodeApp(self)

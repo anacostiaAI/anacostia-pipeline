@@ -20,10 +20,11 @@ class BaseMetadataStoreNode(BaseNode):
         self,
         name: str,
         uri: str,
+        remote_successors: List[str] = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
     
-        super().__init__(name, predecessors=None, loggers=loggers)
+        super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, loggers=loggers)
         self.uri = uri
         self.run_id = 0
         self.resource_lock = RLock()

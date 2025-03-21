@@ -11,10 +11,15 @@ from anacostia_pipeline.utils.constants import Result, Status
 class BaseResourceNode(BaseNode):
     def __init__(
         self, 
-        name: str, resource_path: str, metadata_store: BaseMetadataStoreNode,
-        loggers: Union[Logger, List[Logger]] = None, monitoring: bool = True
+        name: str, 
+        resource_path: str, 
+        metadata_store: BaseMetadataStoreNode,
+        remote_predecessors: List[str] = None, 
+        remote_successors: List[str] = None,
+        loggers: Union[Logger, List[Logger]] = None, 
+        monitoring: bool = True
     ) -> None:
-        super().__init__(name, predecessors=[metadata_store], loggers=loggers)
+        super().__init__(name, predecessors=[metadata_store], remote_predecessors=remote_predecessors, remote_successors=remote_successors, loggers=loggers)
         self.resource_path = resource_path
         self.monitoring = monitoring
         self.metadata_store = metadata_store

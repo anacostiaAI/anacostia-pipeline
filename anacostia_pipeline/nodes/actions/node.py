@@ -8,8 +8,15 @@ from anacostia_pipeline.utils.constants import Result, Status
 
 
 class BaseActionNode(BaseNode):
-    def __init__(self, name: str, predecessors: List[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
-        super().__init__(name, predecessors, loggers=loggers)
+    def __init__(
+        self, 
+        name: str, 
+        predecessors: List[BaseNode], 
+        remote_predecessors: List[str] = None, 
+        remote_successors: List[str] = None,
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
+        super().__init__(name, predecessors, remote_predecessors=remote_predecessors, remote_successors=remote_successors, loggers=loggers)
 
     @BaseNode.log_exception
     def before_execution(self) -> None:
