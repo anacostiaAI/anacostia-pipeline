@@ -9,6 +9,7 @@ import traceback
 from pydantic import BaseModel, ConfigDict
 import json
 import asyncio
+import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
@@ -70,6 +71,7 @@ class BaseNode(Thread):
         self.pause_event.set()
         self.queue: Queue | None = None
         self.app: BaseApp | None = None
+        self.connector: Connector | None = None
 
         super().__init__(name=name)
     
@@ -79,8 +81,8 @@ class BaseNode(Thread):
             self.predecessors_events[url] = Event()
     
     def setup_connector(self):
-        self.app = Connector(self)
-        return self.app
+        self.connector = Connector(self)
+        return self.connector
 
     def get_app(self):
         self.app = BaseApp(self)
@@ -165,6 +167,52 @@ class BaseNode(Thread):
                 self.log(f"Error in user-defined method '{func.__name__}' of node '{self.name}': {traceback.format_exc()}", level="ERROR")
                 return
         return log_exception_wrapper
+    
+    def __signal_local_predecessors(self):
+        if len(self.predecessors) > 0:
+            for predecessor in self.predecessors:
+                predecessor.successor_events[self.name].set()
+    
+    def __signal_local_successors(self):
+        if len(self.successors) > 0:
+            for successor in self.successors:
+                successor.predecessors_events[self.name].set()
+    
+    async def __signal_remote_predecessors(self):
+        if len(self.remote_predecessors) > 0:
+            try:
+                async with httpx.AsyncClient() as client:
+                    tasks = []
+                    for predecessor_url in self.remote_predecessors:
+                        json = {
+                            "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                            "node_type": type(self).__name__
+                        }
+                        tasks.append(client.post(f"{predecessor_url}/backward_signal", json=json))
+
+                    await asyncio.gather(*tasks)
+                    print(f"Done signalling remote predecessors from {self.name}")
+            except httpx.ConnectError:
+                print(f"Failed to signal predecessors from {self.name}")
+                self.exit()
+    
+    async def __signal_remote_successors(self):
+        if len(self.remote_successors) > 0:
+            try:
+                async with httpx.AsyncClient() as client:
+                    tasks = []
+                    for successor_url in self.remote_successors:
+                        json = {
+                            "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                            "node_type": type(self).__name__
+                        }
+                        tasks.append(client.post(f"{successor_url}/forward_signal", json=json))
+                    
+                    await asyncio.gather(*tasks)
+                    print(f"Done signalling remote successors from {self.name}")
+            except httpx.ConnectError:
+                print(f"Failed to signal successors from {self.name}")
+                self.exit()
     
     async def signal_successors(self, result: Result):
         for successor in self.successors:
