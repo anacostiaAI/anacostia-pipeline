@@ -31,13 +31,12 @@ logger = logging.getLogger(__name__)
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, shakespeare_rpc: BaseRPCNode, predecessors: List[BaseNode] = None, 
+        self, name: str, metadata_store_rpc: BaseRPCNode, shakespeare_rpc: BaseRPCNode, 
         loggers: Logger | List[Logger] = None
     ) -> None:
-        if predecessors is None:
-            predecessors = []
-
-        super().__init__(name=name, predecessors=[*predecessors, shakespeare_rpc], loggers=loggers)
+        self.metadata_store_rpc = metadata_store_rpc
+        self.shakespeare_rpc = shakespeare_rpc
+        super().__init__(name=name, predecessors=[shakespeare_rpc], loggers=loggers)
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
@@ -53,27 +52,27 @@ class ShakespeareEvalNode(BaseActionNode):
 
 class HaikuEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, haiku_rpc: BaseRPCNode, predecessors: List[BaseNode] = None, 
+        self, name: str, metadata_store_rpc: BaseRPCNode, haiku_rpc: BaseRPCNode, 
         loggers: Logger | List[Logger] = None
     ) -> None:
-        if predecessors is None:
-            predecessors = []
-
-        super().__init__(name=name, predecessors=[*predecessors, haiku_rpc], loggers=loggers)
+        self.metadata_store_rpc = metadata_store_rpc
+        self.haiku_rpc = haiku_rpc
+        super().__init__(name=name, predecessors=[haiku_rpc], loggers=loggers)
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         # self.receiver.log_metrics(haiku_test_loss=2.43)
         return True
 
+metadata_store_rpc = BaseRPCNode("metadata_store_rpc", loggers=logger)
 shakespeare_rpc = BaseRPCNode("shakespeare_rpc", loggers=logger)
 haiku_rpc = BaseRPCNode("haiku_rpc", loggers=logger)
-shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", shakespeare_rpc=shakespeare_rpc)
-haiku_eval = HaikuEvalNode("haiku_eval", haiku_rpc=haiku_rpc)
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, shakespeare_rpc=shakespeare_rpc)
+haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc, haiku_rpc=haiku_rpc)
 
 pipeline = LeafPipeline(
     name="leaf_pipeline",
-    nodes=[shakespeare_eval, haiku_eval, shakespeare_rpc, haiku_rpc],
+    nodes=[shakespeare_eval, haiku_eval, metadata_store_rpc, shakespeare_rpc, haiku_rpc],
     loggers=logger
 )
 

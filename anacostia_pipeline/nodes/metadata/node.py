@@ -128,9 +128,11 @@ class BaseMetadataStoreNode(BaseNode):
         while self.exit_event.is_set() is False:
 
             # waiting for all resource nodes to signal their resources are ready to be used
+            # self.log(f"{self.name} waiting for resource nodes to signal they are ready", level='INFO')
             self.wait_for_successors()
 
             # wait for all metrics to meet trigger conditions
+            # self.log(f"{self.name} waiting for metrics to meet trigger conditions", level='INFO')
             self.status = Status.WAITING_METRICS
             self.trigger_event.wait()
             
@@ -140,22 +142,28 @@ class BaseMetadataStoreNode(BaseNode):
             self.status = Status.TRIGGERED
 
             # creating a new run
+            # self.log(f"{self.name} creating a run {self.run_id}", level='INFO')
             if self.exit_event.is_set(): return
             self.start_run()
 
             # signal to all successors that the run has been created; i.e., begin pipeline execution
+            # self.log(f"{self.name} signaling successors that the run has been created", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)
 
             # waiting for all resource nodes to signal they are done using the current state
+            # self.log(f"{self.name} waiting for resource nodes to signal they are done using the current state", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_successors()
             
             # ending the run
+            # self.log(f"{self.name} ending run {self.run_id}", level='INFO')
             if self.exit_event.is_set(): return
             self.end_run()
 
             self.run_id += 1
             
+            # signal to all successors that the run has ended; i.e., end pipeline execution
+            # self.log(f"{self.name} signaling successors that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)

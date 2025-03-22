@@ -172,11 +172,13 @@ class BaseNode(Thread):
         if len(self.predecessors) > 0:
             for predecessor in self.predecessors:
                 predecessor.successor_events[self.name].set()
+            # self.log(f"'{self.name}' finished signalling local predecessors", level="INFO")
     
     def __signal_local_successors(self):
         if len(self.successors) > 0:
             for successor in self.successors:
                 successor.predecessors_events[self.name].set()
+            # self.log(f"'{self.name}' finished signalling local successors", level="INFO")
     
     async def __signal_remote_predecessors(self):
         if len(self.remote_predecessors) > 0:

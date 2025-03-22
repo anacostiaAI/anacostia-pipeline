@@ -78,6 +78,7 @@ class BaseResourceNode(BaseNode):
             # if the node is not monitoring the resource, then we don't need to check for new resources
             # otherwise, we check for new resources and set the resource_event if there are new resources
             if self.monitoring is True:
+                # self.log(f"{self.name} checking for new resources", level='INFO')
                 self.status = Status.WAITING_RESOURCE
                 self.resource_event.wait()
 
@@ -89,26 +90,32 @@ class BaseResourceNode(BaseNode):
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run
             # e.g., there is enough new data to trigger the next run
+            # self.log(f"{self.name} signaling metadata store that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_predecessors(Result.SUCCESS)
 
             # wait for metadata store node to finish creating the run 
+            # self.log(f"{self.name} waiting for metadata store to finish creating the run", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
 
             # signalling to all successors that the resource is ready to be used for the current run
+            # self.log(f"{self.name} signaling successors that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)
 
             # waiting for all successors to finish using the the resource for the current run
+            # self.log(f"{self.name} waiting for successors to finish using the resource", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_successors()
 
             # signal the metadata store node that the action nodes have finish using the resource for the current run
+            # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
+            # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
             

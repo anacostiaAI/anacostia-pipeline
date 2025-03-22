@@ -127,7 +127,8 @@ plots_path = f"{output_path}/plots"
 
 metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
-    uri=f"{metadata_store_path}/metadata.db"
+    uri=f"{metadata_store_path}/metadata.db",
+    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"]
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
