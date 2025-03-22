@@ -191,9 +191,9 @@ class BaseNode(Thread):
                         tasks.append(client.post(f"{predecessor_url}/backward_signal", json=json))
 
                     await asyncio.gather(*tasks)
-                    print(f"Done signalling remote predecessors from {self.name}")
+                    self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
             except httpx.ConnectError:
-                print(f"Failed to signal predecessors from {self.name}")
+                self.log(f"'{self.name}' failed to signal predecessors", level="ERROR")
                 self.exit()
     
     async def __signal_remote_successors(self):
@@ -209,14 +209,14 @@ class BaseNode(Thread):
                         tasks.append(client.post(f"{successor_url}/forward_signal", json=json))
                     
                     await asyncio.gather(*tasks)
-                    print(f"Done signalling remote successors from {self.name}")
+                    self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
             except httpx.ConnectError:
-                print(f"Failed to signal successors from {self.name}")
+                self.log(f"'{self.name}' failed to signal successors from {self.name}", level="ERROR")
                 self.exit()
     
     async def signal_successors(self, result: Result):
-        for successor in self.successors:
-            successor.predecessors_events[self.name].set()
+        self.__signal_local_successors()
+        await self.__signal_remote_successors()
 
     def wait_for_successors(self):
         for event in self.successor_events.values():
@@ -226,8 +226,8 @@ class BaseNode(Thread):
             event.clear()
     
     async def signal_predecessors(self, result: Result):
-        for predecessor in self.predecessors:
-            predecessor.successor_events[self.name].set()
+        self.__signal_local_predecessors()
+        await self.__signal_remote_predecessors()
 
     def wait_for_predecessors(self):
         for event in self.predecessors_events.values():
