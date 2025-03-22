@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 import json
 import asyncio
 import httpx
+import time
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
@@ -271,7 +272,23 @@ class BaseNode(Thread):
         this is the main difference between setting up the node using setup() and __init__()
         therefore, it is best to the set up logic is not dependent on other nodes.
         """
+        pass
+    
+    def root_setup(self):
         self.status = Status.INITIALIZING
+        self.setup()
+    
+    def leaf_setup(self):
+        self.status = Status.INITIALIZING
+        self.setup()
+
+        self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
+        
+        while len(self.predecessors_events) <= 0:
+            time.sleep(0.1)
+            if self.exit_event.is_set(): return
+        
+        self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
 
     async def run_async(self) -> None:
         """

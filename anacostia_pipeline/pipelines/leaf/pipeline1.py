@@ -9,7 +9,7 @@ import networkx as nx
 from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
+from anacostia_pipeline.nodes.rpc import BaseRPC
 from anacostia_pipeline.utils.constants import Status
 
 from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
@@ -116,7 +116,7 @@ class LeafPipeline:
         threads: List[Thread] = []
         for node in nodes:
             node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-            thread = Thread(target=node.setup)
+            thread = Thread(target=node.leaf_setup)
             node.status = Status.INITIALIZING
             thread.start()
             threads.append(thread)
@@ -129,6 +129,10 @@ class LeafPipeline:
         """
         Lanches all the registered nodes in topological order.
         """
+
+        # set up rpc connections
+        rpc_connections = [node for node in self.nodes if isinstance(node, BaseRPC) is True]
+        self.__setup_nodes(rpc_connections)
 
         # set up resource nodes
         resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]

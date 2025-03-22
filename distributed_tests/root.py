@@ -127,8 +127,7 @@ plots_path = f"{output_path}/plots"
 
 metadata_store = SqliteMetadataStoreNode(
     name="metadata_store", 
-    uri=f"{metadata_store_path}/metadata.db",
-    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"]
+    uri=f"{metadata_store_path}/metadata.db"
 )
 model_registry = ModelRegistryNode(
     "model_registry", 
@@ -143,7 +142,7 @@ retraining = ModelRetrainingNode(
     plots_store=plots_store, 
     model_registry=model_registry, 
     metadata_store=metadata_store, 
-    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/haiku_rpc", f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_rpc"]
+    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval", f"http://{args.leaf_host}:{args.leaf_port}/haiku_eval"]
 )
 
 pipeline = RootPipeline(
