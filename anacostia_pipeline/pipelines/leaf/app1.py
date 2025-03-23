@@ -2,11 +2,11 @@ import threading
 import signal
 from logging import Logger
 from contextlib import asynccontextmanager
-from typing import List
 from queue import Queue
 import asyncio
+from pydantic import BaseModel
 
-from fastapi import FastAPI, status, HTTPException
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
 import uvicorn
@@ -19,34 +19,35 @@ from anacostia_pipeline.nodes.connector import Connector
 
 
 
+class RootServerModel(BaseModel):
+    root_host: str
+    root_port: int
+
+
+
 class LeafPipelineApp(FastAPI):
     def __init__(self, name: str, pipeline: LeafPipeline, host: str = "127.0.0.1", port: int = 8000, logger=Logger, *args, **kwargs):
 
         @asynccontextmanager
         async def lifespan(app: LeafPipelineApp):
-            app.logger.info(f"Opening client for service '{app.name}'")
+            app.logger.info(f"Leaf server '{app.name}' started")
 
             # queue must be set for all nodes prior to starting the background task
             for node in app.pipeline.nodes:
                 node.set_queue(app.queue)
 
-            """
             app.background_task = asyncio.create_task(app.process_queue())
-            """
 
             yield
 
-            """
             # Cancel and cleanup the background task when the app shuts down
             app.background_task.cancel()
             try:
                 await app.background_task
             except asyncio.CancelledError:
                 pass
-            """
 
-            app.logger.info(f"Closing client for service '{app.name}'")
-            await app.client.aclose()
+            app.logger.info(f"Leaf server '{app.name}' shut down")
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
@@ -56,7 +57,6 @@ class LeafPipelineApp(FastAPI):
         self.root_host = None
         self.root_port = None
         self.logger = logger
-        self.client = httpx.AsyncClient()
         self.queue = Queue()
         self.background_task = None
 
@@ -83,32 +83,36 @@ class LeafPipelineApp(FastAPI):
             #self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
             #node.set_queue(self.queue)                                      # set the queue for the node
 
-        @self.post("/healthcheck", status_code=status.HTTP_200_OK)
-        async def healthcheck():
-            return {"status": "ok"}
+        @self.post("/connect", status_code=status.HTTP_200_OK)
+        async def connect(connection: RootServerModel):
+            self.root_host = connection.root_host
+            self.root_port = connection.root_port
+            self.logger.info(f"Leaf server {self.name} connected to root server at {self.root_host}:{self.root_port}")
 
         self.queue = Queue()
     
     async def process_queue(self):
-        while True:
-            if self.queue.empty() is False:
-                message = self.queue.get()
+        async with httpx.AsyncClient() as client:
+            while True:
+                if self.queue.empty() is False:
+                    message = self.queue.get()
+                    
+                    try:
+                        if self.root_host is not None and self.root_port is not None:
+                            await client.post(f"http://{self.root_host}:{self.root_port}/send_event", json=message)
+                    
+                    except Exception as e:
+                        self.logger.error(f"Error forwarding message: {str(e)}")
+                        self.queue.put(message)
+                    
+                    finally:
+                        self.queue.task_done()
                 
                 try:
-                    await self.client.post(f"http://{self.root_host}:{self.root_port}/send_event", json=message)
-                
-                except Exception as e:
-                    self.logger.error(f"Error forwarding message: {str(e)}")
-                    self.queue.put(message)
-                
-                finally:
-                    self.queue.task_done()
-            
-            try:
-                await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
-                self.logger.info("Background task cancelled; breaking out of queue processing loop")
-                break
+                    await asyncio.sleep(0.1)
+                except asyncio.CancelledError:
+                    self.logger.info("Background task cancelled; breaking out of queue processing loop")
+                    break
 
     def frontend_json(self):
         leaf_data = {}

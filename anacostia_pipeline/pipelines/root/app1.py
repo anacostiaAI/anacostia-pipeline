@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import os
 import sys
 from queue import Queue
-import json
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -31,7 +31,7 @@ class RootPipelineApp(FastAPI):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: RootPipelineApp):
-            app.logger.info(f"Opening client for service '{app.name}'")
+            app.logger.info(f"Root server '{app.name}' started")
 
             yield
             
@@ -40,9 +40,7 @@ class RootPipelineApp(FastAPI):
                     subapp: BaseApp = route.app
                     # this currently does nothing, add code here for cleanup if needed
 
-            app.logger.info(f"Closing client for service '{app.name}'")
-            # Note: we need to close the client after the lifespan context manager is done but for some reason await app.client.aclose() is throwing an error 
-            # RuntimeError: unable to perform operation on <TCPTransport closed=True reading=False 0x121fa0fd0>; the handler is close
+            app.logger.info(f"Root server '{app.name}' shut down")
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
@@ -53,7 +51,6 @@ class RootPipelineApp(FastAPI):
         self.connections = []
         self.leaf_ip_addresses = []
         self.leaf_configs = []
-        self.client = httpx.AsyncClient()
         self.queue = Queue()
 
         # Mount the static files directory to the webserver
@@ -64,6 +61,15 @@ class RootPipelineApp(FastAPI):
         config = uvicorn.Config(self, host=self.host, port=self.port)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
+
+        # get the leaf ip addresses
+        for node in self.pipeline.nodes:
+            for url in node.remote_successors:
+                parsed = urlparse(url)
+                base_url = f"{parsed.scheme}://{parsed.netloc}"
+
+                if base_url not in self.leaf_ip_addresses:
+                    self.leaf_ip_addresses.append(base_url)
     
         # Mount the apps and connectors to the webserver
         for node in self.pipeline.nodes:
@@ -79,6 +85,17 @@ class RootPipelineApp(FastAPI):
 
     async def connect(self):
         async with httpx.AsyncClient() as client:
+            # Connect to leaf pipeline
+            task = []
+            for leaf_ip_address in self.leaf_ip_addresses:
+                json={
+                    "root_host": self.host, 
+                    "root_port": self.port 
+                }
+                task.append(client.post(f"{leaf_ip_address}/connect", json=json))
+
+            responses = await asyncio.gather(*task)
+
             # Connect each node to its remote successors
             task = []
             for node in self.pipeline.nodes:
