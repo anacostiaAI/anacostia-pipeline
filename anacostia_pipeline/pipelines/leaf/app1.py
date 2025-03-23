@@ -76,9 +76,7 @@ class LeafPipelineApp(FastAPI):
 
         # Mount the apps and connectors to the webserver
         for node in self.pipeline.nodes:
-            connector: Connector = node.setup_connector()
-            connector.set_host(self.host)
-            connector.set_port(self.port)
+            connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
             #node_subapp: BaseApp = node.get_app()

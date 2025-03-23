@@ -83,8 +83,8 @@ class BaseNode(Thread):
             self.remote_predecessors.append(url)
             self.predecessors_events[url] = Event()
     
-    def setup_connector(self):
-        self.connector = Connector(self)
+    def setup_connector(self, host: str, port: int):
+        self.connector = Connector(self, host=host, port=port)
         return self.connector
 
     def get_app(self):

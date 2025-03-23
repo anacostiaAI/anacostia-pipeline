@@ -10,11 +10,11 @@ class ConnectionModel(BaseModel):
 
 
 class Connector(FastAPI):
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node, host: str, port: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
-        self.host = None
-        self.port = None
+        self.host = host
+        self.port = port
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(root: ConnectionModel) -> ConnectionModel:
@@ -31,11 +31,5 @@ class Connector(FastAPI):
             self.node.successor_events[leaf.node_url].set()
             return {"message": "Signalled predecessors"}
     
-    def set_host(self, host: str):
-        self.host = host
-    
-    def set_port(self, port: int):
-        self.port = port
-
     def get_connector_prefix(self):
         return f"/{self.node.name}"
