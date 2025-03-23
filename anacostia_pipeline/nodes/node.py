@@ -38,10 +38,12 @@ class BaseNode(Thread):
         predecessors: List[BaseNode] = None, 
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None, 
+        wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
 
         self._status_lock = Lock()
+        self.wait_for_connection = wait_for_connection
         
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -282,13 +284,14 @@ class BaseNode(Thread):
         self.status = Status.INITIALIZING
         self.setup()
 
-        self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
-        
-        while len(self.predecessors_events) <= 0:
-            time.sleep(0.1)
-            if self.exit_event.is_set(): return
-        
-        self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
+        if self.wait_for_connection:
+            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
+            
+            while len(self.predecessors_events) <= 0:
+                time.sleep(0.1)
+                if self.exit_event.is_set(): return
+            
+            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
 
     async def run_async(self) -> None:
         """

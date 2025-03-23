@@ -35,7 +35,7 @@ class ShakespeareEvalNode(BaseActionNode):
     ) -> None:
         #self.metadata_store_rpc = metadata_store_rpc
         #self.shakespeare_rpc = shakespeare_rpc
-        super().__init__(name=name, predecessors=[], loggers=loggers)
+        super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
@@ -56,7 +56,7 @@ class HaikuEvalNode(BaseActionNode):
     ) -> None:
         #self.metadata_store_rpc = metadata_store_rpc
         #self.haiku_rpc = haiku_rpc
-        super().__init__(name=name, predecessors=[], loggers=loggers)
+        super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")

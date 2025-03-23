@@ -70,6 +70,7 @@ class FilesystemStoreNode(BaseResourceNode):
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
         remote_successors: List[str] = None,
+        wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None, 
         monitoring: bool = True
     ) -> None:
@@ -97,6 +98,7 @@ class FilesystemStoreNode(BaseResourceNode):
             metadata_store=metadata_store, 
             remote_predecessors=remote_predecessors,
             remote_successors=remote_successors,
+            wait_for_connection=wait_for_connection,
             loggers=loggers, 
             monitoring=monitoring
         )

@@ -16,10 +16,20 @@ class BaseResourceNode(BaseNode):
         metadata_store: BaseMetadataStoreNode,
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
+        wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None, 
         monitoring: bool = True
     ) -> None:
-        super().__init__(name, predecessors=[metadata_store], remote_predecessors=remote_predecessors, remote_successors=remote_successors, loggers=loggers)
+        
+        super().__init__(
+            name, 
+            predecessors=[metadata_store], 
+            remote_predecessors=remote_predecessors, 
+            remote_successors=remote_successors, 
+            wait_for_connection=wait_for_connection, 
+            loggers=loggers
+        )
+
         self.resource_path = resource_path
         self.monitoring = monitoring
         self.metadata_store = metadata_store

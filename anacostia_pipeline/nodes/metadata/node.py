@@ -1,7 +1,6 @@
 from typing import List, Union
 from logging import Logger
-from threading import RLock, Event
-from functools import wraps
+from threading import Event
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
@@ -27,56 +26,35 @@ class BaseMetadataStoreNode(BaseNode):
         super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, loggers=loggers)
         self.uri = uri
         self.run_id = 0
-        self.resource_lock = RLock()
         self.trigger_event = Event()
     
     def get_run_id(self) -> int:
         return self.run_id
 
-    def metadata_accessor(func):
-        @wraps(func)
-        def wrapper(self: 'BaseMetadataStoreNode', *args, **kwargs):
-            # keep trying to acquire lock until function is finished
-            # generally, it is best practice to use lock inside of a while loop to avoid race conditions (recall GMU CS 571)
-            while True:
-                with self.resource_lock:
-                    result = func(self, *args, **kwargs)
-                    return result
-        return wrapper
-    
-    @metadata_accessor
     def add_node(self, node) -> None:
         raise NotImplementedError
     
-    @metadata_accessor
     def create_entry(self, resource_node, **kwargs) -> None:
         raise NotImplementedError
 
-    @metadata_accessor
     def get_entries(self, resource_node) -> List[dict]:
         pass
 
-    @metadata_accessor
     def update_entry(self, resource_node, entry_id: int, **kwargs) -> None:
         pass
 
-    @metadata_accessor
     def get_num_entries(self, resource_node) -> int:
         pass
 
-    @metadata_accessor
     def log_metrics(self, **kwargs) -> None:
         pass
     
-    @metadata_accessor
     def log_params(self, **kwargs) -> None:
         pass
 
-    @metadata_accessor
     def set_tags(self, **kwargs) -> None:
         pass
 
-    @metadata_accessor
     def start_run(self) -> None:
         """
         Override to specify how to create a run in the metadata store.
@@ -85,7 +63,6 @@ class BaseMetadataStoreNode(BaseNode):
         """
         raise NotImplementedError
     
-    @metadata_accessor
     def end_run(self) -> None:
         """
         Override to specify how to end a run in the metadata store.
@@ -94,7 +71,6 @@ class BaseMetadataStoreNode(BaseNode):
         """
         raise NotImplementedError
     
-    @metadata_accessor
     def entry_exists(self) -> bool:
         raise NotImplementedError
     
