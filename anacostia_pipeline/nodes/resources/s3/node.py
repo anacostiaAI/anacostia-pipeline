@@ -1,6 +1,7 @@
 from threading import Thread
 import traceback
 import boto3
+from typing import List
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from botocore.exceptions import ClientError
@@ -15,10 +16,22 @@ class S3Node(BaseResourceNode):
         region_name: str = None, 
         aws_access_key_id: str = None, 
         aws_secret_access_key: str = None, 
+        remote_predecessors: List[str] = None,
+        remote_successors: List[str] = None,
+        wait_for_connection: bool = False,
         loggers = None, 
         monitoring = True
     ) -> None:
-        super().__init__(name, resource_path=None, metadata_store=metadata_store, loggers=loggers, monitoring=monitoring)
+        super().__init__(
+            name, 
+            resource_path=None, 
+            metadata_store=metadata_store, 
+            remote_predecessors=remote_predecessors,
+            remote_successors=remote_successors,
+            wait_for_connection=wait_for_connection,
+            loggers=loggers, 
+            monitoring=monitoring
+        )
 
         self.bucket_name = bucket_name
         self.region_name = region_name
