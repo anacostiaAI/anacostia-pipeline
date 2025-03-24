@@ -13,7 +13,6 @@ import uvicorn
 import httpx
 
 from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
-from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.connector import Connector
 
@@ -59,8 +58,6 @@ class LeafPipelineApp(FastAPI):
         self.logger = logger
         self.queue = Queue()
         self.background_task = None
-
-        self.connections = { node.name: None for node in pipeline.nodes if isinstance(node, ReceiverNode) }
 
         self.add_middleware(
             CORSMiddleware,
