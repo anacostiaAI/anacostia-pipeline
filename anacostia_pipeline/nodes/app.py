@@ -22,7 +22,7 @@ class BaseApp(FastAPI):
                 return default_node_page()
 
     def get_node_prefix(self):
-        return f"/{self.node.name}"
+        return f"/{self.node.name}/hypermedia"
     
     def get_endpoint(self):
         return f"{self.get_node_prefix()}/home"
