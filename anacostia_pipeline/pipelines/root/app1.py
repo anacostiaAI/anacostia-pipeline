@@ -7,6 +7,7 @@ import os
 import sys
 from queue import Queue
 from urllib.parse import urlparse
+import json
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -76,9 +77,9 @@ class RootPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            #node_subapp: BaseApp = node.get_app()
-            #self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
-            #node.set_queue(self.queue)                                      # set the queue for the node
+            node_subapp: BaseApp = node.get_app()
+            self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
+            node.set_queue(self.queue)                                      # set the queue for the node
 
         # Connect to the leaf services
         asyncio.run(self.connect())
@@ -88,23 +89,29 @@ class RootPipelineApp(FastAPI):
             # Connect to leaf pipeline
             task = []
             for leaf_ip_address in self.leaf_ip_addresses:
-                json={
+                root_server_model={
                     "root_host": self.host, 
                     "root_port": self.port 
                 }
-                task.append(client.post(f"{leaf_ip_address}/connect", json=json))
+                task.append(client.post(f"{leaf_ip_address}/connect", json=root_server_model))
 
             responses = await asyncio.gather(*task)
+
+            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
+            for response in responses:
+                response_data = response.json()
+                self.leaf_configs.append(response_data)
+                # self.logger.info(f"leaf data: {response_data}")
 
             # Connect each node to its remote successors
             task = []
             for node in self.pipeline.nodes:
                 for connection in node.remote_successors:
-                    json = {
+                    connection_mode = {
                         "node_url": f"http://{self.host}:{self.port}/{node.name}",
                         "node_type": type(node).__name__
                     }
-                    task.append(client.post(f"{connection}/connect", json=json))
+                    task.append(client.post(f"{connection}/connect", json=connection_mode))
 
             responses = await asyncio.gather(*task)
 
@@ -198,14 +205,19 @@ class RootPipelineApp(FastAPI):
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
-            if isinstance(node, SenderNode):
-                node_model["successors"].append(node.leaf_receiver)
+            # add the remote successors to the node model
+            for remote_successor_url in node.remote_successors:
+                parsed = urlparse(remote_successor_url)
+                successor_name = parsed.path.split("/")[-1]
+                node_model["successors"].append(successor_name)
 
+            # add the edges from the node to its successors
             edges_from_node = [
                 {"source": node_model["id"], "target": successor} for successor in node_model["successors"]
             ]
             edges.extend(edges_from_node)
 
+        # add the leaf nodes to the model
         for leaf_config in self.leaf_configs:
             for leaf_data_node in leaf_config["nodes"]:
                 leaf_data_node["header_bar_endpoint"] = f'/header_bar/?node_id={leaf_data_node["id"]}'

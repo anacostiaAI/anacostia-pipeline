@@ -79,15 +79,16 @@ class LeafPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            #node_subapp: BaseApp = node.get_app()
-            #self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
-            #node.set_queue(self.queue)                                      # set the queue for the node
+            node_subapp: BaseApp = node.get_app()
+            self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
+            node.set_queue(self.queue)                                      # set the queue for the node
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(connection: RootServerModel):
             self.root_host = connection.root_host
             self.root_port = connection.root_port
             self.logger.info(f"Leaf server {self.name} connected to root server at {self.root_host}:{self.root_port}")
+            return self.frontend_json()
 
         self.queue = Queue()
     
