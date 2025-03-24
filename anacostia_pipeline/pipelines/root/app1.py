@@ -20,7 +20,6 @@ import httpx
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.pipelines.root.pipeline1 import RootPipeline
-from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.pipelines.utils import EventModel
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
@@ -111,7 +110,7 @@ class RootPipelineApp(FastAPI):
                         "node_url": f"http://{self.host}:{self.port}/{node.name}",
                         "node_type": type(node).__name__
                     }
-                    task.append(client.post(f"{connection}/connect", json=connection_mode))
+                    task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
             responses = await asyncio.gather(*task)
 

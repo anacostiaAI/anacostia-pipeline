@@ -193,7 +193,7 @@ class BaseNode(Thread):
                             "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
                             "node_type": type(self).__name__
                         }
-                        tasks.append(client.post(f"{predecessor_url}/backward_signal", json=json))
+                        tasks.append(client.post(f"{predecessor_url}/connector/backward_signal", json=json))
 
                     await asyncio.gather(*tasks)
                     self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
@@ -211,7 +211,7 @@ class BaseNode(Thread):
                             "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
                             "node_type": type(self).__name__
                         }
-                        tasks.append(client.post(f"{successor_url}/forward_signal", json=json))
+                        tasks.append(client.post(f"{successor_url}/connector/forward_signal", json=json))
                     
                     await asyncio.gather(*tasks)
                     self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
