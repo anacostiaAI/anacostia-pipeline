@@ -95,7 +95,7 @@ class BaseNode(Thread):
         return self.app
     
     def setup_rpc_callee(self, host: str, port: int):
-        self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port)
+        self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
         return self.rpc_callee
 
     def __hash__(self) -> int:

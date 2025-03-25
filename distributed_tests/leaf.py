@@ -63,7 +63,7 @@ class HaikuEvalNode(BaseActionNode):
         # self.receiver.log_metrics(haiku_test_loss=2.43)
         return True
 
-metadata_store_rpc = BaseRPCCaller("metadata_store_rpc", logger=logger)
+metadata_store_rpc = BaseRPCCaller("metadata_store_rpc")
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval")
 haiku_eval = HaikuEvalNode("haiku_eval")
 
