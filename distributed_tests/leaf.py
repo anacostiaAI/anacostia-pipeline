@@ -6,7 +6,7 @@ from typing import List
 from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.app1 import LeafPipelineApp
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.rpc import BaseRPCCaller
+from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCaller
 
 
 
@@ -30,42 +30,43 @@ logger = logging.getLogger(__name__)
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, #metadata_store_rpc: BaseRPCNode, shakespeare_rpc: BaseRPCNode, 
+        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller,
         loggers: Logger | List[Logger] = None
     ) -> None:
-        #self.metadata_store_rpc = metadata_store_rpc
-        #self.shakespeare_rpc = shakespeare_rpc
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
+        self.metadata_store_rpc = metadata_store_rpc
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
-        """
         try:
-            self.metadata_store_rpc.log_metrics(shakespeare_test_loss=1.47)
+            await self.metadata_store_rpc.log_metrics(shakespeare_test_loss=1.47)
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
-        """
             
         return True
 
 class HaikuEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, # metadata_store_rpc: BaseRPCNode, haiku_rpc: BaseRPCNode, 
+        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller, 
         loggers: Logger | List[Logger] = None
     ) -> None:
-        #self.metadata_store_rpc = metadata_store_rpc
-        #self.haiku_rpc = haiku_rpc
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
+        self.metadata_store_rpc = metadata_store_rpc
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
-        # self.receiver.log_metrics(haiku_test_loss=2.43)
+
+        try:
+            await self.metadata_store_rpc.log_metrics(haiku_test_loss=2.47)
+        except Exception as e:
+            self.log(f"Failed to log metrics: {e}", level="ERROR")
+        
         return True
 
-metadata_store_rpc = BaseRPCCaller("metadata_store_rpc")
-shakespeare_eval = ShakespeareEvalNode("shakespeare_eval")
-haiku_eval = HaikuEvalNode("haiku_eval")
+metadata_store_rpc = SqliteMetadataRPCCaller("metadata_store_rpc")
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc)
+haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc)
 
 pipeline = LeafPipeline(
     name="leaf_pipeline",

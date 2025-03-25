@@ -89,9 +89,9 @@ class BaseRPCCaller(FastAPI):
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(callee: RPCConnectionModel):
-            self.log(f"Callee '{callee.url}' connected to caller at {self.caller_name}", level="INFO")
+            self.log(f"Callee '{callee.url}' connected to caller at '{self.caller_name}'", level="INFO")
             self.callee_url = callee.url
-            return {"message": f"Caller '{self.caller_name}' connected to callee at {callee.url}"}
+            return {"message": f"Caller '{self.caller_name}' connected to callee at '{callee.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
@@ -119,6 +119,9 @@ class BaseRPCCaller(FastAPI):
     
     def get_caller_prefix(self):
         return f"/{self.caller_name}/rpc/caller"
+    
+    def get_callee_url(self):
+        return self.callee_url
     
     def get_caller_url(self):
         # sample output: http://127.0.0.1:8000/metadata/rpc/caller
