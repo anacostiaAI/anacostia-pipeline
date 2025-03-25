@@ -6,7 +6,7 @@ from typing import List
 from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.app1 import LeafPipelineApp
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-#from anacostia_pipeline.nodes.rpc import BaseRPC
+from anacostia_pipeline.nodes.rpc import BaseRPCCaller
 
 
 
@@ -63,9 +63,7 @@ class HaikuEvalNode(BaseActionNode):
         # self.receiver.log_metrics(haiku_test_loss=2.43)
         return True
 
-#metadata_store_rpc = BaseRPC("metadata_store_rpc", loggers=logger)
-#shakespeare_rpc = BaseRPC("shakespeare_rpc", loggers=logger)
-#haiku_rpc = BaseRPC("haiku_rpc", loggers=logger)
+metadata_store_rpc = BaseRPCCaller("metadata_store_rpc", logger=logger)
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval")
 haiku_eval = HaikuEvalNode("haiku_eval")
 
@@ -75,5 +73,5 @@ pipeline = LeafPipeline(
     loggers=logger
 )
 
-service = LeafPipelineApp(name="leaf", pipeline=pipeline, host=args.host, port=args.port, logger=logger)
+service = LeafPipelineApp(name="leaf", pipeline=pipeline, host=args.host, port=args.port, rpc_callers=[metadata_store_rpc], logger=logger)
 service.run()

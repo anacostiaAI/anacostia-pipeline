@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from queue import Queue
 import asyncio
 from pydantic import BaseModel
+from typing import List
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,7 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.connector import Connector
+from anacostia_pipeline.nodes.rpc import BaseRPCCaller
 
 
 
@@ -25,7 +27,12 @@ class RootServerModel(BaseModel):
 
 
 class LeafPipelineApp(FastAPI):
-    def __init__(self, name: str, pipeline: LeafPipeline, host: str = "127.0.0.1", port: int = 8000, logger=Logger, *args, **kwargs):
+    def __init__(
+        self, name: str, 
+        pipeline: LeafPipeline, host: str = "127.0.0.1", port: int = 8000, 
+        rpc_callers: List[BaseRPCCaller] = None, 
+        logger=Logger, *args, **kwargs
+    ):
 
         @asynccontextmanager
         async def lifespan(app: LeafPipelineApp):
@@ -79,6 +86,9 @@ class LeafPipelineApp(FastAPI):
             node_subapp: BaseApp = node.get_app()
             self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
+        
+        for rpc_caller in rpc_callers:
+            self.mount(rpc_caller.get_caller_prefix(), rpc_caller)          # mount the BaseRPCCaller to PipelineWebserver
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(connection: RootServerModel):

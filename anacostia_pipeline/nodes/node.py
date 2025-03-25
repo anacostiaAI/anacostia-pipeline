@@ -15,6 +15,7 @@ import time
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.connector import Connector
+from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 
 
 
@@ -38,11 +39,13 @@ class BaseNode(Thread):
         predecessors: List[BaseNode] = None, 
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None, 
+        caller_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
 
         self._status_lock = Lock()
+        self.caller_url = caller_url
         self.wait_for_connection = wait_for_connection
         
         if loggers is None:
@@ -90,6 +93,10 @@ class BaseNode(Thread):
     def get_app(self):
         self.app = BaseApp(self)
         return self.app
+    
+    def setup_rpc_callee(self, host: str, port: int):
+        self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port)
+        return self.rpc_callee
 
     def __hash__(self) -> int:
         return hash(self.name)

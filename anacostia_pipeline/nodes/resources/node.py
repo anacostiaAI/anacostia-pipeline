@@ -17,6 +17,7 @@ class BaseResourceNode(BaseNode):
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
         wait_for_connection: bool = False,
+        caller_url: str = None,
         loggers: Union[Logger, List[Logger]] = None, 
         monitoring: bool = True
     ) -> None:
@@ -26,7 +27,8 @@ class BaseResourceNode(BaseNode):
             predecessors=[metadata_store], 
             remote_predecessors=remote_predecessors, 
             remote_successors=remote_successors, 
-            wait_for_connection=wait_for_connection, 
+            wait_for_connection=wait_for_connection,
+            caller_url=caller_url,
             loggers=loggers
         )
 

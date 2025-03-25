@@ -18,6 +18,7 @@ import uvicorn
 import httpx
 
 from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.pipelines.root.pipeline1 import RootPipeline
 from anacostia_pipeline.pipelines.utils import EventModel
@@ -80,6 +81,9 @@ class RootPipelineApp(FastAPI):
             self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
 
+            callee: BaseRPCCallee = node.setup_rpc_callee(host=self.host, port=self.port)
+            self.mount(callee.get_node_prefix(), callee)                    # mount the BaseRPCCallee to PipelineWebserver
+
         # Connect to the leaf services
         asyncio.run(self.connect())
 
@@ -101,7 +105,7 @@ class RootPipelineApp(FastAPI):
                 response_data = response.json()
                 self.leaf_configs.append(response_data)
                 # self.logger.info(f"leaf data: {response_data}")
-
+            
             # Connect each node to its remote successors
             task = []
             for node in self.pipeline.nodes:
@@ -114,15 +118,13 @@ class RootPipelineApp(FastAPI):
 
             responses = await asyncio.gather(*task)
 
-            # Extract the leaf URLs from the responses, connection is now established
-            leaf_urls = []
-            for response in responses:
-                if response.status_code == 200:
-                    response_json = response.json()
-                    leaf_urls.append(response_json["node_url"])
+            # Connect RPC callees to RPC callers
+            task = []
+            for node in self.pipeline.nodes:
+                task.append(node.rpc_callee.connect())
             
-            self.logger.info(f"Root service '{self.name}' connected to leaf services at URLs: {leaf_urls}")
-            
+            responses = await asyncio.gather(*task)
+        
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
             frontend_json = self.frontend_json()
