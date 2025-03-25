@@ -82,7 +82,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry], remote_successors=remote_successors)
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
         for filepath in self.data_store.list_artifacts("current"):

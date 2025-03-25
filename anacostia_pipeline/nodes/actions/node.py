@@ -40,7 +40,7 @@ class BaseActionNode(BaseNode):
         pass
 
     @BaseNode.log_exception
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
@@ -85,7 +85,7 @@ class BaseActionNode(BaseNode):
             try:
                 if self.exit_event.is_set(): return
                 self.status = Status.EXECUTING
-                ret = self.execute()
+                ret = await self.execute()
                 
                 if self.exit_event.is_set(): return
                 
