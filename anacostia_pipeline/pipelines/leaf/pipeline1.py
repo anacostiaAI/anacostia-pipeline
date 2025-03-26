@@ -11,8 +11,6 @@ from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.utils.constants import Status
 
-from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
-
 
 
 class PipelineModel(BaseModel):
