@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 
-from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
+from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.rpc import BaseRPCCaller

@@ -3,8 +3,8 @@ import logging
 from logging import Logger
 from typing import List
 
-from anacostia_pipeline.pipelines.leaf.pipeline1 import LeafPipeline
-from anacostia_pipeline.pipelines.leaf.app1 import LeafPipelineApp
+from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCaller
 

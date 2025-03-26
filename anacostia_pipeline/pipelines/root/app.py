@@ -20,7 +20,7 @@ import httpx
 from anacostia_pipeline.nodes.app import BaseApp
 from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.pipelines.root.pipeline1 import RootPipeline
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.utils import EventModel
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
