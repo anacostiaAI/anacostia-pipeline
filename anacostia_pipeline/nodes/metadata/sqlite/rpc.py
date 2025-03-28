@@ -17,8 +17,23 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         async def log_metrics(request: Request):
             data = await request.json()
             self.metadata_store.log_metrics(self.metadata_store, **data)
-            self.log("Metrics logged", level="INFO")
-            return {"message": "Metrics logged"}
+            #self.log("Metrics logged", level="INFO")
+            #return {"message": "Metrics logged"}
+        
+        @self.post("/log_params")
+        async def log_params(request: Request):
+            data = await request.json()
+            self.metadata_store.log_params(self.metadata_store, **data)
+
+        @self.post("/set_tags")
+        async def set_tags(request: Request):
+            data = await request.json()
+            self.metadata_store.set_tags(self.metadata_store, **data)
+        
+        @self.get("/get_tags")
+        async def get_tags(run_id: int = None):
+            tags = self.metadata_store.get_tags(run_id=run_id)
+            return tags
 
 
 class SqliteMetadataRPCCaller(BaseRPCCaller):
@@ -28,5 +43,19 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
     async def log_metrics(self, **kwargs):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_callee_url()}/log_metrics", json=kwargs)
-            message = response.json()["message"]
-            self.log(message, level="INFO")
+            #message = response.json()["message"]
+            #self.log(message, level="INFO")
+    
+    async def log_params(self, **kwargs):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{self.get_callee_url()}/log_params", json=kwargs)
+    
+    async def set_tags(self, **kwargs):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{self.get_callee_url()}/set_tags", json=kwargs)
+    
+    async def get_tags(self, run_id: int = None):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_tags", params={"run_id": run_id})
+            tags = response.json()
+            return tags

@@ -62,6 +62,12 @@ class HaikuEvalNode(BaseActionNode):
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
         
+        try:
+            tags = await self.metadata_store_rpc.get_tags(run_id=1)
+            self.log(f"Tags: {tags}", level="INFO")
+        except Exception as e:
+            self.log(f"Failed to get tags: {e}", level="ERROR")
+
         return True
 
 metadata_store_rpc = SqliteMetadataRPCCaller("metadata_store_rpc")
