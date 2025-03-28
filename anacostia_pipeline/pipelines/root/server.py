@@ -26,12 +26,12 @@ from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_ba
 
 
 
-class RootPipelineApp(FastAPI):
+class RootPipelineServer(FastAPI):
     def __init__(self, name: str, pipeline: RootPipeline, host: str = "127.0.0.1", port: int = 8000, logger: Logger = None, *args, **kwargs):
 
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
-        async def lifespan(app: RootPipelineApp):
+        async def lifespan(app: RootPipelineServer):
             app.logger.info(f"Root server '{app.name}' started")
 
             yield

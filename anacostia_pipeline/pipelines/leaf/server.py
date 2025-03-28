@@ -26,7 +26,7 @@ class RootServerModel(BaseModel):
 
 
 
-class LeafPipelineApp(FastAPI):
+class LeafPipelineServer(FastAPI):
     def __init__(
         self, name: str, 
         pipeline: LeafPipeline, host: str = "127.0.0.1", port: int = 8000, 
@@ -35,7 +35,7 @@ class LeafPipelineApp(FastAPI):
     ):
 
         @asynccontextmanager
-        async def lifespan(app: LeafPipelineApp):
+        async def lifespan(app: LeafPipelineServer):
             app.logger.info(f"Leaf server '{app.name}' started")
 
             # queue must be set for all nodes prior to starting the background task

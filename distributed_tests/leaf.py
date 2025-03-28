@@ -4,7 +4,7 @@ from logging import Logger
 from typing import List
 
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
-from anacostia_pipeline.pipelines.leaf.app import LeafPipelineApp
+from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCaller
 
@@ -80,5 +80,5 @@ pipeline = LeafPipeline(
     loggers=logger
 )
 
-service = LeafPipelineApp(name="leaf", pipeline=pipeline, host=args.host, port=args.port, rpc_callers=[metadata_store_rpc], logger=logger)
+service = LeafPipelineServer(name="leaf", pipeline=pipeline, host=args.host, port=args.port, rpc_callers=[metadata_store_rpc], logger=logger)
 service.run()
