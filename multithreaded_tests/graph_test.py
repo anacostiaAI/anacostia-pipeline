@@ -1,6 +1,5 @@
 from logging import Logger
 import os
-import time
 import logging
 import shutil
 from typing import List
@@ -66,7 +65,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
         for filepath in self.data_store.list_artifacts("current"):
@@ -109,7 +108,7 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store.log_metrics(self, shakespeare_test_loss=1.47)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
@@ -123,7 +122,7 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         self.metadata_store.log_metrics(self, haiku_test_loss=2.43)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
@@ -177,8 +176,3 @@ pipeline = RootPipeline(
 if __name__ == "__main__":
     webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
     webserver.run()
-
-    time.sleep(6)
-    for i in range(10):
-        create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
-        time.sleep(1.5)
