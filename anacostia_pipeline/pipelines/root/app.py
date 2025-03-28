@@ -17,7 +17,7 @@ from starlette.routing import Mount
 import uvicorn
 import httpx
 
-from anacostia_pipeline.nodes.hypermedia import BaseHypermediaAPI
+from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
@@ -37,8 +37,8 @@ class RootPipelineApp(FastAPI):
             yield
             
             for route in app.routes:
-                if isinstance(route, Mount) and isinstance(route.app, BaseHypermediaAPI):
-                    subapp: BaseHypermediaAPI = route.app
+                if isinstance(route, Mount) and isinstance(route.app, BaseGUI):
+                    subapp: BaseGUI = route.app
                     # this currently does nothing, add code here for cleanup if needed
 
             app.logger.info(f"Root server '{app.name}' shut down")
@@ -77,7 +77,7 @@ class RootPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            node_subapp: BaseHypermediaAPI = node.get_app()
+            node_subapp: BaseGUI = node.get_app()
             self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
 

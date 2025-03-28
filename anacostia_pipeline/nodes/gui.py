@@ -6,7 +6,7 @@ from anacostia_pipeline.nodes.fragments import default_node_page
 
 
 
-class BaseHypermediaAPI(FastAPI):
+class BaseGUI(FastAPI):
     def __init__(self, node, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
