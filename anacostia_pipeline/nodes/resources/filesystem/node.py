@@ -105,7 +105,7 @@ class FilesystemStoreNode(BaseResourceNode):
             monitoring=monitoring
         )
     
-    def get_app(self) -> FilesystemStoreNodeApp:
+    def setup_node_GUI(self) -> FilesystemStoreNodeApp:
         return FilesystemStoreNodeApp(self)
 
     def setup(self) -> None:

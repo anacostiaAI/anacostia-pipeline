@@ -77,8 +77,8 @@ class RootPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            node_subapp: BaseGUI = node.get_app()
-            self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
+            node_gui: BaseGUI = node.setup_node_GUI()
+            self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
 
             callee: BaseRPCCallee = node.setup_rpc_callee(host=self.host, port=self.port)
@@ -197,7 +197,7 @@ class RootPipelineApp(FastAPI):
         model = self.pipeline.pipeline_model.model_dump()
         edges = []
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
-            subapp = node.get_app()
+            subapp = node.setup_node_GUI()
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model["name"]
             node_model["origin_url"] = f"http://{self.host}:{self.port}"

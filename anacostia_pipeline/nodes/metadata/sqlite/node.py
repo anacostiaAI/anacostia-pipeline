@@ -8,7 +8,7 @@ import traceback
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.sqlite.app import SqliteMetadataStoreApp
+from anacostia_pipeline.nodes.metadata.sqlite.gui import SqliteMetadataStoreGUI
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCallee
 from anacostia_pipeline.nodes.node import BaseNode
 
@@ -83,8 +83,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
     
     # Note: override the get_app() method to return the custom router
-    def get_app(self) -> SqliteMetadataStoreApp:
-        return SqliteMetadataStoreApp(self)
+    def setup_node_GUI(self) -> SqliteMetadataStoreGUI:
+        return SqliteMetadataStoreGUI(self)
     
     def setup_rpc_callee(self, host, port):
         self.rpc_callee = SqliteMetadataRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)

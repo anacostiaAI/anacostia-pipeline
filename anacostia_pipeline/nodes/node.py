@@ -90,7 +90,7 @@ class BaseNode(Thread):
         self.connector = Connector(self, host=host, port=port)
         return self.connector
 
-    def get_app(self):
+    def setup_node_GUI(self):
         self.app = BaseGUI(self)
         return self.app
     

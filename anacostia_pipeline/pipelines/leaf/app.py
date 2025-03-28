@@ -83,8 +83,8 @@ class LeafPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            node_subapp: BaseGUI = node.get_app()
-            self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
+            node_gui: BaseGUI = node.setup_node_GUI()
+            self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
         
         for rpc_caller in rpc_callers:
@@ -129,7 +129,7 @@ class LeafPipelineApp(FastAPI):
 
         edges = []
         for leaf_data_node, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
-            subapp: BaseGUI = leaf_node.get_app()
+            subapp: BaseGUI = leaf_node.setup_node_GUI()
             leaf_data_node["id"] = leaf_data_node["name"]
             leaf_data_node["label"] = leaf_data_node["name"]
             leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}"
