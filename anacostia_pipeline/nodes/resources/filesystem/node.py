@@ -13,7 +13,7 @@ else:  # Unix-like systems (Linux, macOS)
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.resources.filesystem.app import FilesystemStoreNodeApp
+from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
 
 
 
@@ -105,8 +105,8 @@ class FilesystemStoreNode(BaseResourceNode):
             monitoring=monitoring
         )
     
-    def setup_node_GUI(self) -> FilesystemStoreNodeApp:
-        return FilesystemStoreNodeApp(self)
+    def setup_node_GUI(self) -> FilesystemStoreGUI:
+        return FilesystemStoreGUI(self)
 
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")

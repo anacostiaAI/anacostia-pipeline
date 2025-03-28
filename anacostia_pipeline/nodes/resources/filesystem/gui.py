@@ -9,7 +9,7 @@ from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 
-class FilesystemStoreNodeApp(BaseGUI):
+class FilesystemStoreGUI(BaseGUI):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
