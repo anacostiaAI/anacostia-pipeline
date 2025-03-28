@@ -14,7 +14,7 @@ import uvicorn
 import httpx
 
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
-from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.nodes.hypermedia import BaseHypermediaAPI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.rpc import BaseRPCCaller
 
@@ -83,7 +83,7 @@ class LeafPipelineApp(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            node_subapp: BaseApp = node.get_app()
+            node_subapp: BaseHypermediaAPI = node.get_app()
             self.mount(node_subapp.get_node_prefix(), node_subapp)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
         
@@ -129,7 +129,7 @@ class LeafPipelineApp(FastAPI):
 
         edges = []
         for leaf_data_node, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
-            subapp: BaseApp = leaf_node.get_app()
+            subapp: BaseHypermediaAPI = leaf_node.get_app()
             leaf_data_node["id"] = leaf_data_node["name"]
             leaf_data_node["label"] = leaf_data_node["name"]
             leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}"

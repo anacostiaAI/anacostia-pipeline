@@ -3,13 +3,13 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 import asyncio
 from typing import List, Dict, Tuple, Union
 
-from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.nodes.hypermedia import BaseHypermediaAPI
 from anacostia_pipeline.nodes.resources.filesystem.fragments import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
 from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 
-class FilesystemStoreNodeApp(BaseApp):
+class FilesystemStoreNodeApp(BaseHypermediaAPI):
     def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
         super().__init__(node, use_default_router=False, *args, **kwargs)
 

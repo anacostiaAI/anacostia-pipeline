@@ -13,7 +13,7 @@ import httpx
 import time
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.nodes.app import BaseApp
+from anacostia_pipeline.nodes.hypermedia import BaseHypermediaAPI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 
@@ -76,7 +76,7 @@ class BaseNode(Thread):
         self.pause_event = Event()
         self.pause_event.set()
         self.queue: Queue | None = None
-        self.app: BaseApp | None = None
+        self.app: BaseHypermediaAPI | None = None
         self.connector: Connector | None = None
 
         super().__init__(name=name)
@@ -91,7 +91,7 @@ class BaseNode(Thread):
         return self.connector
 
     def get_app(self):
-        self.app = BaseApp(self)
+        self.app = BaseHypermediaAPI(self)
         return self.app
     
     def setup_rpc_callee(self, host: str, port: int):
