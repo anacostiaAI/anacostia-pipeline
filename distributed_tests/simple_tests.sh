@@ -65,6 +65,7 @@ fi
 # Register the cleanup function for multiple signals
 # This ensures cleanup runs when Ctrl+C is pressed (INT)
 # or when the script exits for any reason (EXIT)
+# or when the script receives a termination signal (TERM)
 trap cleanup EXIT INT TERM
 
 # Both ports are available, set up testing environment
