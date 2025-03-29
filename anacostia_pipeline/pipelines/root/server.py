@@ -230,7 +230,9 @@ class RootPipelineServer(FastAPI):
         return model
 
     def run(self):
+        # Store original signal handlers
         original_sigint_handler = signal.getsignal(signal.SIGINT)
+        original_sigterm_handler = signal.getsignal(signal.SIGTERM)
 
         def _kill_webserver(sig, frame):
             print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
@@ -238,15 +240,23 @@ class RootPipelineServer(FastAPI):
             self.fastapi_thread.join()
             print(f"Anacostia Webservice {self.name} Killed...")
 
-            print("Killing pipeline...")
+            print("Killing root pipeline...")
             self.pipeline.terminate_nodes()
-            print("Pipeline Killed.")
+            print("Root pipeline Killed.")
 
             # register the original default kill handler once the pipeline is killed
             signal.signal(signal.SIGINT, original_sigint_handler)
+            signal.signal(signal.SIGTERM, original_sigterm_handler)
+
+            # If this was SIGTERM, we might want to exit the process
+            if sig == signal.SIGTERM:
+                sys.exit(0)
 
         # register the kill handler for the webserver
         signal.signal(signal.SIGINT, _kill_webserver)
+        signal.signal(signal.SIGTERM, _kill_webserver)
+
+        # Start the webserver
         self.fastapi_thread.start()
 
         # Launch the root pipeline
