@@ -120,6 +120,7 @@ class RootPipelineServer(FastAPI):
                 for connection in node.remote_successors:
                     connection_mode = {
                         "node_url": f"http://{self.host}:{self.port}/{node.name}",
+                        "node_name": node.name,
                         "node_type": type(node).__name__
                     }
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
@@ -129,7 +130,7 @@ class RootPipelineServer(FastAPI):
             # Extract the node name and type from the responses and add them to the metadata store
             for response in responses:
                 response_data = response.json()
-                node_name = response_data["node_url"].split("/")[-2]
+                node_name = response_data["node_name"]
                 node_type = response_data["node_type"]
                 self.leaf_node_names.append({"node_name": node_name, "node_type": node_type})
 
