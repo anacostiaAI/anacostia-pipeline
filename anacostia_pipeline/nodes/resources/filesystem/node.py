@@ -175,7 +175,7 @@ class FilesystemStoreNode(BaseResourceNode):
 
     @BaseResourceNode.log_exception
     def list_artifacts(self, state: str) -> List[Any]:
-        entries = self.metadata_store.get_entries(self, state)
+        entries = self.metadata_store.get_entries(self.name, state)
         artifacts = [entry["location"] for entry in entries]
         return artifacts
     
@@ -194,7 +194,7 @@ class FilesystemStoreNode(BaseResourceNode):
             EntryNotFoundError: If no entry exists with the specified ID
         """
 
-        entries = self.metadata_store.get_entries(resource_node=self)
+        entries = self.metadata_store.get_entries(resource_nod_name=self.name)
         for entry in entries:
             if entry["id"] == id:
                 return entry

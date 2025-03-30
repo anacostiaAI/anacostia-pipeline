@@ -278,16 +278,16 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ? AND state = ?", (node_id, state))
             return cursor.fetchone()[0]
     
-    def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
-        if (resource_node != "all") and (state != "all"):
-            node_id = self.get_node_id(resource_node.name)
+    def get_entries(self, resource_node_name: str = "all", state: str = "all") -> List[Dict]:
+        if (resource_node_name != "all") and (state != "all"):
+            node_id = self.get_node_id(resource_node_name)
             sample_query = "SELECT * FROM artifacts WHERE node_id = ? AND state = ?"
             sample_args = (node_id, state,)
-        elif (resource_node != "all") and (state == "all"):
-            node_id = self.get_node_id(resource_node.name)
+        elif (resource_node_name != "all") and (state == "all"):
+            node_id = self.get_node_id(resource_node_name)
             sample_query = "SELECT * FROM artifacts WHERE node_id = ?"
             sample_args = (node_id,)
-        elif (resource_node == "all") and (state != "all"):
+        elif (resource_node_name == "all") and (state != "all"):
             sample_query = "SELECT * FROM artifacts WHERE state = ?"
             sample_args = (state,)
         else:
