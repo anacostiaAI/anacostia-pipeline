@@ -202,7 +202,7 @@ class FilesystemStoreNode(BaseResourceNode):
     
     @BaseResourceNode.log_exception
     def get_num_artifacts(self, state: str) -> int:
-        return self.metadata_store.get_num_entries(self, state)
+        return self.metadata_store.get_num_entries(self.name, state)
     
     @BaseResourceNode.log_exception
     def load_artifact(self, artifact_path: str) -> Any:

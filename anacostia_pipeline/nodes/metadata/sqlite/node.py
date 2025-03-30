@@ -268,8 +268,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND location = ?", (node_id, filepath))
             return cursor.fetchone() is not None
 
-    def get_num_entries(self, resource_node: BaseResourceNode, state: str = "all") -> int:
-        node_id = self.get_node_id(resource_node.name)
+    def get_num_entries(self, resource_node_name: str, state: str = "all") -> int:
+        node_id = self.get_node_id(resource_node_name)
 
         with DatabaseManager(self.uri) as cursor:
             if state == "all":

@@ -110,5 +110,5 @@ class S3Node(BaseResourceNode):
         self.log(f"Observer stopped for node '{self.name}'")
     
     def get_num_artifacts(self, state: str) -> int:
-        return self.metadata_store.get_num_entries(self, state)
+        return self.metadata_store.get_num_entries(self.name, state)
     
