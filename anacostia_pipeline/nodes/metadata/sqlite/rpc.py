@@ -17,6 +17,8 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         async def log_metrics(node_name: str, request: Request):
             data = await request.json()
             self.metadata_store.log_metrics(node_name, **data)
+            #self.log("Metrics logged", level="INFO")
+            #return {"message": "Metrics logged"}
         
         @self.post("/log_params/")
         async def log_params(node_name: str, request: Request):
@@ -79,6 +81,7 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
     
     async def get_params(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:
+
             if node_name is not None and run_id is not None:
                 response = await client.get(f"{self.get_callee_url()}/get_params/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
