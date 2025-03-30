@@ -198,6 +198,7 @@ class BaseNode(Thread):
                     for predecessor_url in self.remote_predecessors:
                         json = {
                             "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                            "node_name": self.name,
                             "node_type": type(self).__name__
                         }
                         tasks.append(client.post(f"{predecessor_url}/connector/backward_signal", json=json))
@@ -216,6 +217,7 @@ class BaseNode(Thread):
                     for successor_url in self.remote_successors:
                         json = {
                             "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                            "node_name": self.name,
                             "node_type": type(self).__name__
                         }
                         tasks.append(client.post(f"{successor_url}/connector/forward_signal", json=json))

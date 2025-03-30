@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class ConnectionModel(BaseModel):
     node_url: str
+    node_name: str
     node_type: str
 
 
@@ -19,7 +20,11 @@ class Connector(FastAPI):
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(root: ConnectionModel) -> ConnectionModel:
             self.node.add_remote_predecessor(root.node_url)
-            return ConnectionModel(node_url=f"http://{self.host}:{self.port}{self.get_connector_prefix()}", node_type=type(self.node).__name__)
+            return ConnectionModel(
+                node_url=f"http://{self.host}:{self.port}{self.get_connector_prefix()}", 
+                node_name=self.node.name, 
+                node_type=type(self.node).__name__
+            )
         
         @self.post("/forward_signal", status_code=status.HTTP_200_OK)
         async def forward_signal(root: ConnectionModel):
