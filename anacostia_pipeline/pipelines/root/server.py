@@ -17,6 +17,7 @@ from starlette.routing import Mount
 import uvicorn
 import httpx
 
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 from anacostia_pipeline.nodes.connector import Connector
@@ -51,8 +52,15 @@ class RootPipelineServer(FastAPI):
         self.logger = logger
         self.connections = []
         self.leaf_ip_addresses = []
-        self.leaf_configs = []
+        self.leaf_models = []
+        self.leaf_node_names = []
         self.queue = Queue()
+
+        # get metadata store from the pipeline
+        for node in self.pipeline.nodes:
+            if isinstance(node, BaseMetadataStoreNode):
+                self.metadata_store = node
+                break
 
         # Mount the static files directory to the webserver
         DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
@@ -103,7 +111,7 @@ class RootPipelineServer(FastAPI):
             # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
             for response in responses:
                 response_data = response.json()
-                self.leaf_configs.append(response_data)
+                self.leaf_models.append(response_data)
                 # self.logger.info(f"leaf data: {response_data}")
             
             # Connect each node to its remote successors
@@ -117,6 +125,13 @@ class RootPipelineServer(FastAPI):
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
             responses = await asyncio.gather(*task)
+
+            # Extract the node name and type from the responses and add them to the metadata store
+            for response in responses:
+                response_data = response.json()
+                node_name = response_data["node_url"].split("/")[-2]
+                node_type = response_data["node_type"]
+                self.leaf_node_names.append({"node_name": node_name, "node_type": node_type})
 
             # Connect RPC callees to RPC callers
             task = []
@@ -219,12 +234,12 @@ class RootPipelineServer(FastAPI):
             edges.extend(edges_from_node)
 
         # add the leaf nodes to the model
-        for leaf_config in self.leaf_configs:
-            for leaf_data_node in leaf_config["nodes"]:
-                leaf_data_node["header_bar_endpoint"] = f'/header_bar/?node_id={leaf_data_node["id"]}'
+        for leaf_graph_model in self.leaf_models:
+            for leaf_node_model in leaf_graph_model["nodes"]:
+                leaf_node_model["header_bar_endpoint"] = f'/header_bar/?node_id={leaf_node_model["id"]}'
 
-            model["nodes"].extend(leaf_config["nodes"])
-            edges.extend(leaf_config["edges"])
+            model["nodes"].extend(leaf_graph_model["nodes"])
+            edges.extend(leaf_graph_model["edges"])
 
         model["edges"] = edges
         return model
@@ -261,6 +276,10 @@ class RootPipelineServer(FastAPI):
 
         # Launch the root pipeline
         self.pipeline.launch_nodes()
+
+        # add nodes to metadata store's node list
+        for leaf_node_name in self.leaf_node_names:
+            self.metadata_store.add_node(node_name=leaf_node_name["node_name"], node_type=leaf_node_name["node_type"])
 
         # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
         # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9

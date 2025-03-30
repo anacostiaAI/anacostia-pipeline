@@ -30,8 +30,10 @@ class RootServerModel(BaseModel):
 class LeafPipelineServer(FastAPI):
     def __init__(
         self, name: str, 
-        pipeline: LeafPipeline, host: str = "127.0.0.1", port: int = 8000, 
-        rpc_callers: List[BaseRPCCaller] = None, 
+        pipeline: LeafPipeline, 
+        rpc_callers: List[BaseRPCCaller],
+        host: str = "127.0.0.1", 
+        port: int = 8000, 
         logger=Logger, *args, **kwargs
     ):
 
@@ -85,7 +87,7 @@ class LeafPipelineServer(FastAPI):
             self.mount(connector.get_connector_prefix(), connector)          
 
             node_gui: BaseGUI = node.setup_node_GUI()
-            self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
+            self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
         
         for rpc_caller in rpc_callers:

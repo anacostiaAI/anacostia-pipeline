@@ -105,35 +105,41 @@ class LeafPipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
     
-    def __setup_nodes(self, nodes: List[BaseNode]):
+    def setup_nodes(self):
         """
-        Sets up all the nodes in the pipeline.
+        Sets up all the registered nodes in topological order.
         """
 
-        threads: List[Thread] = []
-        for node in nodes:
-            node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-            thread = Thread(target=node.leaf_setup)
-            node.status = Status.INITIALIZING
-            thread.start()
-            threads.append(thread)
+        def __setup_nodes(nodes: List[BaseNode]):
+            """
+            Sets up all the nodes in the pipeline.
+            """
 
-        for thread, node in zip(threads, nodes):
-            thread.join()
-            node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+            threads: List[Thread] = []
+            for node in nodes:
+                node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
+                thread = Thread(target=node.leaf_setup)
+                node.status = Status.INITIALIZING
+                thread.start()
+                threads.append(thread)
+
+            for thread, node in zip(threads, nodes):
+                thread.join()
+                node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+
+        # set up resource nodes
+        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
+        __setup_nodes(resource_nodes)
+        
+        # set up action nodes
+        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
+        __setup_nodes(action_nodes)
 
     def launch_nodes(self):
         """
         Lanches all the registered nodes in topological order.
         """
-
-        # set up resource nodes
-        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
-        self.__setup_nodes(resource_nodes)
-        
-        # set up action nodes
-        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
-        self.__setup_nodes(action_nodes)
+        self.setup_nodes()
 
         # start nodes
         for node in self.nodes:
