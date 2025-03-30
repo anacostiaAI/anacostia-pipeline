@@ -75,7 +75,7 @@ class ModelRetrainingNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("old"):
             self.log(f"Already trained on {filepath}", level="INFO")
         
-        self.metadata_store.log_metrics(self, acc=1.00)
+        self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
             self,
@@ -110,7 +110,7 @@ class ShakespeareEvalNode(BaseActionNode):
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        self.metadata_store.log_metrics(self, shakespeare_test_loss=1.47)
+        self.metadata_store.log_metrics(self.name, shakespeare_test_loss=1.47)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -124,7 +124,7 @@ class HaikuEvalNode(BaseActionNode):
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
-        self.metadata_store.log_metrics(self, haiku_test_loss=2.43)
+        self.metadata_store.log_metrics(self.name, haiku_test_loss=2.43)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 

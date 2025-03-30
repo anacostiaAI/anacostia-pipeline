@@ -47,7 +47,7 @@ class BaseMetadataStoreNode(BaseNode):
     def get_num_entries(self, resource_node_name: str, state: str) -> int:
         pass
 
-    def log_metrics(self, **kwargs) -> None:
+    def log_metrics(self, node_name: str, **kwargs) -> None:
         pass
     
     def log_params(self, **kwargs) -> None:

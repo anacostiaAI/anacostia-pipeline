@@ -64,7 +64,7 @@ class ModelRetrainingNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
-        self.metadata_store.log_metrics(self, acc=1.00)
+        self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
             self,

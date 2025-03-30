@@ -94,7 +94,7 @@ class ModelRetrainingNode(BaseActionNode):
         
         # must pass self to log_metrics and log_params in order for the metadata store to know which node is logging
         # if you don't pass self, the metadata store will not know which node is logging and will not enter the data into the database
-        self.metadata_store.log_metrics(self, acc=1.00)
+        self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
             self,

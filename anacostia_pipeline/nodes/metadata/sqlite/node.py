@@ -307,9 +307,9 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
 
-    def log_metrics(self, node: BaseNode, **kwargs) -> None:
+    def log_metrics(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
-        node_id = self.get_node_id(node.name)
+        node_id = self.get_node_id(node_name)
         with DatabaseManager(self.uri) as cursor:
             for metric_name, metric_value in kwargs.items():
                 cursor.execute(

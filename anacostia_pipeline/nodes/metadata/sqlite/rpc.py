@@ -16,7 +16,7 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         @self.post("/log_metrics")
         async def log_metrics(request: Request):
             data = await request.json()
-            self.metadata_store.log_metrics(self.metadata_store, **data)
+            self.metadata_store.log_metrics(self.metadata_store.name, **data)
             #self.log("Metrics logged", level="INFO")
             #return {"message": "Metrics logged"}
         
