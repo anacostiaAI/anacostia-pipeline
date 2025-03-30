@@ -207,11 +207,11 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
         """
         self.trigger()
     
-    def add_node(self, node: BaseNode) -> None:
+    def add_node(self, node_name: str, node_type: str) -> None:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
                 """INSERT INTO nodes(node_name, node_type, init_time) VALUES (?, ?, ?)""", 
-                (node.name, type(node).__name__, datetime.now(),)
+                (node_name, node_type, datetime.now(),)
             )
     
     def start_run(self) -> None:

@@ -32,7 +32,7 @@ class BaseMetadataStoreNode(BaseNode):
     def get_run_id(self) -> int:
         return self.run_id
 
-    def add_node(self, node) -> None:
+    def add_node(self, node_name: str, node_type: str) -> None:
         raise NotImplementedError
     
     def create_entry(self, resource_node, **kwargs) -> None:

@@ -166,7 +166,7 @@ class RootPipeline:
         # add nodes to metadata store's node list
         for metadata_store in metadata_stores:
             for node in self.nodes:
-                metadata_store.add_node(node)
+                metadata_store.add_node(node.name, type(node).__name__)
 
     def launch_nodes(self):
         """
