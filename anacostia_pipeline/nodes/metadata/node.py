@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Dict
 from logging import Logger
 from threading import Event
 
@@ -54,6 +54,15 @@ class BaseMetadataStoreNode(BaseNode):
         pass
 
     def set_tags(self, node_name: str, **kwargs) -> None:
+        pass
+
+    def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        pass
+
+    def get_params(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        pass
+
+    def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         pass
 
     def start_run(self) -> None:

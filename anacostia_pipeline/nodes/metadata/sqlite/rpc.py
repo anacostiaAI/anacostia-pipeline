@@ -31,8 +31,8 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
             self.metadata_store.set_tags(self.metadata_store.name, **data)
         
         @self.get("/get_tags")
-        async def get_tags(run_id: int = None):
-            tags = self.metadata_store.get_tags(run_id=run_id)
+        async def get_tags(node_name: str, run_id: int = None):
+            tags = self.metadata_store.get_tags(node_name=node_name, run_id=run_id)
             return tags
 
 
@@ -54,8 +54,8 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_callee_url()}/set_tags", json=kwargs)
     
-    async def get_tags(self, run_id: int = None):
+    async def get_tags(self, node_name: str, run_id: int = None):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_tags", params={"run_id": run_id})
+            response = await client.get(f"{self.get_callee_url()}/get_tags", params={"node_name": node_name, "run_id": run_id})
             tags = response.json()
             return tags

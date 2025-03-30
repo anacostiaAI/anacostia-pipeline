@@ -337,8 +337,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     (run_id, node_id, tag_name, tag_value)
                 )
     
-    def get_metrics(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node.name) if node is not None else None
+    def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        node_id = self.get_node_id(node_name) if node_name is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:
@@ -354,8 +354,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
     
-    def get_params(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node.name) if node is not None else None
+    def get_params(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        node_id = self.get_node_id(node_name) if node_name is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:
@@ -371,8 +371,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
     
-    def get_tags(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node.name) if node is not None else None
+    def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        node_id = self.get_node_id(node_name) if node_name is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:
