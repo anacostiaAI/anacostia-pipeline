@@ -20,18 +20,23 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
             #self.log("Metrics logged", level="INFO")
             #return {"message": "Metrics logged"}
         
-        @self.post("/log_params")
-        async def log_params(request: Request):
+        @self.post("/log_params/")
+        async def log_params(node_name: str, request: Request):
             data = await request.json()
-            self.metadata_store.log_params(self.metadata_store.name, **data)
+            self.metadata_store.log_params(node_name, **data)
 
-        @self.post("/set_tags")
-        async def set_tags(request: Request):
+        @self.post("/set_tags/")
+        async def set_tags(node_name: str, request: Request):
             data = await request.json()
-            self.metadata_store.set_tags(self.metadata_store.name, **data)
+            self.metadata_store.set_tags(node_name, **data)
         
-        @self.get("/get_tags")
-        async def get_tags(node_name: str, run_id: int = None):
+        @self.get("/get_metrics/")
+        async def get_metrics(node_name: str = None, run_id: int = None):
+            metrics = self.metadata_store.get_metrics(node_name=node_name, run_id=run_id)
+            return metrics
+
+        @self.get("/get_tags/")
+        async def get_tags(node_name: str = None, run_id: int = None):
             tags = self.metadata_store.get_tags(node_name=node_name, run_id=run_id)
             return tags
 
@@ -46,16 +51,31 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
             #message = response.json()["message"]
             #self.log(message, level="INFO")
     
-    async def log_params(self, **kwargs):
+    async def log_params(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/log_params", json=kwargs)
+            response = await client.post(f"{self.get_callee_url()}/log_params/?node_name={node_name}", json=kwargs)
     
-    async def set_tags(self, **kwargs):
+    async def set_tags(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/set_tags", json=kwargs)
+            response = await client.post(f"{self.get_callee_url()}/set_tags/?node_name={node_name}", json=kwargs)
     
-    async def get_tags(self, node_name: str, run_id: int = None):
+    async def get_metrics(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_tags", params={"node_name": node_name, "run_id": run_id})
+
+            if node_name is not None and run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
+            elif node_name is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_metrics/?node_name={node_name}")
+            elif run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_metrics/?run_id={run_id}")
+            else:
+                response = await client.get(f"{self.get_callee_url()}/get_metrics/")
+
+            metrics = response.json()
+            return metrics
+    
+    async def get_tags(self, node_name: str = None, run_id: int = None):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
             tags = response.json()
             return tags
