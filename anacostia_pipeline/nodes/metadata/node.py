@@ -53,7 +53,7 @@ class BaseMetadataStoreNode(BaseNode):
     def log_params(self, node_name: str, **kwargs) -> None:
         pass
 
-    def set_tags(self, **kwargs) -> None:
+    def set_tags(self, node_name: str, **kwargs) -> None:
         pass
 
     def start_run(self) -> None:

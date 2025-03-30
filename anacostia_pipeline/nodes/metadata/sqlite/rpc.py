@@ -28,7 +28,7 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         @self.post("/set_tags")
         async def set_tags(request: Request):
             data = await request.json()
-            self.metadata_store.set_tags(self.metadata_store, **data)
+            self.metadata_store.set_tags(self.metadata_store.name, **data)
         
         @self.get("/get_tags")
         async def get_tags(run_id: int = None):

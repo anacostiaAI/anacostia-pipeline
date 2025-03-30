@@ -93,7 +93,7 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
+        self.metadata_store.set_tags(self.name, test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
