@@ -230,9 +230,9 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
         self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
 
-    def get_node_id(self, node: BaseNode) -> int:
+    def get_node_id(self, node_name: str) -> int:
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (node.name,))
+            cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (node_name,))
             return cursor.fetchone()[0]
     
     def get_nodes_info(self, node_id: int = None, node: BaseNode = None) -> List[Dict]:
@@ -252,8 +252,8 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
     
-    def create_entry(self, resource_node: BaseResourceNode, filepath: str, state: str = "new", run_id: int = None) -> None:
-        node_id = self.get_node_id(resource_node)
+    def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None) -> None:
+        node_id = self.get_node_id(resource_node_name)
 
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
@@ -262,14 +262,14 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             )
 
     def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
-        node_id = self.get_node_id(resource_node)
+        node_id = self.get_node_id(resource_node.name)
 
         with DatabaseManager(self.uri) as cursor:
             cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND location = ?", (node_id, filepath))
             return cursor.fetchone() is not None
 
     def get_num_entries(self, resource_node: BaseResourceNode, state: str = "all") -> int:
-        node_id = self.get_node_id(resource_node)
+        node_id = self.get_node_id(resource_node.name)
 
         with DatabaseManager(self.uri) as cursor:
             if state == "all":
@@ -280,11 +280,11 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
     def get_entries(self, resource_node: BaseResourceNode = "all", state: str = "all") -> List[Dict]:
         if (resource_node != "all") and (state != "all"):
-            node_id = self.get_node_id(resource_node)
+            node_id = self.get_node_id(resource_node.name)
             sample_query = "SELECT * FROM artifacts WHERE node_id = ? AND state = ?"
             sample_args = (node_id, state,)
         elif (resource_node != "all") and (state == "all"):
-            node_id = self.get_node_id(resource_node)
+            node_id = self.get_node_id(resource_node.name)
             sample_query = "SELECT * FROM artifacts WHERE node_id = ?"
             sample_args = (node_id,)
         elif (resource_node == "all") and (state != "all"):
@@ -309,7 +309,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
 
     def log_metrics(self, node: BaseNode, **kwargs) -> None:
         run_id = self.get_run_id()
-        node_id = self.get_node_id(node)
+        node_id = self.get_node_id(node.name)
         with DatabaseManager(self.uri) as cursor:
             for metric_name, metric_value in kwargs.items():
                 cursor.execute(
@@ -319,7 +319,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
     def log_params(self, node: BaseNode, **kwargs) -> None:
         run_id = self.get_run_id()
-        node_id = self.get_node_id(node)
+        node_id = self.get_node_id(node.name)
         with DatabaseManager(self.uri) as cursor:
             for param_name, param_value in kwargs.items():
                 cursor.execute(
@@ -329,7 +329,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
     def set_tags(self, node: BaseNode, **kwargs) -> None:
         run_id = self.get_run_id()
-        node_id = self.get_node_id(node)
+        node_id = self.get_node_id(node.name)
         with DatabaseManager(self.uri) as cursor:
             for tag_name, tag_value in kwargs.items():
                 cursor.execute(
@@ -338,7 +338,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 )
     
     def get_metrics(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node) if node is not None else None
+        node_id = self.get_node_id(node.name) if node is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:
@@ -355,7 +355,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return [dict(zip(columns, row)) for row in rows]
     
     def get_params(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node) if node is not None else None
+        node_id = self.get_node_id(node.name) if node is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:
@@ -372,7 +372,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return [dict(zip(columns, row)) for row in rows]
     
     def get_tags(self, run_id: int = None, node: BaseNode = None) -> List[Dict]:
-        node_id = self.get_node_id(node) if node is not None else None
+        node_id = self.get_node_id(node.name) if node is not None else None
 
         with DatabaseManager(self.uri) as cursor:
             if run_id is not None and node_id is not None:

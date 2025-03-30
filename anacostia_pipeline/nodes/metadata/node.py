@@ -35,7 +35,7 @@ class BaseMetadataStoreNode(BaseNode):
     def add_node(self, node_name: str, node_type: str) -> None:
         raise NotImplementedError
     
-    def create_entry(self, resource_node, **kwargs) -> None:
+    def create_entry(self, resource_node_name: str, **kwargs) -> None:
         raise NotImplementedError
 
     def get_entries(self, resource_node) -> List[dict]:

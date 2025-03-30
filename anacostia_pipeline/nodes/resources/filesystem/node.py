@@ -113,10 +113,10 @@ class FilesystemStoreNode(BaseResourceNode):
         self.log(f"Node '{self.name}' setup complete.")
     
     def record_new(self, filepath: str) -> Dict:
-        self.metadata_store.create_entry(self, filepath=filepath, state="new")
+        self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
 
     def record_current(self, filepath: str) -> None:
-        self.metadata_store.create_entry(self, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+        self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
     
     def start_monitoring(self) -> None:
 
