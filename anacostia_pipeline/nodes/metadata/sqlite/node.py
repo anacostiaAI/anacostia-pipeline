@@ -317,9 +317,9 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     (run_id, node_id, metric_name, metric_value)
                 )
     
-    def log_params(self, node: BaseNode, **kwargs) -> None:
+    def log_params(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
-        node_id = self.get_node_id(node.name)
+        node_id = self.get_node_id(node_name)
         with DatabaseManager(self.uri) as cursor:
             for param_name, param_value in kwargs.items():
                 cursor.execute(

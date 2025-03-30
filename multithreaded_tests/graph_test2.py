@@ -67,7 +67,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
-            self,
+            self.name,
             batch_size = 64, # how many independent sequences will we process in parallel?
             block_size = 256, # what is the maximum context length for predictions?
             max_iters = 2500,
