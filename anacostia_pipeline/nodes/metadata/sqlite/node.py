@@ -10,7 +10,6 @@ from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.gui import SqliteMetadataStoreGUI
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCallee
-from anacostia_pipeline.nodes.node import BaseNode
 
 
 
@@ -235,13 +234,13 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (node_name,))
             return cursor.fetchone()[0]
     
-    def get_nodes_info(self, node_id: int = None, node: BaseNode = None) -> List[Dict]:
+    def get_nodes_info(self, node_id: int = None, node_name: str = None) -> List[Dict]:
         if node_id is not None:
             sample_query = "SELECT * FROM nodes WHERE id = ?"
             sample_args = (node_id,)
-        elif node is not None:
+        elif node_name is not None:
             sample_query = "SELECT * FROM nodes WHERE node_name = ?"
-            sample_args = (node.name,)
+            sample_args = (node_name,)
         else:
             sample_query = "SELECT * FROM nodes"
             sample_args = ()
