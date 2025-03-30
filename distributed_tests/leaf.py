@@ -40,7 +40,7 @@ class ShakespeareEvalNode(BaseActionNode):
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
         try:
-            await self.metadata_store_rpc.log_metrics(shakespeare_test_loss=1.47)
+            await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
             
@@ -58,7 +58,7 @@ class HaikuEvalNode(BaseActionNode):
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
 
         try:
-            await self.metadata_store_rpc.log_metrics(haiku_test_loss=2.47)
+            await self.metadata_store_rpc.log_metrics(node_name=self.name, haiku_test_loss=2.47)
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
         

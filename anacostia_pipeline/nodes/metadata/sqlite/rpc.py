@@ -13,10 +13,10 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         super().__init__(metadata_store, caller_url, host, port, loggers, *args, **kwargs)
         self.metadata_store = metadata_store
 
-        @self.post("/log_metrics")
-        async def log_metrics(request: Request):
+        @self.post("/log_metrics/")
+        async def log_metrics(node_name: str, request: Request):
             data = await request.json()
-            self.metadata_store.log_metrics(self.metadata_store.name, **data)
+            self.metadata_store.log_metrics(node_name, **data)
             #self.log("Metrics logged", level="INFO")
             #return {"message": "Metrics logged"}
         
@@ -40,9 +40,9 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
     def __init__(self, caller_name, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     
-    async def log_metrics(self, **kwargs):
+    async def log_metrics(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/log_metrics", json=kwargs)
+            response = await client.post(f"{self.get_callee_url()}/log_metrics/?node_name={node_name}", json=kwargs)
             #message = response.json()["message"]
             #self.log(message, level="INFO")
     
