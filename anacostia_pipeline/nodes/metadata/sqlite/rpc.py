@@ -17,8 +17,6 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         async def log_metrics(node_name: str, request: Request):
             data = await request.json()
             self.metadata_store.log_metrics(node_name, **data)
-            #self.log("Metrics logged", level="INFO")
-            #return {"message": "Metrics logged"}
         
         @self.post("/log_params/")
         async def log_params(node_name: str, request: Request):
@@ -34,6 +32,11 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         async def get_metrics(node_name: str = None, run_id: int = None):
             metrics = self.metadata_store.get_metrics(node_name=node_name, run_id=run_id)
             return metrics
+        
+        @self.get("/get_params/")
+        async def get_params(node_name: str = None, run_id: int = None):
+            params = self.metadata_store.get_params(node_name=node_name, run_id=run_id)
+            return params
 
         @self.get("/get_tags/")
         async def get_tags(node_name: str = None, run_id: int = None):
@@ -74,8 +77,31 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
             metrics = response.json()
             return metrics
     
+    async def get_params(self, node_name: str = None, run_id: int = None):
+        async with httpx.AsyncClient() as client:
+            if node_name is not None and run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_params/?node_name={node_name}&run_id={run_id}")
+            elif node_name is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_params/?node_name={node_name}")
+            elif run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_params/?run_id={run_id}")
+            else:
+                response = await client.get(f"{self.get_callee_url()}/get_params/")
+
+            params = response.json()
+            return params
+    
     async def get_tags(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
+
+            if node_name is not None and run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
+            elif node_name is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}")
+            elif run_id is not None:
+                response = await client.get(f"{self.get_callee_url()}/get_tags/?run_id={run_id}")
+            else:
+                response = await client.get(f"{self.get_callee_url()}/get_tags/")
+
             tags = response.json()
             return tags
