@@ -38,7 +38,9 @@ pip install anacostia-pipeline
 ```
 
 ## Example Usage
-Put the following python code inside a python file and run it in terminal.
+1. Put the following python code inside a python file.
+2. Name the file simplest_test.py (there is no reason you cannot name the file something else, but for the sake of simplicity, just name it simplest_test.py).
+3. Run it in terminal like so: `python simplest_test.py`.
 ```python
 import os
 import logging
@@ -105,7 +107,10 @@ if __name__ == "__main__":
     webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
     webserver.run()
 ```
-Put the following code inside another python file, open up a new terminal and run this file
+To trigger the pipeline:
+1. Put the following code inside another python file.
+2. Name the file create_files.py (again, there is no reason you cannot name the file something else, but for the sake of simplicity, just name it create_files.py).
+3. Open up a new terminal and run the file like so: `python create_files.py`.
 ```python
 import time
 
@@ -124,4 +129,5 @@ for i in range(10):
     create_file(f"{data_store_path}/test_file{i}.txt", f"test file {i}")
     time.sleep(1.5)
 ```
-Open your browser (preferably Chrome) and navigate to `http://127.0.0.1:8000`
+To view the pipeline executing:
+1. Open your browser (preferably Chrome) and navigate to `http://127.0.0.1:8000`
