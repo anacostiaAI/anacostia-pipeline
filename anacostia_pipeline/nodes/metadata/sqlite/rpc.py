@@ -13,6 +13,15 @@ class SqliteMetadataRPCCallee(BaseRPCCallee):
         super().__init__(metadata_store, caller_url, host, port, loggers, *args, **kwargs)
         self.metadata_store = metadata_store
 
+        @self.get("/get_node_id/")
+        async def get_node_id(node_name: str):
+            node_id = self.metadata_store.get_node_id(node_name)
+            return {"node_id": node_id}
+
+        @self.get("/create_entry/")
+        async def create_entry(resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+            self.metadata_store.create_entry(resource_node_name, filepath, state, run_id)
+
         @self.post("/log_metrics/")
         async def log_metrics(node_name: str, request: Request):
             data = await request.json()
@@ -50,6 +59,23 @@ class SqliteMetadataRPCCaller(BaseRPCCaller):
     def __init__(self, caller_name, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     
+    async def get_node_id(self, node_name: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_node_id/?node_name={node_name}")
+            node_id = response.json()["node_id"]
+            return node_id
+    
+    async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+        async with httpx.AsyncClient() as client:
+            if run_id is not None:
+                response = await client.get(
+                    f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}&run_id={run_id}"
+                )
+            else:
+                response = await client.get(
+                    f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
+                )
+
     async def log_metrics(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_callee_url()}/log_metrics/?node_name={node_name}", json=kwargs)
