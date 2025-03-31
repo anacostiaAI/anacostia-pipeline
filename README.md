@@ -38,15 +38,44 @@ pip install anacostia-pipeline
 ```
 
 ## Example Usage
+Put the following python code inside a python file and run it in terminal.
 ```python
-from anacostia_pipeline.nodes.node import BaseNode
+import os
+import logging
+import shutil
+from typing import List
+
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+
+from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+
+
+logging_tests_path = "./testing_artifacts/logging_tests"
+if os.path.exists(logging_tests_path) is True:
+    shutil.rmtree(logging_tests_path)
+os.makedirs(logging_tests_path)
+
+log_path = f"{logging_tests_path}/anacostia.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename=log_path,
+    filemode='a'
+)
+logger = logging.getLogger(__name__)
+
+
+metadata_store_path = f"{logging_tests_path}/metadata_store"
+data_store_path = f"{logging_tests_path}/data_store"
+
 
 class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
@@ -54,38 +83,45 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
-    
-    def custom_trigger(self):
-        if self.get_num_artifacts("new") >= 1:
-            self.trigger()
 
-class EmailNode(BaseActionNode):
+class LoggingNode(BaseActionNode):
     def __init__(
-        self, name: str, predecessors: List[BaseNode], 
-        metadata_store: BaseMetadataStoreNode, 
-        sender_email: str, recipient_email: str, 
-        loggers: Logger | List[Logger] = None
+        self, name: str, metadata_store: BaseMetadataStoreNode, predecessors: List[BaseNode] = None
     ) -> None:
+        super().__init__(name=name, predecessors=predecessors, wait_for_connection=True)
         self.metadata_store = metadata_store
-        self.sender_email = sender_email
-        self.recipient_email = recipient_email
-        super().__init__(name, predecessors, loggers)
     
-    def execute(self, *args, **kwargs) -> bool:
-        # send email to boss
+    async def execute(self, *args, **kwargs) -> bool:
+        self.log("Logging node executed", level="INFO")
         return True
 
+metadata_store = SqliteMetadataStoreNode(name="metadata_store", uri=f"{metadata_store_path}/metadata.db")
+data_store = MonitoringDataStoreNode("data_store", data_store_path, metadata_store)
+logging_node = LoggingNode("logging_node", metadata_store=metadata_store, predecessors=[data_store])
+
+pipeline = RootPipeline(nodes=[metadata_store, data_store, logging_node], loggers=logger)
+
 if __name__ == "__main__":
-    haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
-    email_boss_node = EmailNode("email_boss_node", predecessors=[retraining], metadata_store=metadata_store)
-
-    metadata_store = SqliteMetadataStore(
-        name="metadata_store", 
-        uri=f"sqlite:///{metadata_store_path}/metadata.db"
-    )
-
-    pipeline = RootPipeline(
-        nodes=[metadata_store, haiku_data_store, email_boss_node], 
-        loggers=logger
-    )
+    webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+    webserver.run()
 ```
+Put the following code inside another python file, open up a new terminal and run this file
+```python
+import time
+
+logging_tests_path = "./testing_artifacts/logging_tests"
+data_store_path = f"{logging_tests_path}/data_store"
+
+def create_file(file_path, content):
+    try:
+        with open(file_path, 'w') as file:
+            file.write(content)
+        print(f"File '{file_path}' created successfully.")
+    except Exception as e:
+        print(f"Error creating the file: {e}")
+
+for i in range(10):
+    create_file(f"{data_store_path}/test_file{i}.txt", f"test file {i}")
+    time.sleep(1.5)
+```
+Open your browser (preferably Chrome) and navigate to `http://127.0.0.1:8000`
