@@ -128,11 +128,14 @@ class FilesystemStoreNode(BaseResourceNode):
         def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
-                for filename in os.listdir(self.path):
-                    filepath = os.path.join(self.path, filename)
-                    if self.metadata_store.entry_exists(self, filepath) is False:
-                        self.log(f"'{self.name}' detected file: {filepath}")
-                        self.record_new(filepath)
+                for root, dirnames, filenames in os.walk(self.path):
+                    for filename in filenames:
+                        filepath = os.path.join(root, filename)
+                        filepath = filepath.removeprefix(self.path)     # Remove the path prefix
+                        filepath = filepath.lstrip(os.sep)              # Remove leading separator
+                        if self.metadata_store.entry_exists(self, filepath) is False:
+                            self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
+                            self.record_new(filepath)
 
                 if self.exit_event.is_set() is True: break
                 try:
@@ -177,7 +180,7 @@ class FilesystemStoreNode(BaseResourceNode):
     @BaseResourceNode.log_exception
     def list_artifacts(self, state: str) -> List[Any]:
         entries = self.metadata_store.get_entries(self.name, state)
-        artifacts = [entry["location"] for entry in entries]
+        artifacts = [os.path.join(self.path, entry["location"]) for entry in entries]
         return artifacts
     
     @BaseResourceNode.log_exception

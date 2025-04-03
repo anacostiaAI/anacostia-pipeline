@@ -98,7 +98,7 @@ class BaseActionNode(BaseNode):
 
             except Exception as e:
                 if self.exit_event.is_set(): return
-                self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
+                self.log(f"Error executing action node '{self.name}': {traceback.format_exc()}", level="ERROR")
                 self.status = Status.ERROR
                 self.on_error(e)
 

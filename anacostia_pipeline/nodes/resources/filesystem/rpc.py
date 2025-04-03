@@ -9,6 +9,7 @@ else:  # Unix-like systems (Linux, macOS)
     import fcntl
 
 from fastapi import Request
+from fastapi.responses import FileResponse
 import httpx
 
 from anacostia_pipeline.nodes.rpc import BaseRPCCaller, BaseRPCCallee
@@ -56,7 +57,7 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
     def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
 
-        @self.get("/get_artifact/{filepath:path}")
+        @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
         async def get_artifact(filepath: str):
             self.log(f"Received request to get artifact: {filepath}", level="INFO")
 
@@ -81,6 +82,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
             else:
                 raise Exception(f"Failed to get artifact: {response.status_code} - {response.text}")
 
+    # TODO: add the load_artifact method to BaseResourceRPCCaller
     def load_artifact(self, artifact_path: str) -> Any:
         with locked_file(artifact_path, "r") as file:
             return file.read()
