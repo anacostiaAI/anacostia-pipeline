@@ -7,6 +7,7 @@ from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCaller
+from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCaller
 
 
 
@@ -16,6 +17,10 @@ parser.add_argument('port', type=int)
 args = parser.parse_args()
 
 root_test_path = "./testing_artifacts"
+path = f"./leaf-artifacts"
+input_path = f"{path}/input_artifacts"
+output_path = f"{path}/output_artifacts"
+model_registry_path = f"{output_path}/model_registry"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
@@ -30,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller,
+        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller, model_registry_rpc: FilesystemStoreRPCCaller = None,
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
@@ -70,8 +75,9 @@ class HaikuEvalNode(BaseActionNode):
 
         return True
 
-metadata_store_rpc = SqliteMetadataRPCCaller("metadata_store_rpc")
-shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc)
+metadata_store_rpc = SqliteMetadataRPCCaller(caller_name="metadata_store_rpc")
+model_registry_rpc = FilesystemStoreRPCCaller(storage_directory=model_registry_path, caller_name="model_registry_rpc")
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, model_registry_rpc=model_registry_rpc)
 haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc)
 
 pipeline = LeafPipeline(
@@ -80,5 +86,12 @@ pipeline = LeafPipeline(
     loggers=logger
 )
 
-service = LeafPipelineServer(name="leaf", pipeline=pipeline, host=args.host, port=args.port, rpc_callers=[metadata_store_rpc], logger=logger)
+service = LeafPipelineServer(
+    name="leaf", 
+    pipeline=pipeline, 
+    host=args.host, 
+    port=args.port, 
+    rpc_callers=[metadata_store_rpc, model_registry_rpc], 
+    logger=logger
+)
 service.run()

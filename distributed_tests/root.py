@@ -46,8 +46,8 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     
 
 class ModelRegistryNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
     
     def save_artifact(self, content: str) -> None:
         filename = f"processed_data_file{self.get_num_artifacts('all')}.txt"
@@ -130,7 +130,8 @@ metadata_store = SqliteMetadataStoreNode(
 model_registry = ModelRegistryNode(
     "model_registry", 
     model_registry_path, 
-    metadata_store
+    metadata_store,
+    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
 )
 plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)

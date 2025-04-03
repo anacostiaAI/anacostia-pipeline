@@ -14,6 +14,7 @@ else:  # Unix-like systems (Linux, macOS)
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
+from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCallee
 
 
 
@@ -107,6 +108,10 @@ class FilesystemStoreNode(BaseResourceNode):
     
     def setup_node_GUI(self) -> FilesystemStoreGUI:
         return FilesystemStoreGUI(self)
+    
+    def setup_rpc_callee(self, host, port):
+        self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
+        return self.rpc_callee
 
     def setup(self) -> None:
         self.log(f"Setting up node '{self.name}'")
