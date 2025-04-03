@@ -166,10 +166,6 @@ class FilesystemStoreNode(BaseResourceNode):
             self.trigger()
     
     @BaseResourceNode.log_exception
-    def create_filename(self) -> str:
-        return f"file{self.get_num_artifacts('all')}.txt"
-    
-    @BaseResourceNode.log_exception
     def save_artifact(self, content: str) -> None:
         pass
 

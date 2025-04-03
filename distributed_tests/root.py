@@ -49,11 +49,8 @@ class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
-    def create_filename(self) -> str:
-        return f"processed_data_file{self.get_num_artifacts('all')}.txt"
-
     def save_artifact(self, content: str) -> None:
-        filename = self.create_filename()
+        filename = f"processed_data_file{self.get_num_artifacts('all')}.txt"
         filepath = os.path.join(self.path, filename)
 
         # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
