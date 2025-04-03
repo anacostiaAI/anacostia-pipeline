@@ -66,11 +66,11 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
     def __init__(self, storage_directory: str, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
 
-        if os.path.exists(f"{storage_directory}/{caller_name}") is False:
-            os.makedirs(f"{storage_directory}/{caller_name}")
-        
         self.storage_directory = f"{storage_directory}/{caller_name}"
     
+        if os.path.exists(self.storage_directory) is False:
+            os.makedirs(self.storage_directory)
+        
     async def get_artifact(self, filepath: str) -> Any:
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self.get_callee_url()}/get_artifact/{filepath}")
