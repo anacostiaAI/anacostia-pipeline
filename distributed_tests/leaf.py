@@ -50,12 +50,10 @@ class ShakespeareEvalNode(BaseActionNode):
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
         
-        """
         try:
-            await self.model_registry_rpc.get_artifact(filepath="test_file0.txt")
+            await self.model_registry_rpc.get_artifact(filepath="model0.txt")
         except Exception as e:
             self.log(f"Failed to get artifact: {e}", level="ERROR")
-        """
             
         return True
 

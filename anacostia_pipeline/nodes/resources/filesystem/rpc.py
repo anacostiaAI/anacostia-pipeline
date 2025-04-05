@@ -1,6 +1,7 @@
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional
 from logging import Logger
 import os
+from pathlib import Path
 from contextlib import contextmanager
 
 if os.name == 'nt':  # Windows
@@ -8,8 +9,8 @@ if os.name == 'nt':  # Windows
 else:  # Unix-like systems (Linux, macOS)
     import fcntl
 
-from fastapi import Request
-from fastapi.responses import FileResponse
+from fastapi import Request, UploadFile, HTTPException, Header
+from fastapi.responses import FileResponse, JSONResponse
 import httpx
 
 from anacostia_pipeline.nodes.rpc import BaseRPCCaller, BaseRPCCallee
@@ -56,10 +57,72 @@ def locked_file(filename, mode='r'):
 class FilesystemStoreRPCCallee(BaseRPCCallee):
     def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
+        self.resource_path: str = node.resource_path
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
         async def get_artifact(filepath: str):
             self.log(f"Received request to get artifact: {filepath}", level="INFO")
+            try:
+                # validate the file path exists
+                artifact_path = os.path.join(self.resource_path, filepath)
+                if os.path.exists(artifact_path) is False:
+                    self.log(f"Error: File not found - {artifact_path}", level="ERROR")
+                    raise HTTPException(status_code=404, detail=f"Resource path not found: {artifact_path}")
+
+                # Return the file as a response
+                self.log(f"Sending file: {artifact_path}", level="INFO")
+                return FileResponse(path=artifact_path, media_type="application/octet-stream")
+
+            except HTTPException as e:
+                self.log(f"HTTPException: {str(e)}", level="ERROR")
+                raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        
+        @self.post("/upload_stream")
+        async def upload_stream(request: Request, x_filename: Optional[str] = Header(None)):
+            try:
+                # Create the directory if it doesn't exist
+                folder_path = os.path.join(self.resource_path, os.path.dirname(x_filename))
+                if os.path.exists(folder_path) is False:
+                    os.makedirs(folder_path)
+                
+                # Create the file path
+                file_path = os.path.join(self.resource_path, x_filename)
+                
+                # Stream the request body directly to a file
+                content_length = request.headers.get("content-length")
+                if content_length:
+                    total_size = int(content_length)
+                    bytes_received = 0
+                else:
+                    total_size = None
+                    bytes_received = 0
+                
+            # Open the file and write chunks as they arrive
+                with open(file_path, "wb") as f:
+                    async for chunk in request.stream():
+                        f.write(chunk)
+                        bytes_received += len(chunk)
+
+                        # Optional: Add progress logging here
+                        if total_size:
+                            progress = bytes_received / total_size * 100
+                            self.log(f"Received: {bytes_received/1024/1024:.2f}MB / {total_size/1024/1024:.2f}MB ({progress:.1f}%)", level="INFO")
+                
+                return JSONResponse(
+                    content={
+                        "filename": x_filename,
+                        "status": "File received and saved successfully",
+                        "bytes_received": bytes_received,
+                        "stored_path": str(file_path)
+                    },
+                    status_code=200
+                )
+            
+            except Exception as e:
+                return JSONResponse(
+                    content={"error": f"An error occurred while receiving: {str(e)}"},
+                    status_code=500
+                )
 
 
 
@@ -73,16 +136,94 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
             os.makedirs(self.storage_directory)
         
     async def get_artifact(self, filepath: str) -> Any:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_artifact/{filepath}")
-            if response.status_code == 200:
-                artifact_path = os.path.join(self.storage_directory, os.path.basename(filepath))
-                # TODO: write the response content to the local file
-                self.log(f"Artifact saved to {artifact_path}", level="INFO")
-            else:
-                raise Exception(f"Failed to get artifact: {response.status_code} - {response.text}")
+        local_filepath = os.path.join(self.storage_directory, filepath)
+
+        try:
+            async with httpx.AsyncClient() as client:
+
+                # Stream the response to handle large files efficiently
+                url = f"{self.get_callee_url()}/get_artifact/{filepath}"
+                async with client.stream("GET", url) as response:
+                    if response.status_code != 200:
+                        self.log(f"Error: Server returned status code {response.status_code}", level="ERROR")
+                        self.log(f"Response: {await response.text()}", level="ERROR")
+                        return False
+                    
+                    else:
+                        self.log(f"Downloading file from {url}...", level="INFO")
+
+                        # Create the file and write the content chunk by chunk
+                        with open(local_filepath, "wb") as f:
+                            async for chunk in response.aiter_bytes():
+                                f.write(chunk)
+                        
+                        self.log(f"File downloaded successfully: {local_filepath}", level="INFO")
+                        return True
+
+        except Exception as e:
+            self.log(f"Error: An exception occurred while downloading the file: {str(e)}", level="ERROR")
 
     # TODO: add the load_artifact method to BaseResourceRPCCaller
     def load_artifact(self, artifact_path: str) -> Any:
         with locked_file(artifact_path, "r") as file:
             return file.read()
+
+    async def upload_file(self, file_path: str):
+        # Size of chunks to read and send (4MB)
+        CHUNK_SIZE = 4 * 1024 * 1024
+
+        file_path = str(Path(file_path).absolute())     # /Users/minhquando/Desktop/code-records/python/fastapi/files_examples/files/dir1/dir1.txt
+        folder_path = str(Path(self.storage_directory).absolute())    # /Users/minhquando/Desktop/code-records/python/fastapi/files_examples/files
+
+        # Check if file exists
+        if os.path.exists(file_path) is False:
+            self.log(f"Error: File not found - {file_path}", level="ERROR")
+            return
+        
+        filename = file_path.removeprefix(folder_path)  # /dir1/dir1.txt
+        filename = filename.lstrip("/")                 # dir1/dir1.txt
+        
+        try:
+            filesize = os.path.getsize(file_path)
+
+            self.log(f"Preparing to upload: {filename} ({filesize/1024/1024:.2f} MB)", level="INFO")
+            
+            # Set up headers with file metadata
+            headers = {
+                "X-Filename": filename,
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(filesize)
+            }
+
+            async def file_generator():
+                """Generator function that yields chunks of the file"""
+                with open(file_path, "rb") as f:
+                    while chunk := f.read(CHUNK_SIZE):
+                        yield chunk
+
+                        # Optional: Add progress reporting
+                        self.log(f"Sent chunk: {len(chunk)/1024/1024:.2f} MB", level="INFO")
+            
+            # Send the file using streaming upload
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.get_callee_url()}/upload_stream",
+                    headers=headers,
+                    content=file_generator(),
+                    timeout=None  # Disable timeout for large uploads
+                )
+            
+            # self.log the response
+            if response.status_code == 200:
+                self.log(f"Success: File {filename} sent successfully", level="INFO")
+                response_data = response.json()
+                self.log(f"remote storage path: {response_data['stored_path']}", level="INFO")
+                return True
+            else:
+                self.log(f"Error: Received status code {response.status_code}", level="ERROR")
+                self.log(f"Response: {response.text}", level="ERROR")
+                return False
+                
+        except Exception as e:
+            self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
+            return False
