@@ -15,6 +15,7 @@ class BaseMetadataStoreNode(BaseNode):
     The metadata store node is a special type of resource node that will be the predecessor of all other resource nodes;
     thus, by extension, the metadata store node will always be the root node of the DAG.
     """
+
     def __init__(
         self,
         name: str,
@@ -131,7 +132,7 @@ class BaseMetadataStoreNode(BaseNode):
             self.status = Status.TRIGGERED
 
             # creating a new run
-            # self.log(f"{self.name} creating a run {self.run_id}", level='INFO')
+            self.log(f"--------------------------------- {self.name} creating a run {self.run_id}", level='INFO')
             if self.exit_event.is_set(): return
             self.start_run()
 
@@ -146,7 +147,7 @@ class BaseMetadataStoreNode(BaseNode):
             self.wait_for_successors()
             
             # ending the run
-            # self.log(f"{self.name} ending run {self.run_id}", level='INFO')
+            self.log(f"--------------------------------- {self.name} ending run {self.run_id}", level='INFO')
             if self.exit_event.is_set(): return
             self.end_run()
 

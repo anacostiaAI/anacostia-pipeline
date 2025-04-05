@@ -64,9 +64,6 @@ class BaseNode(Thread):
         self.remote_successors = list() if remote_successors is None else remote_successors
         self.successor_events: Dict[str, Event] = {url: Event() for url in self.remote_successors}
 
-        for event in self.successor_events.values():
-            event.set()
-
         # add node to each predecessor's successors list and create an event for each predecessor's successor_events
         for predecessor in self.predecessors:
             predecessor.successors.append(self)
@@ -229,24 +226,34 @@ class BaseNode(Thread):
                 self.exit()
     
     async def signal_successors(self, result: Result):
+        # self.log(f"'{self.name}' signaling local successors", level="INFO")
         self.__signal_local_successors()
+
+        # self.log(f"'{self.name}' signaling remote successors", level="INFO")
         await self.__signal_remote_successors()
 
     def wait_for_successors(self):
+        # self.log(f"'{self.name}' waiting for successors", level="INFO")
         for event in self.successor_events.values():
             event.wait()
         
+        # self.log(f"'{self.name}' finished waiting for successors", level="INFO")
         for event in self.successor_events.values():
             event.clear()
     
     async def signal_predecessors(self, result: Result):
+        # self.log(f"'{self.name}' signaling local predecessors", level="INFO")
         self.__signal_local_predecessors()
+        
+        # self.log(f"'{self.name}' signaling remote predecessors", level="INFO")
         await self.__signal_remote_predecessors()
 
     def wait_for_predecessors(self):
+        # self.log(f"'{self.name}' waiting for predecessors", level="INFO")
         for event in self.predecessors_events.values():
             event.wait()
         
+        #self.log(f"'{self.name}' finished waiting for predecessors", level="INFO")
         for event in self.predecessors_events.values():
             event.clear()
 

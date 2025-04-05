@@ -51,7 +51,9 @@ class ShakespeareEvalNode(BaseActionNode):
             self.log(f"Failed to log metrics: {e}", level="ERROR")
         
         try:
-            await self.model_registry_rpc.get_artifact(filepath="model0.txt")
+            run_id = await self.metadata_store_rpc.get_run_id()
+            self.log(f"Leaf Run ID: {run_id}", level="INFO")
+            #await self.model_registry_rpc.get_artifact(filepath=f"model{run_id}.txt")
         except Exception as e:
             self.log(f"Failed to get artifact: {e}", level="ERROR")
             
