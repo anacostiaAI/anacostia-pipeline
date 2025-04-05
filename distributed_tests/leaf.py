@@ -40,6 +40,7 @@ class ShakespeareEvalNode(BaseActionNode):
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
         self.metadata_store_rpc = metadata_store_rpc
+        self.model_registry_rpc = model_registry_rpc
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
@@ -48,6 +49,13 @@ class ShakespeareEvalNode(BaseActionNode):
             await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
+        
+        """
+        try:
+            await self.model_registry_rpc.get_artifact(filepath="test_file0.txt")
+        except Exception as e:
+            self.log(f"Failed to get artifact: {e}", level="ERROR")
+        """
             
         return True
 

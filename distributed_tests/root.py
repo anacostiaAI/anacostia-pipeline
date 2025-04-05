@@ -111,6 +111,8 @@ class ModelRetrainingNode(BaseActionNode):
 
         self.metadata_store.set_tags(self.name, test_name="Karpathy LLM test")
 
+        self.model_registry.save_artifact("Trained model")
+
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         return True
 
