@@ -1,5 +1,5 @@
 import os
-from typing import List, Any, Union, Dict
+from typing import List, Any, Union, Dict, Callable
 from datetime import datetime
 from logging import Logger
 from threading import Thread
@@ -173,9 +173,43 @@ class FilesystemStoreNode(BaseResourceNode):
         if self.get_num_artifacts("new") > 0:
             self.trigger()
     
-    @BaseResourceNode.log_exception
-    def save_artifact(self, content: str) -> None:
-        pass
+    def save_artifact(self, func: Callable, filepath: str, *args, **kwargs):
+        """
+        Save a file using the provided function and filepath.
+        
+        Args:
+            func (callable): Function to save the file. Function must accept a filepath as the first argument.
+            filepath (str): Name of the file to save.
+            **kwargs: Additional keyword arguments for the function.
+        """
+
+        # as of right now, i am not going to allow monitoring resource nodes to be used for detecting new data,
+        # i haven't seen a use case where it's necessary to save a file while monitoring is enabled.
+        if self.monitoring is True:
+            raise ValueError("Cannot save artifact while monitoring is enabled. Please disable monitoring before saving artifacts.")
+
+        # Ensure the root directory exists
+        folder_path = os.path.join(self.resource_path, os.path.dirname(filepath))
+        if os.path.exists(folder_path) is False:
+            os.makedirs(folder_path)
+        
+        artifact_save_path = os.path.join(self.resource_path, filepath)
+        if os.path.exists(artifact_save_path) is True:
+            raise FileExistsError(f"File '{artifact_save_path}' already exists. Please choose a different filename.")
+
+        try:
+            # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
+            # that way, the Observer can see the file is already logged and ignore it.
+            # self.record_current(filepath)
+
+            # Call the function with the filename and additional keyword arguments
+            func(artifact_save_path, *args, **kwargs)
+            self.record_current(filepath)
+            self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
+
+        except Exception as e:
+            self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
+            raise e
 
     @BaseResourceNode.log_exception
     def list_artifacts(self, state: str) -> List[Any]:
