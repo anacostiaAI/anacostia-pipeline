@@ -1,4 +1,3 @@
-import os
 import logging
 from dotenv import load_dotenv
 import argparse
@@ -6,7 +5,7 @@ from typing import List
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode, locked_file
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
@@ -45,9 +44,8 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
         super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
     
     def _load_artifact_hook(self, filepath) -> str:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        return content
+        with locked_file(filepath, "r") as file:
+            return file.read()
     
 
 class ModelRegistryNode(FilesystemStoreNode):
@@ -55,13 +53,12 @@ class ModelRegistryNode(FilesystemStoreNode):
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
     
     def _save_artifact_hook(self, filepath: str, content: str) -> None:
-        with open(filepath, 'w') as f:
+        with locked_file(filepath, 'w') as f:
             f.write(content)
 
     def _load_artifact_hook(self, filepath) -> str:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        return content
+        with locked_file(filepath, "r") as file:
+            return file.read()
     
 
 class PlotsStoreNode(FilesystemStoreNode):
@@ -69,9 +66,8 @@ class PlotsStoreNode(FilesystemStoreNode):
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
     
     def _load_artifact_hook(self, filepath) -> str:
-        with open(filepath, 'r') as f:
-            content = f.read()
-        return content
+        with locked_file(filepath, "r") as file:
+            return file.read()
     
 
 class ModelRetrainingNode(BaseActionNode):
