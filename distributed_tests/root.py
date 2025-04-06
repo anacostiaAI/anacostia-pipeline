@@ -55,8 +55,8 @@ class ModelRegistryNode(FilesystemStoreNode):
 
 
 class PlotsStoreNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
     
 
 class ModelRetrainingNode(BaseActionNode):
@@ -127,12 +127,17 @@ metadata_store = SqliteMetadataStoreNode(
     caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
 )
 model_registry = ModelRegistryNode(
-    "model_registry", 
-    model_registry_path, 
-    metadata_store,
+    name="model_registry", 
+    resource_path=model_registry_path, 
+    metadata_store=metadata_store,
     caller_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
 )
-plots_store = PlotsStoreNode("plots_store", plots_path, metadata_store)
+plots_store = PlotsStoreNode(
+    name="plots_store", 
+    resource_path=plots_path, 
+    metadata_store=metadata_store,
+    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
+)
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode(
     name="retraining", 

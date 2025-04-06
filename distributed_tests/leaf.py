@@ -21,6 +21,7 @@ path = f"./leaf-artifacts"
 input_path = f"{path}/input_artifacts"
 output_path = f"{path}/output_artifacts"
 model_registry_path = f"{input_path}/model_registry"
+plots_path = f"{output_path}/plots"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
@@ -60,11 +61,12 @@ class ShakespeareEvalNode(BaseActionNode):
 
 class HaikuEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller, 
+        self, name: str, metadata_store_rpc: SqliteMetadataRPCCaller, plots_store_rpc: FilesystemStoreRPCCaller = None,
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
         self.metadata_store_rpc = metadata_store_rpc
+        self.plots_store_rpc = plots_store_rpc
     
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
@@ -84,8 +86,9 @@ class HaikuEvalNode(BaseActionNode):
 
 metadata_store_rpc = SqliteMetadataRPCCaller(caller_name="metadata_store_rpc")
 model_registry_rpc = FilesystemStoreRPCCaller(storage_directory=model_registry_path, caller_name="model_registry_rpc")
+plots_store_rpc = FilesystemStoreRPCCaller(storage_directory=plots_path, caller_name="plots_store_rpc")
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, model_registry_rpc=model_registry_rpc)
-haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc)
+haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc, plots_store_rpc=plots_store_rpc)
 
 pipeline = LeafPipeline(
     name="leaf_pipeline",
@@ -98,7 +101,7 @@ service = LeafPipelineServer(
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_rpc, model_registry_rpc], 
+    rpc_callers=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger
 )
 service.run()
