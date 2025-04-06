@@ -33,10 +33,7 @@ class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
-    def save_artifact(self, content: str) -> None:
-        filename = f"processed_data_file{self.get_num_artifacts('all')}.txt"
-        filepath = os.path.join(self.path, filename)
-
+    def _save_artifact_hook(self, filepath: str, content: str) -> None:
         # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
         # that way, the Observer can see the file is already logged and ignore it
         self.record_current(filepath)

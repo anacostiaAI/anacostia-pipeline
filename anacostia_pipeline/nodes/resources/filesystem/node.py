@@ -275,9 +275,9 @@ class FilesystemStoreNode(BaseResourceNode):
 
     def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
         """
-        Load an artifact from the specified path relative to the resource_path.
+        Load an artifact from the specified path inside to the resource_path.
         Args:
-            artifact_path (str): The path of the artifact to load, relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
             *args: Additional positional arguments for the function.
             **kwargs: Additional keyword arguments for the function.
         Returns:

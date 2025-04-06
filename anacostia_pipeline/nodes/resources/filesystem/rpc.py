@@ -99,7 +99,7 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
                     total_size = None
                     bytes_received = 0
                 
-            # Open the file and write chunks as they arrive
+                # Open the file and write chunks as they arrive
                 with open(file_path, "wb") as f:
                     async for chunk in request.stream():
                         f.write(chunk)
@@ -109,6 +109,9 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
                         if total_size:
                             progress = bytes_received / total_size * 100
                             self.log(f"Received: {bytes_received/1024/1024:.2f}MB / {total_size/1024/1024:.2f}MB ({progress:.1f}%)", level="INFO")
+
+                # enter the uploaded file into the metadata store
+                self.node.record_current(x_filename)
                 
                 return JSONResponse(
                     content={
