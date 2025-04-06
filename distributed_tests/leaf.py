@@ -57,6 +57,13 @@ class ShakespeareEvalNode(BaseActionNode):
             await self.model_registry_rpc.get_artifact(filepath=f"model{run_id}.txt")
         except Exception as e:
             self.log(f"Failed to get artifact: {e}", level="ERROR")
+        
+        try:
+            num_artifacts = await self.model_registry_rpc.get_num_artifacts()
+            artifacts = await self.model_registry_rpc.list_artifacts()
+            self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
+        except Exception as e:
+            self.log(f"Failed to list artifacts: {e}", level="ERROR")
             
         return True
 

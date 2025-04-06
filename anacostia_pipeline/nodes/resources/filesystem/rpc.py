@@ -58,6 +58,21 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
 
+        @self.get("/get_num_artifacts/")
+        async def get_num_artifacts(state: str):
+            try:
+                return JSONResponse(content={"num_artifacts": self.node.get_num_artifacts(state)}, status_code=200)
+            except Exception as e:
+                return JSONResponse(content={"error": f"An error occurred while getting the number of artifacts: {str(e)}"}, status_code=500)
+        
+        @self.get("/list_artifacts/")
+        async def list_artifacts(state: str):
+            try:
+                artifacts = self.node.list_artifacts(state)
+                return JSONResponse(content={"artifacts": artifacts}, status_code=200)
+            except Exception as e:
+                return JSONResponse(content={"error": f"An error occurred while listing artifacts: {str(e)}"}, status_code=500)
+
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
         async def get_artifact(filepath: str):
             self.log(f"Received request to get artifact: {filepath}", level="INFO")
@@ -140,6 +155,42 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
         if os.path.exists(self.storage_directory) is False:
             os.makedirs(self.storage_directory)
         
+    async def get_num_artifacts(self, state: str = "all") -> int:
+        """
+        Get the number of artifacts in the storage directory.
+        Returns:
+            int: The number of artifacts in the storage directory.
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.get_callee_url()}/get_num_artifacts/?state={state}")
+                if response.status_code == 200:
+                    return response.json()["num_artifacts"]
+                else:
+                    self.log(f"Error: Received status code {response.status_code}", level="ERROR")
+                    raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
+        except Exception as e:
+            self.log(f"Error: An exception occurred while getting the number of artifacts: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+    async def list_artifacts(self, state: str = "all") -> List[str]:
+        """
+        List all artifacts in the storage directory.
+        Returns:
+            List[str]: A list of artifact names.
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.get_callee_url()}/list_artifacts/?state={state}")
+                if response.status_code == 200:
+                    return response.json()["artifacts"]
+                else:
+                    self.log(f"Error: Received status code {response.status_code}", level="ERROR")
+                    raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
+        except Exception as e:
+            self.log(f"Error: An exception occurred while listing artifacts: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
     async def get_artifact(self, filepath: str) -> Any:
         local_filepath = os.path.join(self.storage_directory, filepath)
 
@@ -168,11 +219,6 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
         except Exception as e:
             self.log(f"Error: An exception occurred while downloading the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: An exception occurred while downloading the file: {str(e)}")
-
-    # TODO: add the load_artifact method to BaseResourceRPCCaller
-    def load_artifact(self, artifact_path: str) -> Any:
-        with locked_file(artifact_path, "r") as file:
-            return file.read()
 
     async def upload_file(self, filepath: str, remote_path: str = None):
         """
@@ -241,3 +287,43 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
         except Exception as e:
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
+        """
+        This method should be overridden by the user to implement the logic for loading an artifact.
+        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
+        The method should raise an exception if the load operation fails.
+        This method is called by the load_artifact method.
+        Args:
+            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
+            **kwargs: Additional keyword arguments for the function.
+        Raises:
+            NotImplementedError: If the method is not implemented by the user.
+            Exception: If the load operation fails.
+        """
+        pass
+
+    # TODO: add the load_artifact method to BaseResourceRPCCaller
+    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
+        """
+        Load an artifact from the specified path inside to the resource_path.
+        Args:
+            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
+            **kwargs: Additional keyword arguments for the function.
+        Returns:
+            Any: The loaded artifact.
+        Raises:
+            FileNotFoundError: If the artifact file does not exist.
+        """
+        
+        artifact_save_path = os.path.join(self.storage_directory, filepath)
+        if os.path.exists(artifact_save_path) is False:
+            raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
+
+        try:
+            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+        except Exception as e:
+            self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
+            raise e
