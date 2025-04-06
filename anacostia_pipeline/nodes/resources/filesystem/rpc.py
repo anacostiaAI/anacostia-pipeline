@@ -9,7 +9,7 @@ if os.name == 'nt':  # Windows
 else:  # Unix-like systems (Linux, macOS)
     import fcntl
 
-from fastapi import Request, UploadFile, HTTPException, Header
+from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
 import httpx
 
