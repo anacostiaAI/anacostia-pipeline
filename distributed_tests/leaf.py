@@ -20,7 +20,7 @@ root_test_path = "./testing_artifacts"
 path = f"./leaf-artifacts"
 input_path = f"{path}/input_artifacts"
 output_path = f"{path}/output_artifacts"
-model_registry_path = f"{output_path}/model_registry"
+model_registry_path = f"{input_path}/model_registry"
 
 log_path = f"{root_test_path}/anacostia.log"
 logging.basicConfig(
@@ -52,8 +52,7 @@ class ShakespeareEvalNode(BaseActionNode):
         
         try:
             run_id = await self.metadata_store_rpc.get_run_id()
-            self.log(f"Leaf Run ID: {run_id}", level="INFO")
-            #await self.model_registry_rpc.get_artifact(filepath=f"model{run_id}.txt")
+            await self.model_registry_rpc.get_artifact(filepath=f"model{run_id}.txt")
         except Exception as e:
             self.log(f"Failed to get artifact: {e}", level="ERROR")
             
