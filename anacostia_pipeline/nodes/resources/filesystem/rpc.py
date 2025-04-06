@@ -1,7 +1,6 @@
 from typing import List, Union, Any, Optional
 from logging import Logger
 import os
-from pathlib import Path
 from contextlib import contextmanager
 
 if os.name == 'nt':  # Windows
@@ -150,7 +149,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
                     if response.status_code != 200:
                         self.log(f"Error: Server returned status code {response.status_code}", level="ERROR")
                         self.log(f"Response: {await response.text()}", level="ERROR")
-                        return False
+                        raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
                     
                     else:
                         self.log(f"Downloading file from {url}...", level="INFO")
@@ -165,6 +164,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
 
         except Exception as e:
             self.log(f"Error: An exception occurred while downloading the file: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: An exception occurred while downloading the file: {str(e)}")
 
     # TODO: add the load_artifact method to BaseResourceRPCCaller
     def load_artifact(self, artifact_path: str) -> Any:

@@ -173,13 +173,29 @@ class FilesystemStoreNode(BaseResourceNode):
         if self.get_num_artifacts("new") > 0:
             self.trigger()
     
-    def save_artifact(self, func: Callable, filepath: str, *args, **kwargs):
+    def _save_artifact_hook(self, filepath: str, *args, **kwargs) -> None:
+        """
+        This method should be overridden by the user to implement the logic for saving an artifact.
+        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
+        The method should raise an exception if the save operation fails.
+        This method is called by the save_artifact method.
+        Args:
+            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
+            **kwargs: Additional keyword arguments for the function.
+        Raises:
+            NotImplementedError: If the method is not implemented by the user.
+            Exception: If the save operation fails.
+        """
+        pass
+
+    def save_artifact(self, filepath: str, *args, **kwargs):
         """
         Save a file using the provided function and filepath.
         
         Args:
-            func (callable): Function to save the file. Function must accept a filepath as the first argument.
-            filepath (str): Name of the file to save.
+            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
             **kwargs: Additional keyword arguments for the function.
         """
 
@@ -202,8 +218,7 @@ class FilesystemStoreNode(BaseResourceNode):
             # that way, the Observer can see the file is already logged and ignore it.
             # self.record_current(filepath)
 
-            # Call the function with the filename and additional keyword arguments
-            func(artifact_save_path, *args, **kwargs)
+            self._save_artifact_hook(artifact_save_path, *args, **kwargs)
             self.record_current(filepath)
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 

@@ -49,7 +49,7 @@ class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
     
-    def save_model(self, filepath: str, content: str) -> None:
+    def _save_artifact_hook(self, filepath: str, content: str) -> None:
         with open(filepath, 'w') as f:
             f.write(content)
 
@@ -107,7 +107,7 @@ class ModelRetrainingNode(BaseActionNode):
         # Simulate saving a trained model
         trained_model_filepath = f"model{self.model_registry.get_num_artifacts('all')}.txt"
         self.model_registry.save_artifact(
-            func=self.model_registry.save_model, filepath=trained_model_filepath, content="Trained model"
+            filepath=trained_model_filepath, content="Trained model"
         )
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
