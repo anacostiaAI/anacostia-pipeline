@@ -80,13 +80,16 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
         @self.post("/upload_stream")
         async def upload_stream(request: Request, x_filename: Optional[str] = Header(None)):
             try:
+                # Check if the file already exists
+                file_path = os.path.join(self.resource_path, x_filename)
+                if os.path.exists(file_path) is True:
+                    self.log(f"Error: File already exists: {file_path}", level="ERROR")
+                    raise HTTPException(status_code=409, detail=f"File already exists: {file_path}")
+                
                 # Create the directory if it doesn't exist
                 folder_path = os.path.join(self.resource_path, os.path.dirname(x_filename))
                 if os.path.exists(folder_path) is False:
                     os.makedirs(folder_path)
-                
-                # Create the file path
-                file_path = os.path.join(self.resource_path, x_filename)
                 
                 # Stream the request body directly to a file
                 content_length = request.headers.get("content-length")
@@ -168,23 +171,31 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
         with locked_file(artifact_path, "r") as file:
             return file.read()
 
-    async def upload_file(self, file_path: str):
+    async def upload_file(self, filepath: str, remote_path: str = None):
+        """
+        Upload a file back to the FilesystemStoreRPCCallee on the root pipeline.
+        Args:
+            filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the caller.
+            remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the callee.
+        Raises:
+            FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the caller.
+            HTTPException: If the response code from /upload_stream is not 200.
+        """
+
         # Size of chunks to read and send (4MB)
         CHUNK_SIZE = 4 * 1024 * 1024
 
-        file_path = str(Path(file_path).absolute())     # /Users/minhquando/Desktop/code-records/python/fastapi/files_examples/files/dir1/dir1.txt
-        folder_path = str(Path(self.storage_directory).absolute())    # /Users/minhquando/Desktop/code-records/python/fastapi/files_examples/files
+        filepath = os.path.join(self.storage_directory, filepath)
 
         # Check if file exists
-        if os.path.exists(file_path) is False:
-            self.log(f"Error: File not found - {file_path}", level="ERROR")
-            return
+        if os.path.exists(filepath) is False:
+            self.log(f"Error: File not found - {filepath}", level="ERROR")
+            raise FileNotFoundError(f"File not found: {filepath}")
         
-        filename = file_path.removeprefix(folder_path)  # /dir1/dir1.txt
-        filename = filename.lstrip("/")                 # dir1/dir1.txt
+        filename = remote_path.lstrip("/")          # remove leading slash
         
         try:
-            filesize = os.path.getsize(file_path)
+            filesize = os.path.getsize(filepath)
 
             self.log(f"Preparing to upload: {filename} ({filesize/1024/1024:.2f} MB)", level="INFO")
             
@@ -197,7 +208,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
 
             async def file_generator():
                 """Generator function that yields chunks of the file"""
-                with open(file_path, "rb") as f:
+                with open(filepath, "rb") as f:
                     while chunk := f.read(CHUNK_SIZE):
                         yield chunk
 
@@ -222,8 +233,8 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
             else:
                 self.log(f"Error: Received status code {response.status_code}", level="ERROR")
                 self.log(f"Response: {response.text}", level="ERROR")
-                return False
+                raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
                 
         except Exception as e:
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
-            return False
+            raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

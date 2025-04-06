@@ -8,6 +8,7 @@ from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sqlite.rpc import SqliteMetadataRPCCaller
 from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCaller
+from utils import create_file
 
 
 
@@ -81,6 +82,18 @@ class HaikuEvalNode(BaseActionNode):
             self.log(f"Tags: {tags}", level="INFO")
         except Exception as e:
             self.log(f"Failed to get tags: {e}", level="ERROR")
+        
+        try:
+            run_id = await self.metadata_store_rpc.get_run_id()
+
+            create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
+            
+            await self.plots_store_rpc.upload_file(
+                filepath=f"plot{run_id}.txt",
+                remote_path=f"plot{run_id}.txt"
+            )
+        except Exception as e:
+            self.log(f"Failed to create plot: {e}", level="ERROR")
 
         return True
 
