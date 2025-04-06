@@ -53,7 +53,7 @@ def filesystemstore_home(sse_endpoint: str, event_name: str, file_entries: List[
         </div>
     """
 
-def filesystemstore_viewer(content: str, box_header: str):
+def filesystemstore_viewer(box_header: str, content: str):
     return f"""
         <div class="block">{ box_header }</div>
         <div class="block box">{ content }</div>

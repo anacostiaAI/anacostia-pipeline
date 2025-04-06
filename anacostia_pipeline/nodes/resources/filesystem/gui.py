@@ -10,7 +10,7 @@ from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 class FilesystemStoreGUI(BaseGUI):
-    def __init__(self, node, use_default_file_renderer: str = True, *args, **kwargs):
+    def __init__(self, node, *args, **kwargs):
         super().__init__(node, use_default_router=False, *args, **kwargs)
 
         self.event_source = f"{self.get_node_prefix()}/table_update_events"
@@ -108,12 +108,16 @@ class FilesystemStoreGUI(BaseGUI):
 
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        
-        if use_default_file_renderer:
-            @self.get("/retrieve_file", response_class=HTMLResponse)
-            async def sample(request: Request, file_id: int):
-                artifact_path = self.node.get_artifact(file_id)["location"]
-                content = self.node.load_artifact(artifact_path)
-                x = filesystemstore_viewer(content, f"Content of {artifact_path}")
-                return x
+        @self.get("/retrieve_file", response_class=HTMLResponse)
+        async def sample(request: Request, file_id: int):
+            return self.artifact_display_endpoint(file_id)
+    
+    def artifact_display_endpoint(self, file_id: int) -> str:
+        artifact_path = self.node.get_artifact(file_id)["location"]
+        content = self.node.load_artifact(artifact_path)
+
+        if content is None:
+            return filesystemstore_viewer(box_header=f"Content of {artifact_path}", content="There is no artifact display view for this node.")
+        else:
+            return filesystemstore_viewer(box_header=f"Content of {artifact_path}", content=content)
     

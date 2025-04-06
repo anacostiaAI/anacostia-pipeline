@@ -247,7 +247,7 @@ class FilesystemStoreNode(BaseResourceNode):
             EntryNotFoundError: If no entry exists with the specified ID
         """
 
-        entries = self.metadata_store.get_entries(resource_nod_name=self.name)
+        entries = self.metadata_store.get_entries(resource_node_name=self.name)
         for entry in entries:
             if entry["id"] == id:
                 return entry
@@ -257,10 +257,44 @@ class FilesystemStoreNode(BaseResourceNode):
     def get_num_artifacts(self, state: str) -> int:
         return self.metadata_store.get_num_entries(self.name, state)
     
-    @BaseResourceNode.log_exception
-    def load_artifact(self, artifact_path: str) -> Any:
-        with locked_file(artifact_path, "r") as file:
-            return file.read()
+    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
+        """
+        This method should be overridden by the user to implement the logic for loading an artifact.
+        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
+        The method should raise an exception if the load operation fails.
+        This method is called by the load_artifact method.
+        Args:
+            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
+            **kwargs: Additional keyword arguments for the function.
+        Raises:
+            NotImplementedError: If the method is not implemented by the user.
+            Exception: If the load operation fails.
+        """
+        pass
+
+    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
+        """
+        Load an artifact from the specified path relative to the resource_path.
+        Args:
+            artifact_path (str): The path of the artifact to load, relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            *args: Additional positional arguments for the function.
+            **kwargs: Additional keyword arguments for the function.
+        Returns:
+            Any: The loaded artifact.
+        Raises:
+            FileNotFoundError: If the artifact file does not exist.
+        """
+        
+        artifact_save_path = os.path.join(self.resource_path, filepath)
+        if os.path.exists(artifact_save_path) is False:
+            raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
+
+        try:
+            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+        except Exception as e:
+            self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
+            raise e
 
     def stop_monitoring(self) -> None:
         self.log(f"Beginning teardown for node '{self.name}'")
