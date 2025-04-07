@@ -90,8 +90,6 @@ class SqliteMetadataRPCCaller(BaseMetadataRPCCaller):
     async def log_metrics(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_callee_url()}/log_metrics/?node_name={node_name}", json=kwargs)
-            #message = response.json()["message"]
-            #self.log(message, level="INFO")
     
     async def log_params(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:

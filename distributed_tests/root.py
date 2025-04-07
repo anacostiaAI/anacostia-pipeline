@@ -5,7 +5,8 @@ from typing import List
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode, locked_file
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
