@@ -77,7 +77,10 @@ class BaseResourceNode(BaseNode):
         
         self.resource_event.set()
     
-    def trigger(self) -> None:
+    def trigger(self, message: str = None) -> None:
+        # Note: log the trigger first before setting the event or there will be a race condition
+        if message is not None:
+            self.metadata_store.log_trigger(node_name=self.name, message=message)
         self.resource_event.set()
 
     async def run_async(self) -> None:

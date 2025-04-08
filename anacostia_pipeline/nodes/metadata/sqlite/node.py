@@ -168,6 +168,17 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
+
+            cursor.execute("""
+                CREATE TABLE triggers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_triggered INTEGER DEFAULT NULL,
+                    node_id INTEGER,
+                    trigger_time DATETIME,
+                    message TEXT DEFAULT NULL,
+                    FOREIGN KEY(node_id) REFERENCES nodes(id)
+                )
+            """)
     
     def start_monitoring(self) -> None:
 
@@ -218,6 +229,12 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             run_id = self.get_run_id()
             cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(),))
             cursor.execute("UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' ", (run_id,))
+            cursor.execute("""
+                UPDATE triggers 
+                SET run_triggered = ? 
+                WHERE run_triggered IS NULL 
+                AND trigger_time < (SELECT start_time FROM runs WHERE run_id = ?)
+            """, (run_id, run_id,)) 
 
         self.log(f"--------------------------- started run {run_id} at {datetime.now()}")
     
@@ -226,7 +243,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             end_time = datetime.now()
             cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (end_time,))
             cursor.execute("UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' ", (end_time,))
-    
+
         self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
 
     def get_node_id(self, node_name: str) -> int:
@@ -386,6 +403,19 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
+    
+    def log_trigger(self, node_name: str, message: str = None) -> None:
+        if message is not None:
+
+            node_id = self.get_node_id(node_name) if node_name is not None else None
+            if node_id is None:
+                raise ValueError(f"Valid node name must be provided to log trigger, not {node_name}.")
+            
+            with DatabaseManager(self.uri) as cursor:
+                cursor.execute(
+                    "INSERT INTO triggers(node_id, trigger_time, message) VALUES (?, ?, ?)", 
+                    (node_id, datetime.now(), message)
+                )
 
 
 

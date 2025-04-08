@@ -88,7 +88,10 @@ class BaseMetadataStoreNode(BaseNode):
     def entry_exists(self) -> bool:
         raise NotImplementedError
     
-    def trigger(self) -> None:
+    def trigger(self, message: str = None) -> None:
+        # Note: log the trigger first before setting the event or there will be a race condition
+        if message is not None:
+            self.log_trigger(node_name=self.name, message=message)
         self.trigger_event.set()
 
     def start_monitoring(self) -> None:
@@ -157,3 +160,10 @@ class BaseMetadataStoreNode(BaseNode):
             # self.log(f"{self.name} signaling successors that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)
+    
+    def log_trigger(self, node_name: str, message: str = None) -> None:
+        """
+        Override to specify how to log a trigger in the metadata store.
+        E.g., log the trigger message, the trigger time, the run the trigger triggered, and the node_id of the node with name node_name.
+        """
+        pass
