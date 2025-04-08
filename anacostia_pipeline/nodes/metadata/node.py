@@ -89,10 +89,13 @@ class BaseMetadataStoreNode(BaseNode):
         raise NotImplementedError
     
     def trigger(self, message: str = None) -> None:
-        # Note: log the trigger first before setting the event or there will be a race condition
-        if message is not None:
-            self.log_trigger(node_name=self.name, message=message)
-        self.trigger_event.set()
+        if self.trigger_event.is_set() is False:
+            
+            # Note: log the trigger first before setting the event or there will be a race condition
+            if message is not None:
+                self.log_trigger(node_name=self.name, message=message)
+            
+            self.trigger_event.set()
 
     def start_monitoring(self) -> None:
         """
