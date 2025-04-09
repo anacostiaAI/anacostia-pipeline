@@ -4,6 +4,7 @@ from datetime import datetime
 from logging import Logger
 from threading import Thread
 import traceback
+import time
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -111,6 +112,9 @@ class FilesystemStoreNode(BaseResourceNode):
                         # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
                         # or just not move the file to current.
                 
+                # sleep for a while before checking again
+                time.sleep(0.1)
+
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
 

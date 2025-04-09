@@ -5,6 +5,7 @@ import sqlite3
 from typing import List, Dict
 from threading import Thread
 import traceback
+import time
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -195,6 +196,9 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                 
+                # sleep for a while before checking again
+                time.sleep(0.1)
+
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
 
