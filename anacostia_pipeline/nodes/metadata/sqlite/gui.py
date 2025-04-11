@@ -58,10 +58,6 @@ class SqliteMetadataStoreGUI(BaseGUI):
         @self.get("/metrics", response_class=HTMLResponse)
         async def metrics(request: Request):
             metrics = self.node.get_metrics()
-            for metric in metrics:
-                nodes_info = self.node.get_nodes_info(node_id=metric['node_id'])
-                metric['node_name'] = nodes_info[0]['node_name']
-
             return sqlmetadatastore_metrics_table(metrics, self.data_options["metrics"])
         
         @self.get("/params", response_class=HTMLResponse)

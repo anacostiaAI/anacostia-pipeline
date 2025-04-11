@@ -358,17 +358,38 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 )
     
     def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
-        node_id = self.get_node_id(node_name) if node_name is not None else None
+        main_query = """
+            SELECT
+                metrics.id,
+                metrics.run_id,
+                metrics.metric_name,
+                metrics.metric_value,
+                nodes.node_name
+            FROM metrics
+            JOIN nodes ON metrics.node_id = nodes.id
+        """
 
         with DatabaseManager(self.uri) as cursor:
-            if run_id is not None and node_id is not None:
-                cursor.execute("SELECT * FROM metrics WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            if run_id is not None and node_name is not None:
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE metrics.run_id = ? AND node_id = ?
+                """, (run_id, node_name))
+            
             elif run_id is not None:
-                cursor.execute("SELECT * FROM metrics WHERE run_id = ?", (run_id,))
-            elif node_id is not None:
-                cursor.execute("SELECT * FROM metrics WHERE node_id = ?", (node_id,))
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE metrics.run_id = ?
+                """, (run_id,))
+            
+            elif node_name is not None:
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE nodes.node_name = ?
+                """, (node_name,))
+            
             else:
-                cursor.execute("SELECT * FROM metrics")
+                cursor.execute(main_query)
 
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
