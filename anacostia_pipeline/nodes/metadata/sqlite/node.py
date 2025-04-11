@@ -289,13 +289,23 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return cursor.fetchone() is not None
 
     def get_num_entries(self, resource_node_name: str, state: str = "all") -> int:
-        node_id = self.get_node_id(resource_node_name)
 
         with DatabaseManager(self.uri) as cursor:
             if state == "all":
-                cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ?", (node_id,))
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM artifacts
+                    JOIN nodes ON artifacts.node_id = nodes.id
+                    WHERE nodes.node_name = ?;
+                """, (resource_node_name,))
             else:
-                cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ? AND state = ?", (node_id, state))
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM artifacts
+                    JOIN nodes ON artifacts.node_id = nodes.id
+                    WHERE nodes.node_name = ? AND state = ?;
+                """, (resource_node_name, state,))
+
             return cursor.fetchone()[0]
     
     def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
