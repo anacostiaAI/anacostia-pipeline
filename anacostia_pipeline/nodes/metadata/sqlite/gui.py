@@ -76,10 +76,6 @@ class SqliteMetadataStoreGUI(BaseGUI):
         @self.get("/tags", response_class=HTMLResponse)
         async def tags(request: Request):
             tags = self.node.get_tags()
-            for tag in tags:
-                nodes_info = self.node.get_nodes_info(node_id=tag['node_id'])
-                tag['node_name'] = nodes_info[0]['node_name']
-
             return sqlmetadatastore_tags_table(tags, self.data_options["tags"])
         
         @self.get("/triggers", response_class=HTMLResponse)

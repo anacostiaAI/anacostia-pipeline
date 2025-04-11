@@ -392,17 +392,37 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return [dict(zip(columns, row)) for row in rows]
     
     def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
-        node_id = self.get_node_id(node_name) if node_name is not None else None
+        main_query = """
+            SELECT
+                tags.id,
+                tags.run_id,
+                tags.tag_name,
+                tags.tag_value,
+                nodes.node_name
+            FROM tags
+            JOIN nodes ON tags.node_id = nodes.id
+        """
 
         with DatabaseManager(self.uri) as cursor:
-            if run_id is not None and node_id is not None:
-                cursor.execute("SELECT * FROM tags WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            if run_id is not None and node_name is not None:
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE run_id = ? AND node_name = ?
+                """, (run_id, node_name,))
+
             elif run_id is not None:
-                cursor.execute("SELECT * FROM tags WHERE run_id = ?", (run_id,))
-            elif node_id is not None:
-                cursor.execute("SELECT * FROM tags WHERE node_id = ?", (node_id,))
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE run_id = ?
+                """, (run_id,))
+
+            elif node_name is not None:
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE node_name = ?
+                """, (node_name,))
             else:
-                cursor.execute("SELECT * FROM tags")
+                cursor.execute(main_query)
 
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
@@ -422,34 +442,25 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 )
     
     def get_triggers(self, node_name: str = None) -> List[Dict]:
+        main_query = """
+            SELECT 
+                triggers.id,
+                triggers.run_triggered,
+                triggers.trigger_time,
+                triggers.message,
+                nodes.node_name
+            FROM triggers
+            JOIN nodes ON triggers.node_id = nodes.id;
+        """
+
         with DatabaseManager(self.uri) as cursor:
             if node_name is not None:
-                cursor.execute("""
-                    SELECT 
-                        triggers.run_triggered,
-                        triggers.trigger_time,
-                        triggers.message,
-                        nodes.node_name
-                    FROM 
-                        triggers
-                    JOIN 
-                        nodes ON triggers.node_id = nodes.id
-                    WHERE 
-                        nodes.node_name = ?;
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE nodes.node_name = ?;
                 """, (node_name,))
             else:
-                cursor.execute("""
-                    SELECT 
-                        triggers.id,
-                        triggers.run_triggered,
-                        triggers.trigger_time,
-                        triggers.message,
-                        nodes.node_name
-                    FROM 
-                        triggers
-                    JOIN 
-                        nodes ON triggers.node_id = nodes.id;
-                """)
+                cursor.execute(main_query)
 
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
