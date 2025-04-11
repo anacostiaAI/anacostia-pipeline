@@ -18,7 +18,8 @@ class SqliteMetadataStoreGUI(BaseGUI):
             "metrics": f"{self.get_node_prefix()}/metrics",
             "params": f"{self.get_node_prefix()}/params",
             "tags": f"{self.get_node_prefix()}/tags",
-            "samples": f"{self.get_node_prefix()}/samples"
+            "samples": f"{self.get_node_prefix()}/samples",
+            "triggers": f"{self.get_node_prefix()}/triggers",
         }
 
         @self.get("/home", response_class=HTMLResponse)
@@ -80,3 +81,11 @@ class SqliteMetadataStoreGUI(BaseGUI):
                 tag['node_name'] = nodes_info[0]['node_name']
 
             return sqlmetadatastore_tags_table(tags, self.data_options["tags"])
+        
+        @self.get("/triggers", response_class=HTMLResponse)
+        async def triggers(request: Request):
+            triggers = self.node.get_triggers()
+            for trigger in triggers:
+                trigger['trigger_time'] = trigger['trigger_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            return sqlmetadatastore_triggers_table(triggers, self.data_options["triggers"])

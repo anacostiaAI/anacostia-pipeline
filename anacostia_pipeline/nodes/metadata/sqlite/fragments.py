@@ -205,3 +205,35 @@ def sqlmetadatastore_tags_table(tags: List[Dict[str, str]], tags_endpoint: str):
             </tbody>
         </table>
     """
+
+
+def sqlmetadatastore_triggers_table(triggers: List[Dict[str, str]], triggers_endpoint: str):
+    return f"""
+        <table class="table is-bordered is-striped is-hoverable"
+            hx-get="{ triggers_endpoint }" hx-trigger="every 1s" hx-swap="outerHTML" hx-target="this">
+            <thead>
+                <tr>
+                    <th>Trigger ID</th>
+                    <th>Run Triggered</th>
+                    <th>Triggered By</th>
+                    <th>Trigger Time</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {
+                    newline.join([
+                        f'''
+                        <tr>
+                            <th>{ trigger["id"] }</th>
+                            <td>{ trigger["run_triggered"] }</td>
+                            <td>{ trigger["node_name"] }</td>
+                            <td>{ trigger["trigger_time"] }</td>
+                            <td>{ trigger["message"] }</td>
+                        </tr>
+                        ''' for trigger in triggers
+                    ])
+                }
+            </tbody>
+        </table>
+    """

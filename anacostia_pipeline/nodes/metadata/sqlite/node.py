@@ -420,6 +420,40 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     "INSERT INTO triggers(node_id, trigger_time, message) VALUES (?, ?, ?)", 
                     (node_id, datetime.now(), message)
                 )
+    
+    def get_triggers(self, node_name: str = None) -> List[Dict]:
+        with DatabaseManager(self.uri) as cursor:
+            if node_name is not None:
+                cursor.execute("""
+                    SELECT 
+                        triggers.run_triggered,
+                        triggers.trigger_time,
+                        triggers.message,
+                        nodes.node_name
+                    FROM 
+                        triggers
+                    JOIN 
+                        nodes ON triggers.node_id = nodes.id
+                    WHERE 
+                        nodes.node_name = ?;
+                """, (node_name,))
+            else:
+                cursor.execute("""
+                    SELECT 
+                        triggers.id,
+                        triggers.run_triggered,
+                        triggers.trigger_time,
+                        triggers.message,
+                        nodes.node_name
+                    FROM 
+                        triggers
+                    JOIN 
+                        nodes ON triggers.node_id = nodes.id;
+                """)
+
+            rows = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
 
 
 

@@ -132,7 +132,7 @@ class FilesystemStoreNode(BaseResourceNode):
         """
 
         if self.get_num_artifacts("new") > 0:
-            self.trigger(message=f"New files detected in {self.resource_path}.")
+            self.trigger(message=f"New files detected in {self.resource_path}")
     
     def _save_artifact_hook(self, filepath: str, *args, **kwargs) -> None:
         """
