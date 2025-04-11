@@ -67,10 +67,6 @@ class SqliteMetadataStoreGUI(BaseGUI):
         @self.get("/params", response_class=HTMLResponse)
         async def params(request: Request):
             params = self.node.get_params()
-            for param in params:
-                nodes_info = self.node.get_nodes_info(node_id=param['node_id'])
-                param['node_name'] = nodes_info[0]['node_name']
-
             return sqlmetadatastore_params_table(params, self.data_options["params"])
 
         @self.get("/tags", response_class=HTMLResponse)

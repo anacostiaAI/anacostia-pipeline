@@ -375,17 +375,38 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return [dict(zip(columns, row)) for row in rows]
     
     def get_params(self, node_name: str = None, run_id: int = None) -> List[Dict]:
-        node_id = self.get_node_id(node_name) if node_name is not None else None
+        main_query = """
+            SELECT
+                params.id,
+                params.run_id,
+                params.param_name,
+                params.param_value,
+                nodes.node_name
+            FROM params
+            JOIN nodes ON params.node_id = nodes.id
+        """
 
         with DatabaseManager(self.uri) as cursor:
-            if run_id is not None and node_id is not None:
-                cursor.execute("SELECT * FROM params WHERE run_id = ? AND node_id = ?", (run_id, node_id))
+            if run_id is not None and node_name is not None:
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE params.run_id = ? AND nodes.node_name = ?
+                """, (run_id, node_name,))
+
             elif run_id is not None:
-                cursor.execute("SELECT * FROM params WHERE run_id = ?", (run_id,))
-            elif node_id is not None:
-                cursor.execute("SELECT * FROM params WHERE node_id = ?", (node_id,))
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE params.run_id = ?
+                """, (run_id,))
+
+            elif node_name is not None:
+                cursor.execute(f"""
+                    { main_query }
+                    WHERE nodes.node_name = ?
+                """, (node_name,))
+
             else:
-                cursor.execute("SELECT * FROM params")
+                cursor.execute(main_query)
 
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
@@ -407,19 +428,19 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             if run_id is not None and node_name is not None:
                 cursor.execute(f"""
                     { main_query }
-                    WHERE run_id = ? AND node_name = ?
+                    WHERE tags.run_id = ? AND nodes.node_name = ?
                 """, (run_id, node_name,))
 
             elif run_id is not None:
                 cursor.execute(f"""
                     { main_query }
-                    WHERE run_id = ?
+                    WHERE tags.run_id = ?
                 """, (run_id,))
 
             elif node_name is not None:
                 cursor.execute(f"""
                     { main_query }
-                    WHERE node_name = ?
+                    WHERE nodes.node_name = ?
                 """, (node_name,))
             else:
                 cursor.execute(main_query)
