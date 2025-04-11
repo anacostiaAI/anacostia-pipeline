@@ -377,26 +377,31 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 [(run_id, node_id, metric_name, metric_value) for metric_name, metric_value in kwargs.items()]
             )
 
-    
     def log_params(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
         node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return  # Avoid empty inserts
+
         with DatabaseManager(self.uri) as cursor:
-            for param_name, param_value in kwargs.items():
-                cursor.execute(
-                    "INSERT INTO params(run_id, node_id, param_name, param_value) VALUES (?, ?, ?, ?)", 
-                    (run_id, node_id, param_name, param_value)
-                )
+            cursor.executemany(
+                "INSERT INTO params(run_id, node_id, param_name, param_value) VALUES (?, ?, ?, ?)", 
+                [(run_id, node_id, param_name, param_value) for param_name, param_value in kwargs.items()]
+            )
     
     def set_tags(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
         node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return  # Avoid empty inserts
+
         with DatabaseManager(self.uri) as cursor:
-            for tag_name, tag_value in kwargs.items():
-                cursor.execute(
-                    "INSERT INTO tags(run_id, node_id, tag_name, tag_value) VALUES (?, ?, ?, ?)", 
-                    (run_id, node_id, tag_name, tag_value)
-                )
+            cursor.executemany(
+                "INSERT INTO tags(run_id, node_id, tag_name, tag_value) VALUES (?, ?, ?, ?)", 
+                [(run_id, node_id, tag_name, tag_value) for tag_name, tag_value in kwargs.items()]
+            )
     
     def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         main_query = """
