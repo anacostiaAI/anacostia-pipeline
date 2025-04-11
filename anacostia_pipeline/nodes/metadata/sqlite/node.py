@@ -518,15 +518,12 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     
     def log_trigger(self, node_name: str, message: str = None) -> None:
         if message is not None:
-
-            node_id = self.get_node_id(node_name) if node_name is not None else None
-            if node_id is None:
-                raise ValueError(f"Valid node name must be provided to log trigger, not {node_name}.")
-            
             with DatabaseManager(self.uri) as cursor:
                 cursor.execute(
-                    "INSERT INTO triggers(node_id, trigger_time, message) VALUES (?, ?, ?)", 
-                    (node_id, datetime.now(), message)
+                    """
+                    INSERT INTO triggers(node_id, trigger_time, message) 
+                    VALUES ((SELECT id FROM nodes WHERE node_name = ?), ?, ?)
+                    """, (node_name, datetime.now(), message)
                 )
     
     def get_triggers(self, node_name: str = None) -> List[Dict]:
