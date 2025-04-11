@@ -50,9 +50,6 @@ class SqliteMetadataStoreGUI(BaseGUI):
                 if sample['end_time'] is not None:
                     sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 
-                nodes_info = self.node.get_nodes_info(node_id=sample['node_id'])
-                sample['node_name'] = nodes_info[0]['node_name']
-            
             return sqlmetadatastore_samples_table(samples, self.data_options["samples"])
         
         @self.get("/metrics", response_class=HTMLResponse)

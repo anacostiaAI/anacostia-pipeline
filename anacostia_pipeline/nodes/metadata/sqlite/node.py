@@ -298,28 +298,46 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 cursor.execute("SELECT COUNT(id) FROM artifacts WHERE node_id = ? AND state = ?", (node_id, state))
             return cursor.fetchone()[0]
     
-    def get_entries(self, resource_node_name: str = "all", state: str = "all") -> List[Dict]:
-        if (resource_node_name != "all") and (state != "all"):
-            node_id = self.get_node_id(resource_node_name)
-            sample_query = "SELECT * FROM artifacts WHERE node_id = ? AND state = ?"
-            sample_args = (node_id, state,)
-        elif (resource_node_name != "all") and (state == "all"):
-            node_id = self.get_node_id(resource_node_name)
-            sample_query = "SELECT * FROM artifacts WHERE node_id = ?"
-            sample_args = (node_id,)
-        elif (resource_node_name == "all") and (state != "all"):
-            sample_query = "SELECT * FROM artifacts WHERE state = ?"
-            sample_args = (state,)
-        else:
-            sample_query = "SELECT * FROM artifacts"
-            sample_args = ()
-        
+    def get_entries(self, resource_node_name: str = None, state: str = None) -> List[Dict]:
+        main_query = """
+            SELECT
+                artifacts.id,
+                artifacts.run_id,
+                artifacts.location,
+                artifacts.created_at,
+                artifacts.end_time,
+                artifacts.state,
+                nodes.node_name
+            FROM artifacts
+            JOIN nodes ON artifacts.node_id = nodes.id
+        """
+
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute(sample_query, sample_args)
+            if resource_node_name is not None and state is not None:
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE nodes.node_name = ? AND artifacts.state = ?
+                """, (resource_node_name, state))
+            
+            elif resource_node_name is not None:
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE nodes.node_name = ?
+                """, (resource_node_name,))
+            
+            elif state is not None:
+                cursor.execute(f"""
+                    { main_query } 
+                    WHERE artifacts.state = ?
+                """, (state,))
+            
+            else:
+                cursor.execute(main_query)
+
             rows = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in rows]
-    
+
     def get_runs(self) -> List[Dict]:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute("SELECT * FROM runs")
