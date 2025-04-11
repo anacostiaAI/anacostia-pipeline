@@ -253,7 +253,12 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def get_node_id(self, node_name: str) -> int:
         with DatabaseManager(self.uri) as cursor:
             cursor.execute("SELECT id FROM nodes WHERE node_name = ?", (node_name,))
-            return cursor.fetchone()[0]
+            result = cursor.fetchone()
+            
+            if result is None:
+                raise ValueError(f"Node name '{node_name}' does not exist in the nodes table.")
+            
+            return result[0]
     
     def get_nodes_info(self, node_id: int = None, node_name: str = None) -> List[Dict]:
         if node_id is not None:
@@ -362,12 +367,16 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def log_metrics(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
         node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return  # Avoid empty inserts
+
         with DatabaseManager(self.uri) as cursor:
-            for metric_name, metric_value in kwargs.items():
-                cursor.execute(
-                    "INSERT INTO metrics(run_id, node_id, metric_name, metric_value) VALUES (?, ?, ?, ?)", 
-                    (run_id, node_id, metric_name, metric_value)
-                )
+            cursor.executemany(
+                "INSERT INTO metrics (run_id, node_id, metric_name, metric_value) VALUES (?, ?, ?, ?)",
+                [(run_id, node_id, metric_name, metric_value) for metric_name, metric_value in kwargs.items()]
+            )
+
     
     def log_params(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
