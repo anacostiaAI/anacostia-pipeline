@@ -273,12 +273,12 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             return [dict(zip(columns, row)) for row in rows]
     
     def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None) -> None:
-        node_id = self.get_node_id(resource_node_name)
-
         with DatabaseManager(self.uri) as cursor:
             cursor.execute(
-                "INSERT INTO artifacts(run_id, node_id, location, created_at, state) VALUES (?, ?, ?, ?, ?)", 
-                (run_id, node_id, filepath, datetime.now(), state)
+                """
+                INSERT INTO artifacts (run_id, node_id, location, created_at, state)
+                VALUES (?, (SELECT id FROM nodes WHERE node_name = ?), ?, ?, ?);
+                """, (run_id, resource_node_name, filepath, datetime.now(), state)
             )
 
     def entry_exists(self, resource_node_name: BaseResourceNode, filepath: str) -> bool:
