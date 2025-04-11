@@ -28,8 +28,17 @@ from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_ba
 
 
 class RootPipelineServer(FastAPI):
-    def __init__(self, name: str, pipeline: RootPipeline, host: str = "127.0.0.1", port: int = 8000, logger: Logger = None, *args, **kwargs):
-
+    def __init__(
+        self, 
+        name: str, 
+        pipeline: RootPipeline, 
+        host: str = "127.0.0.1", 
+        port: int = 8000, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str =None, 
+        logger: Logger = None, 
+        *args, **kwargs
+    ):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: RootPipelineServer):
@@ -67,7 +76,7 @@ class RootPipelineServer(FastAPI):
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
-        config = uvicorn.Config(self, host=self.host, port=self.port)
+        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 

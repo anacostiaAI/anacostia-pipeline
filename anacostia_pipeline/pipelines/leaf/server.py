@@ -34,6 +34,8 @@ class LeafPipelineServer(FastAPI):
         rpc_callers: List[BaseRPCCaller],
         host: str = "127.0.0.1", 
         port: int = 8000, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str =None, 
         logger=Logger, *args, **kwargs
     ):
 
@@ -77,7 +79,7 @@ class LeafPipelineServer(FastAPI):
             allow_headers=["*"],
         )
 
-        config = uvicorn.Config(self, host=self.host, port=self.port)
+        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
