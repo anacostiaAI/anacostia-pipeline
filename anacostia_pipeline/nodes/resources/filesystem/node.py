@@ -91,7 +91,7 @@ class FilesystemStoreNode(BaseResourceNode):
                         filepath = os.path.join(root, filename)
                         filepath = filepath.removeprefix(self.path)     # Remove the path prefix
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
-                        if self.metadata_store.entry_exists(self, filepath) is False:
+                        if self.metadata_store.entry_exists(self.name, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
                             self.record_new(filepath)
 

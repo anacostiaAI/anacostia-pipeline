@@ -85,7 +85,7 @@ class BaseMetadataStoreNode(BaseNode):
         """
         raise NotImplementedError
     
-    def entry_exists(self) -> bool:
+    def entry_exists(self, resource_node_name: str) -> bool:
         raise NotImplementedError
     
     def trigger(self, message: str = None) -> None:

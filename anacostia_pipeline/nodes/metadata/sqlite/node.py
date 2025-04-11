@@ -281,11 +281,15 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 (run_id, node_id, filepath, datetime.now(), state)
             )
 
-    def entry_exists(self, resource_node: BaseResourceNode, filepath: str) -> bool:
-        node_id = self.get_node_id(resource_node.name)
-
+    def entry_exists(self, resource_node_name: BaseResourceNode, filepath: str) -> bool:
         with DatabaseManager(self.uri) as cursor:
-            cursor.execute("SELECT * FROM artifacts WHERE node_id = ? AND location = ?", (node_id, filepath))
+            cursor.execute("""
+                SELECT 1
+                FROM artifacts
+                JOIN nodes ON artifacts.node_id = nodes.id
+                WHERE artifacts.location = ? AND nodes.node_name = ?
+                LIMIT 1;
+            """, (filepath, resource_node_name))
             return cursor.fetchone() is not None
 
     def get_num_entries(self, resource_node_name: str, state: str = "all") -> int:

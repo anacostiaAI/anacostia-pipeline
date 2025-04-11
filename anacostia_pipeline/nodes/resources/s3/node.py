@@ -71,7 +71,7 @@ class S3Node(BaseResourceNode):
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
                 for obj in self.bucket.objects.limit(100):  # Limit to 10 objects
-                    if self.metadata_store.entry_exists(self, obj.key) is False:
+                    if self.metadata_store.entry_exists(self.name, obj.key) is False:
                         self.record_new(obj.key)
                         self.log(f"'{self.name}' detected object: {obj.key}")
     
