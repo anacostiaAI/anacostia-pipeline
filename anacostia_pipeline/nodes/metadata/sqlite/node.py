@@ -196,7 +196,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                 except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
                 
-                # sleep for a while before checking again
+                # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
                 time.sleep(0.1)
 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
@@ -231,16 +231,12 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
     def start_run(self) -> None:
         with DatabaseManager(self.uri) as cursor:
             run_id = self.get_run_id()
-            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, datetime.now(),))
+            start_time = datetime.now()
+            cursor.execute("INSERT INTO runs(run_id, start_time) VALUES (?, ?)", (run_id, start_time,))
             cursor.execute("UPDATE artifacts SET run_id = ?, state = 'current' WHERE run_id IS NULL AND state = 'new' ", (run_id,))
-            cursor.execute("""
-                UPDATE triggers 
-                SET run_triggered = ? 
-                WHERE run_triggered IS NULL 
-                AND trigger_time < (SELECT start_time FROM runs WHERE run_id = ?)
-            """, (run_id, run_id,)) 
+            cursor.execute("UPDATE triggers SET run_triggered = ? WHERE run_triggered IS NULL AND trigger_time < ?", (run_id, start_time,)) 
 
-        self.log(f"--------------------------- started run {run_id} at {datetime.now()}")
+        self.log(f"--------------------------- started run {run_id} at {start_time}")
     
     def end_run(self) -> None:
         with DatabaseManager(self.uri) as cursor:
@@ -248,7 +244,7 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
             cursor.execute("UPDATE runs SET end_time = ? WHERE end_time IS NULL", (end_time,))
             cursor.execute("UPDATE artifacts SET end_time = ?, state = 'old' WHERE end_time IS NULL AND state = 'current' ", (end_time,))
 
-        self.log(f"--------------------------- ended run {self.get_run_id()} at {datetime.now()}")
+        self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
 
     def get_node_id(self, node_name: str) -> int:
         with DatabaseManager(self.uri) as cursor:
