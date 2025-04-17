@@ -3,9 +3,6 @@ from logging import Logger
 import os
 import sqlite3
 from typing import List, Dict
-from threading import Thread
-import traceback
-import time
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -180,46 +177,6 @@ class SqliteMetadataStoreNode(BaseMetadataStoreNode):
                     FOREIGN KEY(node_id) REFERENCES nodes(id)
                 )
             """)
-    
-    def start_monitoring(self) -> None:
-
-        def _monitor_thread_func():
-            self.log(f"Starting observer thread for node '{self.name}'")
-            while self.exit_event.is_set() is False:
-                if self.exit_event.is_set() is True: break
-                try:
-                    self.custom_trigger()
-                
-                except NotImplementedError:
-                    self.base_trigger()
-
-                except Exception as e:
-                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
-                
-                # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
-                time.sleep(0.1)
-
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
-        self.observer_thread.start()
-
-    def stop_monitoring(self) -> None:
-        self.log(f"Beginning teardown for node '{self.name}'")
-        self.observer_thread.join()
-        self.log(f"Observer stopped for node '{self.name}'")
-
-    def custom_trigger(self) -> bool:
-        """
-        Override to implement your custom triggering logic. If the custom_trigger method is not implemented, the base_trigger method will be called.
-        """
-        raise NotImplementedError
-    
-    def base_trigger(self) -> None:
-        """
-        The default trigger for the SqliteMetadataStoreNode. 
-        base_trigger does not check any metric, it just simply triggers the pipeline.
-        base_trigger is called when the custom_trigger method is not implemented.
-        """
-        self.trigger()
     
     def add_node(self, node_name: str, node_type: str) -> None:
         with DatabaseManager(self.uri) as cursor:

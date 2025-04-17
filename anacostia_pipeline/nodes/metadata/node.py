@@ -1,6 +1,14 @@
 from typing import List, Union, Dict
 from logging import Logger
 from threading import Event
+from threading import Thread
+import traceback
+import time
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
@@ -98,19 +106,36 @@ class BaseMetadataStoreNode(BaseNode):
             self.trigger_event.set()
 
     def start_monitoring(self) -> None:
-        """
-        Override to specify how to start monitoring the metadata store.
-        E.g., start a thread that monitors the metadata store for new entries, etc.
-        """
-        pass
+
+        def _monitor_thread_func():
+            self.log(f"Starting observer thread for node '{self.name}'")
+            while self.exit_event.is_set() is False:
+                if self.exit_event.is_set() is True: break
+                try:
+                    self.metadata_store_trigger()
+
+                except Exception as e:
+                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                
+                # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
+                time.sleep(0.1)
+
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
+        self.observer_thread.start()
 
     def stop_monitoring(self) -> None:
+        self.log(f"Beginning teardown for node '{self.name}'")
+        self.observer_thread.join()
+        self.log(f"Observer stopped for node '{self.name}'")
+    
+    def metadata_store_trigger(self) -> None:
         """
-        Override to specify how to stop monitoring the metadata store.
-        E.g., stop the thread that monitors the metadata store for new entries, etc.
+        The default trigger for the SqliteMetadataStoreNode. 
+        metadata_store_trigger does not check any metric, it just simply triggers the pipeline.
+        metadata_store_trigger is called when the custom_trigger method is not implemented.
         """
-        pass
-
+        self.trigger()
+    
     def exit(self):
         # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.
         super().exit()
