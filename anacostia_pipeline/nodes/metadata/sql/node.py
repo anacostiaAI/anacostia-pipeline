@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
-from sqlalchemy import exists, select
+from sqlalchemy import exists, select, update
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
@@ -116,7 +116,42 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             return session.execute(stmt).scalar()
     
     def start_run(self):
-        pass
+        run_id = self.get_run_id()
+        start_time = datetime.now()
+
+        with self.get_session() as session:
+            # add a new run in the database
+            run = Run(run_id=run_id, start_time=start_time)
+            session.add(run)
+
+            # update all artifacts with run_id = None and state = "new" to have the current run_id
+            stmt = (
+                update(Artifact)
+                .where(Artifact.run_id.is_(None), Artifact.state == "new")
+                .values(run_id=run_id, state="current")
+            )
+            session.execute(stmt)
+
+        self.log(f"--------------------------- started run {run_id} at {start_time}")
     
-    def end_run(self):
-        pass
+    def end_run(self) -> None:
+        end_time = datetime.now()
+
+        with self.get_session() as session:
+            # Update runs
+            stmt_run = (
+                update(Run)
+                .where(Run.end_time.is_(None))
+                .values(end_time=end_time)
+            )
+            session.execute(stmt_run)
+
+            # Update artifacts
+            stmt_artifact = (
+                update(Artifact)
+                .where(Artifact.end_time.is_(None), Artifact.state == "current")
+                .values(end_time=end_time, state="old")
+            )
+            session.execute(stmt_artifact)
+
+        self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
