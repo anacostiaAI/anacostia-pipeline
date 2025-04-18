@@ -3,10 +3,13 @@ from logging import Logger
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 import traceback
+from datetime import datetime
 
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
+from sqlalchemy import exists, select
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
 
 
 
@@ -57,4 +60,63 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             raise
         finally:
             self._ScopedSession.remove()
+
+    def add_node(self, node_name: str, node_type: str) -> None:
+        with self.get_session() as session:
+            node = Node(node_name=node_name, node_type=node_type, init_time=datetime.now())
+            session.add(node)
     
+    def create_entry(
+        self, resource_node_name: str, filepath: str, 
+        state: str = "new", run_id: int = None, hash: str = None, file_size: int = None, type: str = None
+    ) -> None:
+        with self.get_session() as session:
+            node = session.query(Node).filter_by(node_name=resource_node_name).first()
+            if not node:
+                raise ValueError(f"No node found with name: {resource_node_name}")
+
+            entry = Artifact(
+                run_id=run_id,
+                node_id=node.id,
+                location=filepath,
+                created_at=datetime.now(),
+                state=state,
+                hash=hash,
+                size=file_size,
+                type=type
+            )
+            session.add(entry)
+    
+    def get_num_entries(self, resource_node_name: str, state: str) -> int:
+        # Validate input
+        valid_states = {"new", "current", "old", "all"}
+        assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
+
+        with self.get_session() as session:
+            node = session.query(Node).filter_by(node_name=resource_node_name).first()
+            if not node:
+                raise ValueError(f"No node found with name: {resource_node_name}")
+
+            query = session.query(Artifact).filter_by(node_id=node.id)
+            if state != "all":
+                query = query.filter_by(state=state)
+
+            return query.count()
+
+    def entry_exists(self, resource_node_name: str, filepath: str) -> bool:
+        with self.get_session() as session:
+            node = session.query(Node).filter_by(node_name=resource_node_name).first()
+            if not node:
+                raise ValueError(f"No node found with name: {resource_node_name}")
+
+            stmt = select(exists().where(
+                Artifact.node_id == node.id,
+                Artifact.location == filepath
+            ))
+            return session.execute(stmt).scalar()
+    
+    def start_run(self):
+        pass
+    
+    def end_run(self):
+        pass

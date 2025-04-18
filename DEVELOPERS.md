@@ -6,10 +6,7 @@
 3. Start by implementing setup() method
     - Tip: don’t call ```Pipeline.launch_nodes()```, just call ```Pipeline.setup_nodes()```
     - Desired result: verify you can acquire, configure to work with the pipeline, and that the pipeline can be spun up
-4. Implement the ```create_resource_tracker()``` method
-    - Tip: use FilesystemStoreNode in your pipeline
-    - Tip: implement a test case that puts files into your folder that are being watched by the FilesystemStoreNode
-5. Implement the ```create_entry()``` method
+4. Implement the ```create_entry, add_node, get_num_entries, entry_exists``` method
 6. Implement the ```start_run()``` and ```end_run()``` methods
 7. Implement the ```add_run_id()``` and ```add_end_time()``` methods
 
