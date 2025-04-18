@@ -1,20 +1,13 @@
 from typing import List, Dict, Union
 from logging import Logger
 from abc import ABC, abstractmethod
-import os
+from contextlib import contextmanager
+import traceback
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 
-
-Base = declarative_base()
 
 
 class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
@@ -35,29 +28,33 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
-
-    @abstractmethod
-    def get_session(self) -> Session:
-        """
-        This method should be implemented by subclasses to provide a SQLAlchemy session objec for database operations.
-        """
-        pass
+        self._ScopedSession: Session = None
     
     @abstractmethod
     def setup_node_GUI(self):
-        """
-        Override to setup the node GUI.
-        """
+        """Override to setup the node GUI."""
         pass
 
     @abstractmethod
-    def setup_rpc_callee(self, host, port):
-        """
-        Override to setup the RPC callee.
-        """
+    def setup_rpc_callee(self, host: str, port: int):
+        """Override to setup the RPC callee."""
         pass
+
+    def init_scoped_session(self, session_factory: sessionmaker):
+        """Call this from the child class after engine setup."""
+        self._ScopedSession = scoped_session(session_factory)
+
+    @contextmanager
+    def get_session(self):
+        session = self._ScopedSession()
+        try:
+            yield session
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            self.log(traceback.format_exc(), level="ERROR")
+            self.log(f"Node {self.name} rolled back session.", level="ERROR")
+            raise
+        finally:
+            self._ScopedSession.remove()
     
-    def setup(self) -> None:
-        directory = os.path.dirname(self.uri)
-        if directory != "" and os.path.exists(directory) is False:
-            os.makedirs(directory)
