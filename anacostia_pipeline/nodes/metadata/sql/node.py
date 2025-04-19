@@ -43,7 +43,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         This method should be overridden by child classes to provide specific functionality.
         For example, the SQLiteMetadataStoreNode class will create an engine with check_same_thread=True.
         """
-        pass 
+        raise NotImplementedError("The setup method must be overridden in the child class.") 
     
     def setup_node_GUI(self):
         """Override to setup the node GUI."""
