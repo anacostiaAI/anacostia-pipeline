@@ -85,7 +85,7 @@ webserver.run()
 ```
 To trigger the pipeline:
 1. Put the following code inside another python file.
-2. Name the file create_files.py (again, there is no reason you cannot name the file something else, but for the sake of simplicity, just name it create_files.py).
+2. Name the file `create_files.py` (again, there is no reason you cannot name the file something else, but for the sake of simplicity, just name it `create_files.py`).
 3. Open up a new terminal and run the file like so: `python create_files.py`.
 ```python
 import time
