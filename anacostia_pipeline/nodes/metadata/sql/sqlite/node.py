@@ -42,9 +42,3 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
         # Create a sessionmaker, binding it to the engine
         self.session_factory = sessionmaker(bind=engine, expire_on_commit=False)
         self.init_scoped_session(self.session_factory)
-
-    def setup_node_GUI(self):
-        pass
-
-    def setup_rpc_callee(self, host: str, port: int):
-        pass

@@ -19,7 +19,8 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     SQL metadata store nodes are nodes that are used to store metadata about the pipeline in a SQL database.
     The SQL metadata store node is a special type of resource node that will be the predecessor of all other resource nodes;
     thus, by extension, the SQL metadata store node will always be the root node of the DAG.
-    The abstract methods in this class must be implemented by the subclasses to provide more specific functionality (e.g., setting up ).
+    The abstract methods in this class must be implemented by child classes to provide more specific functionality 
+    (e.g., setting check_same_thread=True when creating an engine for SQLite).
     """
 
     def __init__(
@@ -33,12 +34,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
         self._ScopedSession: Session = None
     
-    @abstractmethod
     def setup_node_GUI(self):
         """Override to setup the node GUI."""
         pass
 
-    @abstractmethod
     def setup_rpc_callee(self, host: str, port: int):
         """Override to setup the RPC callee."""
         pass
@@ -125,12 +124,23 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             session.add(run)
 
             # update all artifacts with run_id = None and state = "new" to have the current run_id
-            stmt = (
+            stmt_artifacts = (
                 update(Artifact)
                 .where(Artifact.run_id.is_(None), Artifact.state == "new")
                 .values(run_id=run_id, state="current")
             )
-            session.execute(stmt)
+            session.execute(stmt_artifacts)
+
+            # Update triggers where run_triggered is NULL and trigger_time is earlier than this run
+            stmt_triggers = (
+                update(Trigger)
+                .where(
+                    Trigger.run_triggered.is_(None),
+                    Trigger.trigger_time < start_time
+                )
+                .values(run_triggered=run_id)
+            )
+            session.execute(stmt_triggers)
 
         self.log(f"--------------------------- started run {run_id} at {start_time}")
     
@@ -155,3 +165,17 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             session.execute(stmt_artifact)
 
         self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
+
+    def log_trigger(self, node_name: str, message: str = None) -> None:
+        if message is not None:
+            with self.get_session() as session:
+                node = session.query(Node).filter_by(node_name=node_name).first()
+                if node is None:
+                    raise ValueError(f"Node '{node_name}' does not exist in the nodes table.")
+
+                trigger = Trigger(
+                    node_id=node.id,
+                    trigger_time=datetime.now(),
+                    message=message
+                )
+                session.add(trigger)
