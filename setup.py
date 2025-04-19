@@ -43,6 +43,7 @@ setup(
         '': ['__pycache__', '*.pyc', '*.pyo']
     },
     install_requires=[
+        "sqlalchemy>=1.4.0",
         "networkx==3.1",
         "pydantic",
         "fastapi", 
