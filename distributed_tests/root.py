@@ -7,7 +7,7 @@ from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
-from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
@@ -133,9 +133,9 @@ haiku_data_store_path = f"{input_path}/haiku"
 model_registry_path = f"{output_path}/model_registry"
 plots_path = f"{output_path}/plots"
 
-metadata_store = SqliteMetadataStoreNode(
+metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
-    uri=f"{metadata_store_path}/metadata.db",
+    uri=f"sqlite:///{metadata_store_path}/metadata.db",
     caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
 )
 model_registry = ModelRegistryNode(

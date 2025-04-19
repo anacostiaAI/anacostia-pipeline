@@ -36,15 +36,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
         self._ScopedSession: Session = None
     
-    @abstractmethod
-    def setup(self):
-        """
-        Setup the SQL metadata store node.
-        This method should be overridden by child classes to provide specific functionality.
-        For example, the SQLiteMetadataStoreNode class will create an engine with check_same_thread=True.
-        """
-        pass 
-    
     def setup_node_GUI(self):
         """Override to setup the node GUI."""
         self._node_gui = SQLMetadataStoreGUI(self)

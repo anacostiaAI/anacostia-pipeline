@@ -20,7 +20,6 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
     ) -> None:
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
 
-    def setup(self):
         # create the folder where the SQLite database will be stored if it does not exist
         path = self.uri.strip('sqlite:///')
         path = path.split('/')[0:-1]
