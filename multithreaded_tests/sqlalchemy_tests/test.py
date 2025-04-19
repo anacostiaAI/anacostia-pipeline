@@ -9,6 +9,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 
 tests_path = "./testing_artifacts/sqlalchemy_tests"
@@ -42,6 +43,10 @@ class LoggingNode(BaseActionNode):
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db", loggers=[logger])
 data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store, loggers=[logger])
 logging_node = LoggingNode("logging_node", metadata_store=metadata_store, predecessors=[data_store])
-
 pipeline = RootPipeline(nodes=[metadata_store, data_store, logging_node], loggers=logger)
-pipeline.launch_nodes()
+
+
+
+if __name__ == "__main__":
+    webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+    webserver.run()

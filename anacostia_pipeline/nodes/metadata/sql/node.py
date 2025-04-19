@@ -9,6 +9,8 @@ from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy import exists, select, update
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.sql.gui import SQLMetadataStoreGUI
+from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCallee
 from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
 
 
@@ -36,11 +38,13 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     
     def setup_node_GUI(self):
         """Override to setup the node GUI."""
-        pass
+        self._node_gui = SQLMetadataStoreGUI(self)
+        return self._node_gui
 
     def setup_rpc_callee(self, host: str, port: int):
         """Override to setup the RPC callee."""
-        pass
+        self.rpc_callee = SQLMetadataRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
+        return self.rpc_callee
 
     def init_scoped_session(self, session_factory: sessionmaker):
         """Call this from the child class after engine setup."""
@@ -220,3 +224,74 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     message=message
                 )
                 session.add(trigger)
+    
+    def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        with self.get_session() as session:
+            stmt = (
+                select(Metric.id, Metric.run_id, Metric.metric_name, Metric.metric_value, Node.node_name)
+                .join(Node, Metric.node_id == Node.id)
+            )
+
+            if run_id is not None:
+                stmt = stmt.where(Metric.run_id == run_id)
+            if node_name is not None:
+                stmt = stmt.where(Node.node_name == node_name)
+
+            result = session.execute(stmt).all()
+            return [
+                {
+                    "id": row.id,
+                    "run_id": row.run_id,
+                    "metric_name": row.metric_name,
+                    "metric_value": row.metric_value,
+                    "node_name": row.node_name,
+                }
+                for row in result
+            ]
+    
+    def get_runs(self) -> List[Dict]:
+        with self.get_session() as session:
+            result = session.execute(select(Run)).scalars().all()
+            return [
+                {
+                    "run_id": run.run_id,
+                    "start_time": run.start_time,
+                    "end_time": run.end_time,
+                }
+                for run in result
+            ]
+    
+    def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
+        with self.get_session() as session:
+            stmt = (
+                select(
+                    Artifact.id,
+                    Artifact.run_id,
+                    Artifact.location,
+                    Artifact.created_at,
+                    Artifact.end_time,
+                    Artifact.state,
+                    Node.node_name
+                )
+                .join(Node, Artifact.node_id == Node.id)
+            )
+
+            if resource_node_name is not None:
+                stmt = stmt.where(Node.node_name == resource_node_name)
+            if state != "all":
+                stmt = stmt.where(Artifact.state == state)
+
+            result = session.execute(stmt).all()
+
+            return [
+                {
+                    "id": row.id,
+                    "run_id": row.run_id,
+                    "location": row.location,
+                    "created_at": row.created_at,
+                    "end_time": row.end_time,
+                    "state": row.state,
+                    "node_name": row.node_name,
+                }
+                for row in result
+            ]
