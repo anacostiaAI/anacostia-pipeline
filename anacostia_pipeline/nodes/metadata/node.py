@@ -5,11 +5,6 @@ from threading import Thread
 import traceback
 import time
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime
-
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
 
@@ -96,6 +91,13 @@ class BaseMetadataStoreNode(BaseNode):
     def entry_exists(self, resource_node_name: str) -> bool:
         raise NotImplementedError
     
+    def log_trigger(self, node_name: str, message: str = None) -> None:
+        """
+        Override to specify how to log a trigger in the metadata store.
+        E.g., log the trigger message, the trigger time, the run the trigger triggered, and the node_id of the node with name node_name.
+        """
+        pass
+
     def trigger(self, message: str = None) -> None:
         if self.trigger_event.is_set() is False:
             
@@ -188,10 +190,3 @@ class BaseMetadataStoreNode(BaseNode):
             # self.log(f"{self.name} signaling successors that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             await self.signal_successors(Result.SUCCESS)
-    
-    def log_trigger(self, node_name: str, message: str = None) -> None:
-        """
-        Override to specify how to log a trigger in the metadata store.
-        E.g., log the trigger message, the trigger time, the run the trigger triggered, and the node_id of the node with name node_name.
-        """
-        pass
