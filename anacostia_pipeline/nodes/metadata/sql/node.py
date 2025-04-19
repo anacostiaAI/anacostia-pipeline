@@ -65,18 +65,23 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             node = Node(node_name=node_name, node_type=node_type, init_time=datetime.now())
             session.add(node)
     
+    def get_node_id(self, node_name: str) -> int:
+        with self.get_session() as session:
+            node = session.query(Node).filter_by(node_name=node_name).first()
+            if node is None:
+                raise ValueError(f"Node name '{node_name}' does not exist in the nodes table.")
+            return node.id
+    
     def create_entry(
         self, resource_node_name: str, filepath: str, 
         state: str = "new", run_id: int = None, hash: str = None, file_size: int = None, type: str = None
     ) -> None:
-        with self.get_session() as session:
-            node = session.query(Node).filter_by(node_name=resource_node_name).first()
-            if not node:
-                raise ValueError(f"No node found with name: {resource_node_name}")
+        node_id = self.get_node_id(resource_node_name)
 
+        with self.get_session() as session:
             entry = Artifact(
                 run_id=run_id,
-                node_id=node.id,
+                node_id=node_id,
                 location=filepath,
                 created_at=datetime.now(),
                 state=state,
@@ -91,25 +96,21 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         valid_states = {"new", "current", "old", "all"}
         assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
 
-        with self.get_session() as session:
-            node = session.query(Node).filter_by(node_name=resource_node_name).first()
-            if not node:
-                raise ValueError(f"No node found with name: {resource_node_name}")
+        node_id = self.get_node_id(resource_node_name)
 
-            query = session.query(Artifact).filter_by(node_id=node.id)
+        with self.get_session() as session:
+            query = session.query(Artifact).filter_by(node_id=node_id)
             if state != "all":
                 query = query.filter_by(state=state)
 
             return query.count()
 
     def entry_exists(self, resource_node_name: str, filepath: str) -> bool:
-        with self.get_session() as session:
-            node = session.query(Node).filter_by(node_name=resource_node_name).first()
-            if not node:
-                raise ValueError(f"No node found with name: {resource_node_name}")
+        node_id = self.get_node_id(resource_node_name)
 
+        with self.get_session() as session:
             stmt = select(exists().where(
-                Artifact.node_id == node.id,
+                Artifact.node_id == node_id,
                 Artifact.location == filepath
             ))
             return session.execute(stmt).scalar()
@@ -166,15 +167,55 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
 
+    def log_metrics(self, node_name: str, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return  # Avoid empty inserts
+
+        with self.get_session() as session:
+            metrics = [
+                Metric(run_id=run_id, node_id=node_id, metric_name=key, metric_value=value)
+                for key, value in kwargs.items()
+            ]
+            session.add_all(metrics)
+
+    def log_params(self, node_name: str, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return
+
+        with self.get_session() as session:
+            params = [
+                Param(run_id=run_id, node_id=node_id, param_name=key, param_value=value)
+                for key, value in kwargs.items()
+            ]
+            session.add_all(params)
+
+    def set_tags(self, node_name: str, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return
+
+        with self.get_session() as session:
+            tags = [
+                Tag(run_id=run_id, node_id=node_id, tag_name=key, tag_value=value)
+                for key, value in kwargs.items()
+            ]
+            session.add_all(tags)
+
     def log_trigger(self, node_name: str, message: str = None) -> None:
         if message is not None:
-            with self.get_session() as session:
-                node = session.query(Node).filter_by(node_name=node_name).first()
-                if node is None:
-                    raise ValueError(f"Node '{node_name}' does not exist in the nodes table.")
+            node_id = self.get_node_id(node_name)
 
+            with self.get_session() as session:
                 trigger = Trigger(
-                    node_id=node.id,
+                    node_id=node_id,
                     trigger_time=datetime.now(),
                     message=message
                 )
