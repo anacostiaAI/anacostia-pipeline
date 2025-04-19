@@ -9,7 +9,6 @@ from anacostia_pipeline.nodes.metadata.sql.node import BaseSQLMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sql.models import Base   # This is our declarative base
 
 
-
 class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
     def __init__(
         self,
@@ -21,6 +20,7 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
     ) -> None:
         super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
 
+    def setup(self):
         # create the folder where the SQLite database will be stored if it does not exist
         path = self.uri.strip('sqlite:///')
         path = path.split('/')[0:-1]
@@ -30,7 +30,7 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
         
         # Create an engine that stores data in the local directory's sqlite.db file.
         engine = create_engine(
-            uri, 
+            self.uri, 
             connect_args={"check_same_thread": False}, 
             echo=False, 
             future=True
