@@ -42,7 +42,8 @@ class RootPipelineServer(FastAPI):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: RootPipelineServer):
-            app.logger.info(f"Root server '{app.name}' started")
+            if app.logger is not None:
+                app.logger.info(f"Root server '{app.name}' started")
 
             yield
             
@@ -51,7 +52,8 @@ class RootPipelineServer(FastAPI):
                     subapp: BaseGUI = route.app
                     # this currently does nothing, add code here for cleanup if needed
 
-            app.logger.info(f"Root server '{app.name}' shut down")
+            if app.logger is not None:
+                app.logger.info(f"Root server '{app.name}' shut down")
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name

@@ -69,56 +69,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             node = Node(node_name=node_name, node_type=node_type, init_time=datetime.now())
             session.add(node)
     
-    def get_node_id(self, node_name: str) -> int:
-        with self.get_session() as session:
-            node = session.query(Node).filter_by(node_name=node_name).first()
-            if node is None:
-                raise ValueError(f"Node name '{node_name}' does not exist in the nodes table.")
-            return node.id
-    
-    def create_entry(
-        self, resource_node_name: str, filepath: str, 
-        state: str = "new", run_id: int = None, hash: str = None, file_size: int = None, type: str = None
-    ) -> None:
-        node_id = self.get_node_id(resource_node_name)
-
-        with self.get_session() as session:
-            entry = Artifact(
-                run_id=run_id,
-                node_id=node_id,
-                location=filepath,
-                created_at=datetime.now(),
-                state=state,
-                hash=hash,
-                size=file_size,
-                type=type
-            )
-            session.add(entry)
-    
-    def get_num_entries(self, resource_node_name: str, state: str) -> int:
-        # Validate input
-        valid_states = {"new", "current", "old", "all"}
-        assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
-
-        node_id = self.get_node_id(resource_node_name)
-
-        with self.get_session() as session:
-            query = session.query(Artifact).filter_by(node_id=node_id)
-            if state != "all":
-                query = query.filter_by(state=state)
-
-            return query.count()
-
-    def entry_exists(self, resource_node_name: str, filepath: str) -> bool:
-        node_id = self.get_node_id(resource_node_name)
-
-        with self.get_session() as session:
-            stmt = select(exists().where(
-                Artifact.node_id == node_id,
-                Artifact.location == filepath
-            ))
-            return session.execute(stmt).scalar()
-    
     def start_run(self):
         run_id = self.get_run_id()
         start_time = datetime.now()
@@ -171,6 +121,123 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
 
+    def get_node_id(self, node_name: str) -> int:
+        with self.get_session() as session:
+            node = session.query(Node).filter_by(node_name=node_name).first()
+            if node is None:
+                raise ValueError(f"Node name '{node_name}' does not exist in the nodes table.")
+            return node.id
+    
+    def get_nodes_info(self, node_id: int = None, node_name: str = None) -> List[Dict]:
+        with self.get_session() as session:
+            stmt = select(Node)
+
+            if node_id is not None:
+                stmt = stmt.where(Node.id == node_id)
+            elif node_name is not None:
+                stmt = stmt.where(Node.node_name == node_name)
+
+            result = session.execute(stmt).scalars().all()
+            return [
+                {
+                    "id": node.id,
+                    "node_name": node.node_name,
+                    "node_type": node.node_type,
+                    "init_time": node.init_time,
+                }
+                for node in result
+            ]
+
+    def create_entry(
+        self, resource_node_name: str, filepath: str, 
+        state: str = "new", run_id: int = None, hash: str = None, file_size: int = None, type: str = None
+    ) -> None:
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            entry = Artifact(
+                run_id=run_id,
+                node_id=node_id,
+                location=filepath,
+                created_at=datetime.now(),
+                state=state,
+                hash=hash,
+                size=file_size,
+                type=type
+            )
+            session.add(entry)
+    
+    def entry_exists(self, resource_node_name: str, filepath: str) -> bool:
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            stmt = select(exists().where(
+                Artifact.node_id == node_id,
+                Artifact.location == filepath
+            ))
+            return session.execute(stmt).scalar()
+    
+    def get_num_entries(self, resource_node_name: str, state: str) -> int:
+        # Validate input
+        valid_states = {"new", "current", "old", "all"}
+        assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
+
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            query = session.query(Artifact).filter_by(node_id=node_id)
+            if state != "all":
+                query = query.filter_by(state=state)
+
+            return query.count()
+
+    def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
+        with self.get_session() as session:
+            stmt = (
+                select(
+                    Artifact.id,
+                    Artifact.run_id,
+                    Artifact.location,
+                    Artifact.created_at,
+                    Artifact.end_time,
+                    Artifact.state,
+                    Node.node_name
+                )
+                .join(Node, Artifact.node_id == Node.id)
+            )
+
+            if resource_node_name is not None:
+                stmt = stmt.where(Node.node_name == resource_node_name)
+            if state != "all":
+                stmt = stmt.where(Artifact.state == state)
+
+            result = session.execute(stmt).all()
+
+            return [
+                {
+                    "id": row.id,
+                    "run_id": row.run_id,
+                    "location": row.location,
+                    "created_at": row.created_at,
+                    "end_time": row.end_time,
+                    "state": row.state,
+                    "node_name": row.node_name,
+                }
+                for row in result
+            ]
+    
+    def get_runs(self) -> List[Dict]:
+        with self.get_session() as session:
+            result = session.execute(select(Run)).scalars().all()
+            return [
+                {
+                    "run_id": run.run_id,
+                    "start_time": run.start_time,
+                    "end_time": run.end_time,
+                }
+                for run in result
+            ]
+    
     def log_metrics(self, node_name: str, **kwargs) -> None:
         run_id = self.get_run_id()
         node_id = self.get_node_id(node_name)
@@ -213,18 +280,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             ]
             session.add_all(tags)
 
-    def log_trigger(self, node_name: str, message: str = None) -> None:
-        if message is not None:
-            node_id = self.get_node_id(node_name)
-
-            with self.get_session() as session:
-                trigger = Trigger(
-                    node_id=node_id,
-                    trigger_time=datetime.now(),
-                    message=message
-                )
-                session.add(trigger)
-    
     def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         with self.get_session() as session:
             stmt = (
@@ -249,48 +304,102 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                 for row in result
             ]
     
-    def get_runs(self) -> List[Dict]:
-        with self.get_session() as session:
-            result = session.execute(select(Run)).scalars().all()
-            return [
-                {
-                    "run_id": run.run_id,
-                    "start_time": run.start_time,
-                    "end_time": run.end_time,
-                }
-                for run in result
-            ]
-    
-    def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
+    def get_params(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         with self.get_session() as session:
             stmt = (
                 select(
-                    Artifact.id,
-                    Artifact.run_id,
-                    Artifact.location,
-                    Artifact.created_at,
-                    Artifact.end_time,
-                    Artifact.state,
+                    Param.id,
+                    Param.run_id,
+                    Param.param_name,
+                    Param.param_value,
                     Node.node_name
                 )
-                .join(Node, Artifact.node_id == Node.id)
+                .join(Node, Param.node_id == Node.id)
             )
 
-            if resource_node_name is not None:
-                stmt = stmt.where(Node.node_name == resource_node_name)
-            if state != "all":
-                stmt = stmt.where(Artifact.state == state)
+            if run_id is not None:
+                stmt = stmt.where(Param.run_id == run_id)
+            if node_name is not None:
+                stmt = stmt.where(Node.node_name == node_name)
+
+            result = session.execute(stmt).all()
+            return [
+                {
+                    "id": row.id,
+                    "run_id": row.run_id,
+                    "param_name": row.param_name,
+                    "param_value": row.param_value,
+                    "node_name": row.node_name,
+                }
+                for row in result
+            ]
+    
+    def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
+        with self.get_session() as session:
+            stmt = (
+                select(
+                    Tag.id,
+                    Tag.run_id,
+                    Tag.tag_name,
+                    Tag.tag_value,
+                    Node.node_name
+                )
+                .join(Node, Tag.node_id == Node.id)
+            )
+
+            if run_id is not None:
+                stmt = stmt.where(Tag.run_id == run_id)
+            if node_name is not None:
+                stmt = stmt.where(Node.node_name == node_name)
+
+            result = session.execute(stmt).all()
+            return [
+                {
+                    "id": row.id,
+                    "run_id": row.run_id,
+                    "tag_name": row.tag_name,
+                    "tag_value": row.tag_value,
+                    "node_name": row.node_name,
+                }
+                for row in result
+            ]
+
+    def log_trigger(self, node_name: str, message: str = None) -> None:
+        if message is not None:
+            node_id = self.get_node_id(node_name)
+
+            with self.get_session() as session:
+                trigger = Trigger(
+                    node_id=node_id,
+                    trigger_time=datetime.now(),
+                    message=message
+                )
+                session.add(trigger)
+    
+    def get_triggers(self, node_name: str = None) -> List[Dict]:
+        with self.get_session() as session:
+            stmt = (
+                select(
+                    Trigger.id,
+                    Trigger.run_triggered,
+                    Trigger.trigger_time,
+                    Trigger.message,
+                    Node.node_name
+                )
+                .join(Node, Trigger.node_id == Node.id)
+            )
+
+            if node_name is not None:
+                stmt = stmt.where(Node.node_name == node_name)
 
             result = session.execute(stmt).all()
 
             return [
                 {
                     "id": row.id,
-                    "run_id": row.run_id,
-                    "location": row.location,
-                    "created_at": row.created_at,
-                    "end_time": row.end_time,
-                    "state": row.state,
+                    "run_triggered": row.run_triggered,
+                    "trigger_time": row.trigger_time,
+                    "message": row.message,
                     "node_name": row.node_name,
                 }
                 for row in result
