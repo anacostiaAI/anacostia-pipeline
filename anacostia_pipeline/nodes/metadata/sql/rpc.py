@@ -60,7 +60,7 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
             return tags
 
 
-class SqliteMetadataRPCCaller(BaseMetadataRPCCaller):
+class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
     def __init__(self, caller_name, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     
