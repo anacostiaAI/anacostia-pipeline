@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
 from anacostia_pipeline.utils.constants import Result, Status
 
 
@@ -20,7 +21,7 @@ class BaseResourceNode(BaseNode, ABC):
         self, 
         name: str, 
         resource_path: str, 
-        metadata_store: BaseMetadataStoreNode,
+        metadata_store: BaseMetadataStoreNode | BaseMetadataRPCCaller,
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
         wait_for_connection: bool = False,
@@ -67,10 +68,33 @@ class BaseResourceNode(BaseNode, ABC):
 
     @abstractmethod
     def load_artifact(self, *args, **kwargs) -> Any:
+        """Override to specify how the artifact is loaded."""
         pass
 
-    def record_new(self, filepath: str) -> Dict:
-        self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+    @abstractmethod
+    def resource_trigger(self) -> None:
+        """Override to specify how the resource is triggered."""
+        pass
+
+    async def record_new(self, filepath: str) -> None:
+        """
+        Record a new artifact in the metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        
+        Raises:
+            TypeError: If the metadata store is not of the expected type
+        """
+
+        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+
+        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+            await self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+        
+        else:
+            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
 
     def record_current(self, filepath: str) -> None:
         self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())

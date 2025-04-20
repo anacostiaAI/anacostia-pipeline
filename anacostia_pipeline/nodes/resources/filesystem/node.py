@@ -6,6 +6,7 @@ from threading import Thread
 import traceback
 import time
 from abc import ABC, abstractmethod
+import asyncio
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -68,7 +69,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
     def start_monitoring(self) -> None:
 
-        def _monitor_thread_func():
+        async def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
                 for root, dirnames, filenames in os.walk(self.path):
@@ -78,7 +79,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
                         if self.metadata_store.entry_exists(self.name, filepath) is False:
                             self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
-                            self.record_new(filepath)
+                            await self.record_new(filepath)
 
                 if self.exit_event.is_set() is True: break
                 try:
@@ -97,7 +98,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 # sleep for a while before checking again
                 time.sleep(0.1)
 
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
+        # since we are using asyncio.run, we need to create a new thread to run the event loop 
+        # because we can't run an event loop in the same thread as the FilesystemStoreNode
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
         self.observer_thread.start()
 
     def resource_trigger(self) -> None:
