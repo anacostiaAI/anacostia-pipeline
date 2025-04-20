@@ -1,10 +1,11 @@
 import os
-from typing import List, Any, Union, Dict, Callable
+from typing import List, Any, Union
 from datetime import datetime
 from logging import Logger
 from threading import Thread
 import traceback
 import time
+from abc import ABC, abstractmethod
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -13,13 +14,7 @@ from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPC
 
 
 
-class EntryNotFoundError(Exception):
-    """Raised when an entry with specified ID is not found"""
-    pass
-
-
-
-class FilesystemStoreNode(BaseResourceNode):
+class FilesystemStoreNode(BaseResourceNode, ABC):
     def __init__(
         self, 
         name: str, 
@@ -71,16 +66,6 @@ class FilesystemStoreNode(BaseResourceNode):
         self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
         return self.rpc_callee
 
-    def setup(self) -> None:
-        self.log(f"Setting up node '{self.name}'")
-        self.log(f"Node '{self.name}' setup complete.")
-    
-    def record_new(self, filepath: str) -> Dict:
-        self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
-
-    def record_current(self, filepath: str) -> None:
-        self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
-    
     def start_monitoring(self) -> None:
 
         def _monitor_thread_func():
@@ -97,10 +82,7 @@ class FilesystemStoreNode(BaseResourceNode):
 
                 if self.exit_event.is_set() is True: break
                 try:
-                    self.custom_trigger()
-                
-                except NotImplementedError:
-                    self.base_trigger()
+                    self.resource_trigger()
 
                 except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
@@ -118,19 +100,11 @@ class FilesystemStoreNode(BaseResourceNode):
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
         self.observer_thread.start()
 
-    def custom_trigger(self) -> bool:
-        """
-        Override to implement your custom triggering logic. If the custom_trigger method is not implemented, the base_trigger method will be called.
-        """
-        raise NotImplementedError
-    
-    def base_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
-        base_trigger checks if there are any new files in the resource directory and triggers the node if there are.
-        base_trigger is called when the custom_trigger method is not implemented.
+        resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
-
         if self.get_num_artifacts("new") > 0:
             self.trigger(message=f"New files detected in {self.resource_path}")
     
@@ -187,36 +161,18 @@ class FilesystemStoreNode(BaseResourceNode):
             self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise e
 
-    @BaseResourceNode.log_exception
-    def list_artifacts(self, state: str) -> List[Any]:
-        entries = self.metadata_store.get_entries(self.name, state)
-        artifacts = [os.path.join(self.path, entry["location"]) for entry in entries]
-        return artifacts
-    
-    @BaseResourceNode.log_exception
-    def get_artifact(self, id: int) -> Dict:
+    def list_artifacts(self, state: str) -> List[str]:
         """
-        Get artifact entry by ID.
-
+        List all artifacts in the resource path.
         Args:
-            id: The ID of the artifact to retrieve
-            
+            state (str): The state of the artifacts to list. Can be "new" or "old".
         Returns:
-            Dict: The artifact entry
-            
-        Raises:
-            EntryNotFoundError: If no entry exists with the specified ID
+            List[str]: A list of artifact paths.
         """
 
-        entries = self.metadata_store.get_entries(resource_node_name=self.name)
-        for entry in entries:
-            if entry["id"] == id:
-                return entry
-        raise EntryNotFoundError(f"No entry found with id: {id}")
-    
-    @BaseResourceNode.log_exception
-    def get_num_artifacts(self, state: str) -> int:
-        return self.metadata_store.get_num_entries(self.name, state)
+        entries = super().list_artifacts(state)
+        full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
+        return full_artifacts_paths
     
     def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
         """

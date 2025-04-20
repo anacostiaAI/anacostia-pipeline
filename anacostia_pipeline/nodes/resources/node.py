@@ -1,6 +1,7 @@
-from typing import List, Union
+from typing import List, Union, Dict, Any
 from logging import Logger
 import threading
+from abc import ABC, abstractmethod
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -8,7 +9,13 @@ from anacostia_pipeline.utils.constants import Result, Status
 
 
 
-class BaseResourceNode(BaseNode):
+class EntryNotFoundError(Exception):
+    """Raised when an entry with specified ID is not found"""
+    pass
+
+
+
+class BaseResourceNode(BaseNode, ABC):
     def __init__(
         self, 
         name: str, 
@@ -37,7 +44,7 @@ class BaseResourceNode(BaseNode):
         self.metadata_store = metadata_store
         self.resource_event = threading.Event()
 
-    @BaseNode.log_exception
+    @abstractmethod
     def start_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 
@@ -45,7 +52,7 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    @BaseNode.log_exception
+    @abstractmethod
     def stop_monitoring(self) -> None:
         """
         Override to specify how the resource is monitored. 
@@ -53,20 +60,56 @@ class BaseResourceNode(BaseNode):
         """
         pass
 
-    @BaseNode.log_exception
-    def record_new(self) -> None:
-        """
-        override to specify how to detect new files and mark the detected files as 'new'
-        """
-        raise NotImplementedError
-    
-    @BaseNode.log_exception
-    def record_current(self) -> None:
-        """
-        override to specify how to label newly created files as 'current'
-        """
+    @abstractmethod
+    def save_artifact(self, *args, **kwargs):
+        """Override to specify how the artifact is saved."""
         pass
+
+    @abstractmethod
+    def load_artifact(self, *args, **kwargs) -> Any:
+        pass
+
+    def record_new(self, filepath: str) -> Dict:
+        self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+
+    def record_current(self, filepath: str) -> None:
+        self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
     
+    def get_num_artifacts(self, state: str) -> int:
+        return self.metadata_store.get_num_entries(self.name, state)
+    
+    def get_artifact(self, id: int) -> Dict:
+        """
+        Get artifact entry by ID.
+
+        Args:
+            id: The ID of the artifact to retrieve
+            
+        Returns:
+            Dict: The artifact entry
+            
+        Raises:
+            EntryNotFoundError: If no entry exists with the specified ID
+        """
+
+        entries = self.metadata_store.get_entries(resource_node_name=self.name)
+        for entry in entries:
+            if entry["id"] == id:
+                return entry
+        raise EntryNotFoundError(f"No entry found with id: {id}")
+    
+    def list_artifacts(self, state: str) -> List[str]:
+        """
+        List all artifacts in the specified state.
+        Args:
+            state: The state of the artifacts to list (e.g., "new", "current", "old")
+        Returns:
+            List[str]: A list of file paths of the artifacts in the specified state
+        """
+
+        entries = self.metadata_store.get_entries(self.name, state)
+        return [entry["location"] for entry in entries]
+
     def exit(self):
         # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.
         super().exit()
@@ -136,4 +179,3 @@ class BaseResourceNode(BaseNode):
             # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
-            
