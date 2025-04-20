@@ -37,7 +37,7 @@ class BaseMetadataStoreNode(BaseNode):
         return self.run_id
 
     def add_node(self, node_name: str, node_type: str) -> None:
-        raise NotImplementedError
+        pass
     
     def get_nodes_info(self, node_id: int = None, node_name: str = None) -> List[Dict]:
         pass
@@ -86,10 +86,10 @@ class BaseMetadataStoreNode(BaseNode):
         E.g., log the end time of the run, log the metrics of the run, update run_number, etc.
         or end a run in MLFlow, end a run in Neptune, etc.
         """
-        raise NotImplementedError
+        pass
     
     def entry_exists(self, resource_node_name: str) -> bool:
-        raise NotImplementedError
+        pass
     
     def log_trigger(self, node_name: str, message: str = None) -> None:
         """
