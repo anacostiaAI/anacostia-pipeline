@@ -52,3 +52,6 @@ class BaseMetadataRPCCaller(BaseRPCCaller):
         
     async def get_entries(self, resource_node_name: str, state: str):
         raise NotImplementedError("get_entries method not implemented in SqliteMetadataRPCCaller")
+    
+    async def log_trigger(self, node_name: str, message: str):
+        raise NotImplementedError("log_trigger method not implemented in SqliteMetadataRPCCaller")

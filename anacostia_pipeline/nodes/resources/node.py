@@ -144,12 +144,19 @@ class BaseResourceNode(BaseNode, ABC):
         
         self.resource_event.set()
     
-    def trigger(self, message: str = None) -> None:
+    async def trigger(self, message: str = None) -> None:
         if self.resource_event.is_set() is False:
             
             # Note: log the trigger first before setting the event or there will be a race condition
             if message is not None:
-                self.metadata_store.log_trigger(node_name=self.name, message=message)
+                if isinstance(self.metadata_store, BaseMetadataStoreNode):
+                    self.metadata_store.log_trigger(node_name=self.name, message=message)
+                
+                elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+                    await self.metadata_store.log_trigger(node_name=self.name, message=message)
+                
+                else:
+                    raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
             
             self.resource_event.set()
 

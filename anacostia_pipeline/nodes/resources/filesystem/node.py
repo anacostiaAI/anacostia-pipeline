@@ -83,7 +83,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
                 if self.exit_event.is_set() is True: break
                 try:
-                    self.resource_trigger()
+                    await self.resource_trigger()
 
                 except Exception as e:
                         self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
