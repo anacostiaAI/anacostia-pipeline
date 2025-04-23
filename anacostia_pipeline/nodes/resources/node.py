@@ -72,7 +72,7 @@ class BaseResourceNode(BaseNode, ABC):
         pass
 
     @abstractmethod
-    def resource_trigger(self) -> None:
+    async def resource_trigger(self) -> None:
         """Override to specify how the resource is triggered."""
         pass
 
