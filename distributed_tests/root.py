@@ -117,9 +117,9 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store.set_tags(self.name, test_name="Karpathy LLM test")
 
         # Simulate saving a trained model
-        trained_model_filepath = f"model{self.model_registry.get_num_artifacts('all')}.txt"
+        num_artifacts = await self.model_registry.get_num_artifacts('all')
         self.model_registry.save_artifact(
-            filepath=trained_model_filepath, content="Trained model"
+            filepath=f"model{num_artifacts}.txt", content="Trained model"
         )
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")

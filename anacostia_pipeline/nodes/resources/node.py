@@ -99,8 +99,15 @@ class BaseResourceNode(BaseNode, ABC):
     def record_current(self, filepath: str) -> None:
         self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
     
-    def get_num_artifacts(self, state: str) -> int:
-        return self.metadata_store.get_num_entries(self.name, state)
+    async def get_num_artifacts(self, state: str) -> int:
+        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+            return self.metadata_store.get_num_entries(self.name, state)
+        
+        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+            return await self.metadata_store.get_num_entries(self.name, state)
+
+        else:
+            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
     
     def get_artifact(self, id: int) -> Dict:
         """
