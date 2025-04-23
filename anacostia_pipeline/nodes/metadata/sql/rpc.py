@@ -61,6 +61,11 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         async def log_trigger(node_name: str, request: Request):
             data = await request.json()
             self.metadata_store.log_trigger(node_name, message=data["message"])
+        
+        @self.get("/get_num_entries/")
+        async def get_num_entries(resource_node_name: str, state: str):
+            num_entries = self.metadata_store.get_num_entries(resource_node_name, state)
+            return {"num_entries": num_entries}
 
 
 class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
@@ -89,6 +94,12 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
                 response = await client.get(
                     f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
                 )
+
+    async def get_num_entries(self, resource_node_name: str, state: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+            num_entries = response.json()["num_entries"]
+            return num_entries
 
     async def log_metrics(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
