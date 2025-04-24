@@ -159,7 +159,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
     def create_entry(
         self, resource_node_name: str, filepath: str, 
-        state: str = "new", run_id: int = None, hash: str = None, file_size: int = None, content_type: str = None
+        state: str = "new", run_id: int = None, hash: str = None, hash_algorithm: str = None, file_size: int = None, content_type: str = None
     ) -> None:
         node_id = self.get_node_id(resource_node_name)
 
@@ -171,6 +171,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                 created_at=datetime.now(),
                 state=state,
                 hash=hash,
+                hash_algorithm=hash_algorithm,
                 size=file_size,
                 content_type=content_type
             )
