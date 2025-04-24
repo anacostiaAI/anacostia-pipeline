@@ -66,6 +66,9 @@ class BaseMetadataStoreNode(BaseNode):
     
     def log_params(self, node_name: str, **kwargs) -> None:
         pass
+    
+    def tag_artifact(self, node_name: str, location: str, **kwargs) -> None:
+        pass
 
     def set_tags(self, node_name: str, **kwargs) -> None:
         pass

@@ -288,6 +288,24 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                 for key, value in kwargs.items()
             ]
             session.add_all(tags)
+    
+    def tag_artifact(self, node_name: str, location: str, **kwargs) -> None:
+        run_id = self.get_run_id()
+        node_id = self.get_node_id(node_name)
+
+        if not kwargs:
+            return
+
+        with self.get_session() as session:
+            artifact = session.query(Artifact).filter_by(location=location).first()
+            if artifact is None:
+                raise ValueError(f"Artifact with location '{location}' does not exist for node '{node_name}'.")
+
+            tags = [
+                Tag(run_id=run_id, node_id=node_id, tag_name=key, tag_value=value)
+                for key, value in kwargs.items()
+            ]
+            artifact.tags.extend(tags)
 
     def get_metrics(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         with self.get_session() as session:

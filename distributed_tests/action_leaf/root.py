@@ -123,6 +123,10 @@ class ModelRetrainingNode(BaseActionNode):
         await self.model_registry.save_artifact(
             filepath=f"model{num_artifacts}.txt", content="Trained model"
         )
+        self.metadata_store.tag_artifact(
+            self.name, location=f"model{num_artifacts}.txt", 
+            model_type="LLM"
+        )
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         return True
