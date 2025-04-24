@@ -118,7 +118,7 @@ class ModelRetrainingNode(BaseActionNode):
 
         # Simulate saving a trained model
         num_artifacts = await self.model_registry.get_num_artifacts('all')
-        self.model_registry.save_artifact(
+        await self.model_registry.save_artifact(
             filepath=f"model{num_artifacts}.txt", content="Trained model"
         )
 

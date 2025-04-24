@@ -84,7 +84,7 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
                             self.log(f"Received: {bytes_received/1024/1024:.2f}MB / {total_size/1024/1024:.2f}MB ({progress:.1f}%)", level="INFO")
 
                 # enter the uploaded file into the metadata store
-                self.node.record_current(x_filename)
+                await self.node.record_current(x_filename)
                 
                 return JSONResponse(
                     content={

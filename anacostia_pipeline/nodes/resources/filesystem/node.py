@@ -127,7 +127,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         """
         pass
 
-    def save_artifact(self, filepath: str, *args, **kwargs):
+    async def save_artifact(self, filepath: str, *args, **kwargs):
         """
         Save a file using the provided function and filepath.
         
@@ -154,10 +154,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         try:
             # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
             # that way, the Observer can see the file is already logged and ignore it.
-            # self.record_current(filepath)
+            # await self.record_current(filepath)
 
             self._save_artifact_hook(artifact_save_path, *args, **kwargs)
-            self.record_current(filepath)
+            await self.record_current(filepath)
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
         except Exception as e:

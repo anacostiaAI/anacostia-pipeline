@@ -62,7 +62,7 @@ class BaseResourceNode(BaseNode, ABC):
         pass
 
     @abstractmethod
-    def save_artifact(self, *args, **kwargs):
+    async def save_artifact(self, *args, **kwargs):
         """Override to specify how the artifact is saved."""
         pass
 
@@ -96,8 +96,15 @@ class BaseResourceNode(BaseNode, ABC):
         else:
             raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
 
-    def record_current(self, filepath: str) -> None:
-        self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+    async def record_current(self, filepath: str) -> None:
+        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+        
+        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+            await self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+        
+        else:
+            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
     
     async def get_num_artifacts(self, state: str) -> int:
         if isinstance(self.metadata_store, BaseMetadataStoreNode):
