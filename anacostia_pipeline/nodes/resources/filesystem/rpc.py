@@ -15,6 +15,7 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
 
+        # move to BaseResourceRPCCallee
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):
             num_artifacts = await self.node.get_num_artifacts(state)
@@ -23,10 +24,11 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
             except Exception as e:
                 return JSONResponse(content={"error": f"An error occurred while getting the number of artifacts: {str(e)}"}, status_code=500)
         
+        # move to BaseResourceRPCCallee
         @self.get("/list_artifacts/")
         async def list_artifacts(state: str):
             try:
-                artifacts = self.node.list_artifacts(state)
+                artifacts = await self.node.list_artifacts(state)
                 return JSONResponse(content={"artifacts": artifacts}, status_code=200)
             except Exception as e:
                 return JSONResponse(content={"error": f"An error occurred while listing artifacts: {str(e)}"}, status_code=500)
@@ -113,6 +115,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
         if os.path.exists(self.storage_directory) is False:
             os.makedirs(self.storage_directory)
         
+    # move to BaseResourceRPCCaller
     async def get_num_artifacts(self, state: str = "all") -> int:
         """
         Get the number of artifacts in the storage directory.
@@ -131,6 +134,7 @@ class FilesystemStoreRPCCaller(BaseRPCCaller):
             self.log(f"Error: An exception occurred while getting the number of artifacts: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+    # move to BaseResourceRPCCaller
     async def list_artifacts(self, state: str = "all") -> List[str]:
         """
         List all artifacts in the storage directory.

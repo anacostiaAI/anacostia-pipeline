@@ -165,7 +165,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise e
 
-    def list_artifacts(self, state: str) -> List[str]:
+    async def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the resource path.
         Args:
@@ -174,7 +174,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             List[str]: A list of artifact paths.
         """
 
-        entries = super().list_artifacts(state)
+        entries = await super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
     

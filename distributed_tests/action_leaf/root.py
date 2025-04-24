@@ -87,11 +87,13 @@ class ModelRetrainingNode(BaseActionNode):
     async def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
-        for filepath in self.data_store.list_artifacts("current"):
+        current_artifacts = await self.data_store.list_artifacts("current")
+        for filepath in current_artifacts:
             with open(filepath, 'r') as f:
                 self.log(f"Trained on {filepath}", level="INFO")
         
-        for filepath in self.data_store.list_artifacts("old"):
+        old_artifacts = await self.data_store.list_artifacts("old")
+        for filepath in old_artifacts:
             self.log(f"Already trained on {filepath}", level="INFO")
         
         # must pass self to log_metrics and log_params in order for the metadata store to know which node is logging

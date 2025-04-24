@@ -66,6 +66,11 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         async def get_num_entries(resource_node_name: str, state: str):
             num_entries = self.metadata_store.get_num_entries(resource_node_name, state)
             return {"num_entries": num_entries}
+        
+        @self.get("/get_entries/")
+        async def get_entries(resource_node_name: str, state: str):
+            entries = self.metadata_store.get_entries(resource_node_name, state)
+            return entries
 
 
 class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
@@ -167,3 +172,9 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
             response = await client.get(f"{self.get_callee_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
             num_entries = response.json()["num_entries"]
             return num_entries
+    
+    async def get_entries(self, resource_node_name: str, state: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
+            entries = response.json()
+            return entries

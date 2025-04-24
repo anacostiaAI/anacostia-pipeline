@@ -136,7 +136,7 @@ class BaseResourceNode(BaseNode, ABC):
                 return entry
         raise EntryNotFoundError(f"No entry found with id: {id}")
     
-    def list_artifacts(self, state: str) -> List[str]:
+    async def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the specified state.
         Args:
@@ -145,7 +145,15 @@ class BaseResourceNode(BaseNode, ABC):
             List[str]: A list of file paths of the artifacts in the specified state
         """
 
-        entries = self.metadata_store.get_entries(self.name, state)
+        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+            entries = self.metadata_store.get_entries(self.name, state)
+        
+        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+            entries = await self.metadata_store.get_entries(self.name, state)
+
+        else:
+            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
+
         return [entry["location"] for entry in entries]
 
     def exit(self):

@@ -35,6 +35,13 @@ class BaseMetadataStoreNode(BaseNode):
     
     def get_run_id(self) -> int:
         return self.run_id
+    
+    def get_node_id(self, node_name: str) -> int:
+        """
+        Override to specify how to get the node ID from the metadata store.
+        E.g., get the node ID from MLFlow, get the node ID from Neptune, etc.
+        """
+        pass
 
     def add_node(self, node_name: str, node_type: str) -> None:
         pass
