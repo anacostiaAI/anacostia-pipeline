@@ -161,3 +161,9 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
     async def log_trigger(self, node_name: str, message: str = None):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_callee_url()}/log_trigger/?node_name={node_name}", json={"message": message})
+
+    async def get_num_entries(self, resource_node_name: str, state: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+            num_entries = response.json()["num_entries"]
+            return num_entries

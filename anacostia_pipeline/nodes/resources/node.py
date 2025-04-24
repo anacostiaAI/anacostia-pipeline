@@ -72,7 +72,7 @@ class BaseResourceNode(BaseNode, ABC):
         pass
 
     @abstractmethod
-    def resource_trigger(self) -> None:
+    async def resource_trigger(self) -> None:
         """Override to specify how the resource is triggered."""
         pass
 
@@ -105,7 +105,7 @@ class BaseResourceNode(BaseNode, ABC):
         
         elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
             return await self.metadata_store.get_num_entries(self.name, state)
-        
+
         else:
             raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
     

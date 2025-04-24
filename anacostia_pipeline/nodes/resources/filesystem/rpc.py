@@ -17,8 +17,9 @@ class FilesystemStoreRPCCallee(BaseRPCCallee):
 
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):
+            num_artifacts = await self.node.get_num_artifacts(state)
             try:
-                return JSONResponse(content={"num_artifacts": self.node.get_num_artifacts(state)}, status_code=200)
+                return JSONResponse(content={"num_artifacts": num_artifacts}, status_code=200)
             except Exception as e:
                 return JSONResponse(content={"error": f"An error occurred while getting the number of artifacts: {str(e)}"}, status_code=500)
         
