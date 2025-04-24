@@ -10,6 +10,7 @@ import asyncio
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
 from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCallee
 
@@ -20,7 +21,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         self, 
         name: str, 
         resource_path: str, 
-        metadata_store: BaseMetadataStoreNode, 
+        metadata_store: BaseMetadataStoreNode | BaseMetadataRPCCaller,
         init_state: str = "new", 
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
