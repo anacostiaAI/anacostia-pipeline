@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Text, Table
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -49,6 +49,28 @@ class Metric(Base):
     node = relationship("Node", back_populates="metrics")
 
 
+class Param(Base):
+    __tablename__ = 'params'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(Integer, ForeignKey('runs.run_id'))
+    node_id = Column(Integer, ForeignKey('nodes.id'))
+    param_name = Column(String)
+    param_value = Column(String)
+
+    run = relationship("Run", back_populates="params")
+    node = relationship("Node", back_populates="params")
+
+
+# Association table for many-to-many relationship between artifacts and tags to allow for tagging of artifacts
+artifact_tags = Table(
+    'artifact_tags',
+    Base.metadata,
+    Column('artifact_id', Integer, ForeignKey('artifacts.id'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True)
+)
+
+
 class Tag(Base):
     __tablename__ = 'tags'
 
@@ -61,18 +83,8 @@ class Tag(Base):
     run = relationship("Run", back_populates="tags")
     node = relationship("Node", back_populates="tags")
 
-
-class Param(Base):
-    __tablename__ = 'params'
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    run_id = Column(Integer, ForeignKey('runs.run_id'))
-    node_id = Column(Integer, ForeignKey('nodes.id'))
-    param_name = Column(String)
-    param_value = Column(String)
-
-    run = relationship("Run", back_populates="params")
-    node = relationship("Node", back_populates="params")
+    # back-reference to artifacts
+    artifacts = relationship("Artifact", secondary="artifact_tags", back_populates="tags")
 
 
 class Artifact(Base):
@@ -91,6 +103,9 @@ class Artifact(Base):
 
     run = relationship("Run", back_populates="artifacts")
     node = relationship("Node", back_populates="artifacts")
+
+    # tags on this artifact
+    tags = relationship("Tag", secondary="artifact_tags", back_populates="artifacts")
 
 
 class Trigger(Base):
