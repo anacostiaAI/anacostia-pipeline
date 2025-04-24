@@ -10,8 +10,9 @@ from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 class FilesystemStoreGUI(BaseGUI):
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node, metadata_store, *args, **kwargs):
         super().__init__(node, use_default_router=False, *args, **kwargs)
+        self.metadata_store = metadata_store
 
         self.event_source = f"{self.get_node_prefix()}/table_update_events"
         self.event_name = "TableUpdate"
@@ -41,7 +42,7 @@ class FilesystemStoreGUI(BaseGUI):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            file_entries = self.node.metadata_store.get_entries(resource_node_name=self.node.name)
+            file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
             self.displayed_file_entries = file_entries
             file_entries.reverse()
             file_entries = format_file_entries(file_entries)
@@ -56,7 +57,7 @@ class FilesystemStoreGUI(BaseGUI):
         async def samples(request: Request):
 
             def get_table_update_events() -> Tuple[List[Dict]]:
-                file_entries = self.node.metadata_store.get_entries(resource_node_name=self.node.name)
+                file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
 
                 added_rows = []
                 entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]

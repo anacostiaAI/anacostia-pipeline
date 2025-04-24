@@ -62,7 +62,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         )
     
     def setup_node_GUI(self) -> FilesystemStoreGUI:
-        return FilesystemStoreGUI(self)
+        return FilesystemStoreGUI(self, self.metadata_store)
     
     def setup_rpc_callee(self, host, port):
         self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
