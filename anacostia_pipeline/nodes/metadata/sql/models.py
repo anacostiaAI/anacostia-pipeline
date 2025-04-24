@@ -98,8 +98,9 @@ class Artifact(Base):
     end_time = Column(DateTime, nullable=True)
     state = Column(String, default='new')
     hash = Column(String, nullable=True)
+    hash_algorithm = Column(String, nullable=True)
     size = Column(Integer, nullable=True)
-    type = Column(String, nullable=True)
+    content_type = Column(String, nullable=True)
 
     run = relationship("Run", back_populates="artifacts")
     node = relationship("Node", back_populates="artifacts")
