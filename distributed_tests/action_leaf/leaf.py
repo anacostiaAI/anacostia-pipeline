@@ -17,14 +17,14 @@ parser.add_argument('host', type=str)
 parser.add_argument('port', type=int)
 args = parser.parse_args()
 
-root_test_path = "./testing_artifacts"
+leaf_test_path = "./testing_artifacts"
 path = f"./leaf-artifacts"
 input_path = f"{path}/input_artifacts"
 output_path = f"{path}/output_artifacts"
 model_registry_path = f"{input_path}/model_registry"
 plots_path = f"{output_path}/plots"
 
-log_path = f"{root_test_path}/anacostia.log"
+log_path = f"{leaf_test_path}/anacostia.log"
 logging.basicConfig(
     level=logging.INFO,
     format='LEAF %(asctime)s - %(levelname)s - %(message)s',
