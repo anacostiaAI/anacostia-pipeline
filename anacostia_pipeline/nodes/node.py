@@ -37,7 +37,7 @@ class BaseNode(Thread):
         self, 
         name: str, 
         predecessors: List[BaseNode] = None, 
-        remote_predecessors: List[str] = None, 
+        remote_predecessors: List[str] = None,      # should be a list of urls or BaseRPCCaller
         remote_successors: List[str] = None, 
         caller_url: str = None,
         wait_for_connection: bool = False,
@@ -71,6 +71,7 @@ class BaseNode(Thread):
 
         self.exit_event = Event()
         self.pause_event = Event()
+        self.connection_event = Event()
         self.pause_event.set()
         self.queue: Queue | None = None
         self.app: BaseGUI | None = None
@@ -303,10 +304,10 @@ class BaseNode(Thread):
         if self.wait_for_connection:
             self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
             
-            while len(self.predecessors_events) <= 0:
-                time.sleep(0.1)
-                if self.exit_event.is_set(): return
-            
+            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
+            self.connection_event.wait()
+            if self.exit_event.is_set(): return
+
             self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
 
     async def run_async(self) -> None:

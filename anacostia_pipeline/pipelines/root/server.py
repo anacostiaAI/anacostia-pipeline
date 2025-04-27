@@ -44,6 +44,8 @@ class RootPipelineServer(FastAPI):
         async def lifespan(app: RootPipelineServer):
             if app.logger is not None:
                 app.logger.info(f"Root server '{app.name}' started")
+            
+            await app.connect()     # Connect to the leaf services
 
             yield
             
@@ -103,55 +105,6 @@ class RootPipelineServer(FastAPI):
             callee: BaseRPCCallee = node.setup_rpc_callee(host=self.host, port=self.port)
             self.mount(callee.get_node_prefix(), callee)                    # mount the BaseRPCCallee to PipelineWebserver
 
-        # Connect to the leaf services
-        asyncio.run(self.connect())
-
-    async def connect(self):
-        async with httpx.AsyncClient() as client:
-            # Connect to leaf pipeline
-            task = []
-            for leaf_ip_address in self.leaf_ip_addresses:
-                root_server_model={
-                    "root_host": self.host, 
-                    "root_port": self.port 
-                }
-                task.append(client.post(f"{leaf_ip_address}/connect", json=root_server_model))
-
-            responses = await asyncio.gather(*task)
-
-            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
-            for response in responses:
-                response_data = response.json()
-                self.leaf_models.append(response_data)
-                # self.logger.info(f"leaf data: {response_data}")
-            
-            # Connect each node to its remote successors
-            task = []
-            for node in self.pipeline.nodes:
-                for connection in node.remote_successors:
-                    connection_mode = {
-                        "node_url": f"http://{self.host}:{self.port}/{node.name}",
-                        "node_name": node.name,
-                        "node_type": type(node).__name__
-                    }
-                    task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
-
-            responses = await asyncio.gather(*task)
-
-            # Extract the node name and type from the responses and add them to the metadata store
-            for response in responses:
-                response_data = response.json()
-                node_name = response_data["node_name"]
-                node_type = response_data["node_type"]
-                self.leaf_node_names.append({"node_name": node_name, "node_type": node_type})
-
-            # Connect RPC callees to RPC callers
-            task = []
-            for node in self.pipeline.nodes:
-                task.append(node.rpc_callee.connect())
-            
-            responses = await asyncio.gather(*task)
-        
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
             frontend_json = self.frontend_json()
@@ -159,7 +112,7 @@ class RootPipelineServer(FastAPI):
             return index_template(nodes, frontend_json, "/graph_sse")
 
         @self.get("/header_bar", response_class=HTMLResponse)
-        def header_bar(node_id: str, visibility: bool = False):
+        async def header_bar(node_id: str, visibility: bool = False):
             html_responses = []
             frontend_json = self.frontend_json()
 
@@ -220,6 +173,62 @@ class RootPipelineServer(FastAPI):
         def dag_page(response: Response):
             response.headers["HX-Redirect"] = "/"
 
+    async def connect(self):
+        async with httpx.AsyncClient() as client:
+            # Connect to leaf pipeline
+            task = []
+            for leaf_ip_address in self.leaf_ip_addresses:
+                root_server_model={
+                    "root_host": self.host, 
+                    "root_port": self.port 
+                }
+                task.append(client.post(f"{leaf_ip_address}/connect", json=root_server_model))
+
+            responses = await asyncio.gather(*task)
+
+            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
+            for response in responses:
+                response_data = response.json()
+                self.leaf_models.append(response_data)
+                # self.logger.info(f"leaf data: {response_data}")
+            
+            # Connect each node to its remote successors
+            task = []
+            for node in self.pipeline.nodes:
+                for connection in node.remote_successors:
+                    connection_mode = {
+                        "node_url": f"http://{self.host}:{self.port}/{node.name}",
+                        "node_name": node.name,
+                        "node_type": type(node).__name__
+                    }
+                    task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
+
+            responses = await asyncio.gather(*task)
+
+            # Extract the node name and type from the responses and add them to the metadata store
+            for response in responses:
+                response_data = response.json()
+                node_name = response_data["node_name"]
+                node_type = response_data["node_type"]
+
+                if self.metadata_store.node_exists(node_name=node_name) is False:
+                    self.metadata_store.add_node(node_name=node_name, node_type=node_type)
+
+            # Connect RPC callees to RPC callers
+            task = []
+            for node in self.pipeline.nodes:
+                task.append(node.rpc_callee.connect())
+            
+            responses = await asyncio.gather(*task)
+
+            # Finish the connection process for each leaf pipeline
+            # Leaf pipeline will set the connection event for each node
+            task = []
+            for leaf_ip_address in self.leaf_ip_addresses:
+                task.append(client.post(f"{leaf_ip_address}/finish_connect"))
+
+            responses = await asyncio.gather(*task)
+        
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
         edges = []
@@ -288,10 +297,6 @@ class RootPipelineServer(FastAPI):
 
         # Launch the root pipeline
         self.pipeline.launch_nodes()
-
-        # add nodes to metadata store's node list
-        for leaf_node_name in self.leaf_node_names:
-            self.metadata_store.add_node(node_name=leaf_node_name["node_name"], node_type=leaf_node_name["node_type"])
 
         # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
         # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9

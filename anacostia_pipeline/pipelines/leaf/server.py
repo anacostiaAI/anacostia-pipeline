@@ -102,6 +102,11 @@ class LeafPipelineServer(FastAPI):
             self.root_port = connection.root_port
             self.logger.info(f"Leaf server {self.name} connected to root server at {self.root_host}:{self.root_port}")
             return self.frontend_json()
+        
+        @self.post("/finish_connect", status_code=status.HTTP_200_OK)
+        async def finish_connect():
+            for node in self.pipeline.nodes:
+                node.connection_event.set()  # Set the connection event for each node
 
         self.queue = Queue()
     

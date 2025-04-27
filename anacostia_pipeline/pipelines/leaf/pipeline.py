@@ -117,7 +117,7 @@ class LeafPipeline:
 
             threads: List[Thread] = []
             for node in nodes:
-                node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
+                node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}", level="INFO")
                 thread = Thread(target=node.leaf_setup)
                 node.status = Status.INITIALIZING
                 thread.start()
@@ -125,7 +125,7 @@ class LeafPipeline:
 
             for thread, node in zip(threads, nodes):
                 thread.join()
-                node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+                node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}", level="INFO")
 
         # set up resource nodes
         resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]

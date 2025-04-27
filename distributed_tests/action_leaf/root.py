@@ -42,7 +42,7 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
         init_state: str = "new", max_old_samples: int = None
     ) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state, max_old_samples)
+        super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, init_state=init_state, max_old_samples=max_old_samples)
     
     def _load_artifact_hook(self, filepath) -> str:
         with locked_file(filepath, "r") as file:

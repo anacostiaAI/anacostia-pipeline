@@ -72,8 +72,16 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             raise
         finally:
             self._ScopedSession.remove()
+    
+    def node_exists(self, node_name: str) -> bool:
+        with self.get_session() as session:
+            stmt = select(exists().where(Node.node_name == node_name))
+            return session.execute(stmt).scalar()
 
     def add_node(self, node_name: str, node_type: str) -> None:
+        if self.node_exists(node_name):
+            raise ValueError(f"Node name '{node_name}' already exists in the nodes table.")
+
         with self.get_session() as session:
             node = Node(node_name=node_name, node_type=node_type, init_time=datetime.now())
             session.add(node)

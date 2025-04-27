@@ -43,6 +43,9 @@ class BaseMetadataStoreNode(BaseNode):
         """
         pass
 
+    def node_exists(self, node_name: str) -> bool:
+        pass
+
     def add_node(self, node_name: str, node_type: str) -> None:
         pass
     
