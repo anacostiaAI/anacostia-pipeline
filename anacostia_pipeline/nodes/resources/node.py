@@ -21,7 +21,8 @@ class BaseResourceNode(BaseNode, ABC):
         self, 
         name: str, 
         resource_path: str, 
-        metadata_store: BaseMetadataStoreNode | BaseMetadataRPCCaller,
+        metadata_store: BaseMetadataStoreNode = None,
+        metadata_store_rpc: BaseMetadataRPCCaller = None,
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
         wait_for_connection: bool = False,
@@ -32,7 +33,7 @@ class BaseResourceNode(BaseNode, ABC):
         
         super().__init__(
             name, 
-            predecessors=[metadata_store], 
+            predecessors = [metadata_store] if metadata_store else None, 
             remote_predecessors=remote_predecessors, 
             remote_successors=remote_successors, 
             wait_for_connection=wait_for_connection,
@@ -42,7 +43,12 @@ class BaseResourceNode(BaseNode, ABC):
 
         self.resource_path = resource_path
         self.monitoring = monitoring
+
+        if metadata_store is None and metadata_store_rpc is None:
+            raise ValueError("Either metadata_store or metadata_store_rpc must be provided")
+
         self.metadata_store = metadata_store
+        self.metadata_store_rpc = metadata_store_rpc
         self.resource_event = threading.Event()
 
     @abstractmethod
@@ -82,52 +88,54 @@ class BaseResourceNode(BaseNode, ABC):
 
         Args:
             filepath: The path to the artifact file
-        
-        Raises:
-            TypeError: If the metadata store is not of the expected type
         """
 
-        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+        if self.metadata_store is not None:
             self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
 
-        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
-            await self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+        if self.metadata_store_rpc is not None:
+            await self.metadata_store_rpc.create_entry(self.name, filepath=filepath, state="new")
         
-        else:
-            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
-
     async def record_current(self, filepath: str) -> None:
-        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+        """
+        Record an artifact produced in the current run metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        """
+
+        if self.metadata_store is not None:
             self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
         
-        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
-            await self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+        if self.metadata_store_rpc is not None:
+            await self.metadata_store_rpc.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
         
-        else:
-            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
-    
     async def get_num_artifacts(self, state: str) -> int:
-        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+        """
+        Get the number of artifacts in the specified state.
+        
+        Args:
+            state: The state of the artifacts to count (e.g., "new", "current", "old")
+        
+        Returns:
+            int: The number of artifacts in the specified state
+        """
+
+        if self.metadata_store is not None:
             return self.metadata_store.get_num_entries(self.name, state)
         
-        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
-            return await self.metadata_store.get_num_entries(self.name, state)
+        if self.metadata_store_rpc is not None:
+            return await self.metadata_store_rpc.get_num_entries(self.name, state)
 
-        else:
-            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
-    
     def get_artifact(self, id: int) -> Dict:
         """
         Get artifact entry by ID.
-
+        
         Args:
             id: The ID of the artifact to retrieve
-            
+        
         Returns:
             Dict: The artifact entry
-            
-        Raises:
-            EntryNotFoundError: If no entry exists with the specified ID
         """
 
         entries = self.metadata_store.get_entries(resource_node_name=self.name)
@@ -145,14 +153,11 @@ class BaseResourceNode(BaseNode, ABC):
             List[str]: A list of file paths of the artifacts in the specified state
         """
 
-        if isinstance(self.metadata_store, BaseMetadataStoreNode):
+        if self.metadata_store is not None:
             entries = self.metadata_store.get_entries(self.name, state)
         
-        elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
-            entries = await self.metadata_store.get_entries(self.name, state)
-
-        else:
-            raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
+        if self.metadata_store_rpc is not None:
+            entries = await self.metadata_store_rpc.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
 
@@ -171,14 +176,11 @@ class BaseResourceNode(BaseNode, ABC):
             
             # Note: log the trigger first before setting the event or there will be a race condition
             if message is not None:
-                if isinstance(self.metadata_store, BaseMetadataStoreNode):
+                if self.metadata_store is not None:
                     self.metadata_store.log_trigger(node_name=self.name, message=message)
                 
-                elif isinstance(self.metadata_store, BaseMetadataRPCCaller):
+                if self.metadata_store_rpc is not None:
                     await self.metadata_store.log_trigger(node_name=self.name, message=message)
-                
-                else:
-                    raise TypeError("metadata_store must be of type BaseMetadataStoreNode or BaseMetadataRPCCaller")
             
             self.resource_event.set()
 
