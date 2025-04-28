@@ -8,6 +8,7 @@ import sys
 from queue import Queue
 from urllib.parse import urlparse
 import json
+from typing import Dict, Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -37,6 +38,7 @@ class RootPipelineServer(FastAPI):
         ssl_keyfile: str = None, 
         ssl_certfile: str =None, 
         logger: Logger = None, 
+        uvicorn_access_log_config: Dict[str, Any] = None,
         *args, **kwargs
     ):
         # lifespan context manager for spinning up and shutting down the service
@@ -80,7 +82,7 @@ class RootPipelineServer(FastAPI):
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
-        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile)
+        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile, log_config=uvicorn_access_log_config)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 

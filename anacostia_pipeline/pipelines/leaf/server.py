@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from queue import Queue
 import asyncio
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict, Any
 import sys
 
 from fastapi import FastAPI, status
@@ -35,7 +35,8 @@ class LeafPipelineServer(FastAPI):
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 
-        ssl_certfile: str =None, 
+        ssl_certfile: str = None, 
+        uvicorn_access_log_config: Dict[str, Any] = None,
         logger=Logger, *args, **kwargs
     ):
 
@@ -79,7 +80,7 @@ class LeafPipelineServer(FastAPI):
             allow_headers=["*"],
         )
 
-        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
+        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, log_config=uvicorn_access_log_config)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
