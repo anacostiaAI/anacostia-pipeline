@@ -26,7 +26,6 @@ plots_path = f"{output_path}/plots"
 
 # Create a file for Anacostia logs
 log_path = f"{leaf_test_path}/anacostia.log"
-log_path = f"{leaf_test_path}/anacostia.log"
 log_file_handler = logging.FileHandler(log_path)
 log_file_handler.setLevel(logging.INFO)
 log_formatter = logging.Formatter(
