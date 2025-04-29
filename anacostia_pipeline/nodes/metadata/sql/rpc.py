@@ -26,6 +26,11 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         @self.get("/create_entry/")
         async def create_entry(resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
             self.metadata_store.create_entry(resource_node_name, filepath, state, run_id)
+        
+        @self.get("/entry_exists/")
+        async def entry_exists(resource_node_name: str, location: str):
+            exists = self.metadata_store.entry_exists(resource_node_name, location)
+            return {"exists": exists}
 
         @self.post("/log_metrics/")
         async def log_metrics(node_name: str, request: Request):
@@ -99,6 +104,12 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
                 response = await client.get(
                     f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
                 )
+    
+    async def entry_exists(self, resource_node_name: str, location: str):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.get_callee_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
+            exists = response.json()["exists"]
+            return exists
 
     async def get_num_entries(self, resource_node_name: str, state: str):
         async with httpx.AsyncClient() as client:

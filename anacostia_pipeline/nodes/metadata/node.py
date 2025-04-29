@@ -61,6 +61,9 @@ class BaseMetadataStoreNode(BaseNode):
     def update_entry(self, resource_node_name: str, entry_id: int, **kwargs) -> None:
         pass
 
+    def entry_exists(self, resource_node_name: str, location: str) -> bool:
+        pass
+
     def get_num_entries(self, resource_node_name: str, state: str) -> int:
         pass
 

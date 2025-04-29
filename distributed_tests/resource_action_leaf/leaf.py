@@ -38,7 +38,7 @@ class EvalNode(BaseActionNode):
         self, name: str, metadata_store_rpc: SQLMetadataRPCCaller, root_data_rpc: FilesystemStoreRPCCaller, leaf_data_node: FilesystemStoreNode,
         loggers: Logger | List[Logger] = None
     ) -> None:
-        super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
+        super().__init__(name=name, predecessors=[leaf_data_node], wait_for_connection=True, loggers=loggers)
         self.metadata_store_rpc = metadata_store_rpc
         self.root_data_rpc = root_data_rpc
         self.leaf_data_node = leaf_data_node
@@ -46,6 +46,7 @@ class EvalNode(BaseActionNode):
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
+        """
         try:
             await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
         except Exception as e:
@@ -63,6 +64,7 @@ class EvalNode(BaseActionNode):
             self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
         except Exception as e:
             self.log(f"Failed to list artifacts: {e}", level="ERROR")
+        """
             
         return True
 

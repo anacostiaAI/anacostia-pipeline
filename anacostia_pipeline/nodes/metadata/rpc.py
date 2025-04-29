@@ -32,6 +32,9 @@ class BaseMetadataRPCCaller(BaseRPCCaller):
     async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
         raise NotImplementedError("create_entry method not implemented in SqliteMetadataRPCCaller")
     
+    async def entry_exists(self, resource_node_name: str, location: str):
+        raise NotImplementedError("entry_exists method not implemented in SqliteMetadataRPCCaller")
+    
     async def log_metrics(self, node_name: str, **kwargs):
         raise NotImplementedError("log_metrics method not implemented in SqliteMetadataRPCCaller")
     
