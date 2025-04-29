@@ -131,7 +131,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         The default trigger for the FilesystemStoreNode. 
         resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
-        if await self.get_num_artifacts("new") > 0:
+        num_new_artifacts = await self.get_num_artifacts("new")
+        if num_new_artifacts > 0:
             await self.trigger(message=f"New files detected in {self.resource_path}")
     
     def _save_artifact_hook(self, filepath: str, *args, **kwargs) -> None:

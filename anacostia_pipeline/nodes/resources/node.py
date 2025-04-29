@@ -49,7 +49,6 @@ class BaseResourceNode(BaseNode, ABC):
 
         self.metadata_store = metadata_store
         self.metadata_store_caller = metadata_store_caller
-        self.log(f"node: {self.name} metadata_store_rpc: {self.metadata_store_caller}", level='INFO')
         self.resource_event = threading.Event()
 
     @abstractmethod
@@ -181,7 +180,7 @@ class BaseResourceNode(BaseNode, ABC):
                     self.metadata_store.log_trigger(node_name=self.name, message=message)
                 
                 if self.metadata_store_caller is not None:
-                    await self.metadata_store.log_trigger(node_name=self.name, message=message)
+                    await self.metadata_store_caller.log_trigger(node_name=self.name, message=message)
             
             self.resource_event.set()
 
