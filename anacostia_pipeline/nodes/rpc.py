@@ -74,7 +74,7 @@ class BaseRPCCallee(FastAPI):
 class BaseRPCCaller(FastAPI):
     def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.caller_host = caller_host
+        self.caller_host = caller_host      # currently caller_host and caller_port are only used for logging
         self.caller_port = caller_port
         self.caller_name = caller_name
         self.callee_url = None
@@ -89,9 +89,9 @@ class BaseRPCCaller(FastAPI):
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(callee: RPCConnectionModel):
-            self.log(f"Callee '{callee.url}' connected to caller at '{self.caller_name}'", level="INFO")
+            self.log(f"Callee '{callee.url}' connected to caller at 'http://{self.caller_host}:{self.caller_port}/{self.caller_name}'", level="INFO")
             self.callee_url = callee.url
-            return {"message": f"Caller '{self.caller_name}' connected to callee at '{callee.url}'"}
+            return {"message": f"Caller 'http://{self.caller_host}:{self.caller_port}/{self.caller_name}' connected to callee at '{callee.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
