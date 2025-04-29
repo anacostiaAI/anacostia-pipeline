@@ -188,12 +188,19 @@ class RootPipelineServer(FastAPI):
 
             responses = await asyncio.gather(*task)
 
-            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
             for response in responses:
+                # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
                 response_data = response.json()
                 self.leaf_models.append(response_data)
-                # self.logger.info(f"leaf data: {response_data}")
+
+                # Extract the node name and type from the responses and add them to the metadata store
+                for node_data in response_data["nodes"]:
+                    node_name = node_data["name"]
+                    node_type = node_data["type"]
             
+                    if self.metadata_store.node_exists(node_name=node_name) is False:
+                        self.metadata_store.add_node(node_name=node_name, node_type=node_type)
+
             # Connect each node to its remote successors
             task = []
             for node in self.pipeline.nodes:
@@ -206,15 +213,6 @@ class RootPipelineServer(FastAPI):
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
             responses = await asyncio.gather(*task)
-
-            # Extract the node name and type from the responses and add them to the metadata store
-            for response in responses:
-                response_data = response.json()
-                node_name = response_data["node_name"]
-                node_type = response_data["node_type"]
-
-                if self.metadata_store.node_exists(node_name=node_name) is False:
-                    self.metadata_store.add_node(node_name=node_name, node_type=node_type)
 
             # Connect RPC callees to RPC callers
             task = []
