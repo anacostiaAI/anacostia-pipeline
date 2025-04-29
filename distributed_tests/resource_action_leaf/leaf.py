@@ -102,9 +102,9 @@ class EvalNode(BaseActionNode):
         return True
 
 
-metadata_store_rpc = SQLMetadataRPCCaller(caller_name="metadata_store_rpc")
+metadata_store_caller = SQLMetadataRPCCaller(caller_name="metadata_store_rpc")
 leaf_data_node = FilesystemStoreNode(
-    name="leaf_data_node", resource_path=shakespeare_input_path, metadata_store_rpc=metadata_store_rpc, wait_for_connection=True
+    name="leaf_data_node", resource_path=shakespeare_input_path, metadata_store_caller=metadata_store_caller, wait_for_connection=True
 )
 shakespeare_eval = EvalNode(name="shakespeare_eval", leaf_data_node=leaf_data_node)
 
@@ -118,7 +118,7 @@ service = LeafPipelineServer(
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_rpc],
+    rpc_callers=[metadata_store_caller],
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )
