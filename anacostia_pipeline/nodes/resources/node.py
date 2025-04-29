@@ -92,12 +92,9 @@ class BaseResourceNode(BaseNode, ABC):
         """
 
         if self.metadata_store is not None:
-            self.log(f"create_entry in metadata_store: {filepath}", level='INFO')
             self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
 
-        self.log(f"metadata_store_caller: {self.metadata_store_caller}")
         if self.metadata_store_caller is not None:
-            self.log(f"create_entry in metadata_store_rpc: {filepath}", level='INFO')
             await self.metadata_store_caller.create_entry(self.name, filepath=filepath, state="new")
         
     async def record_current(self, filepath: str) -> None:
