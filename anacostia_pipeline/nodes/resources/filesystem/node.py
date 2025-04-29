@@ -23,7 +23,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         name: str, 
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
-        metadata_store_rpc: BaseMetadataRPCCaller = None,
+        metadata_store_caller: BaseMetadataRPCCaller = None,
         init_state: str = "new", 
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
@@ -55,7 +55,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             name=name, 
             resource_path=resource_path, 
             metadata_store=metadata_store, 
-            metadata_store_rpc=metadata_store_rpc,
+            metadata_store_caller=metadata_store_caller,
             remote_predecessors=remote_predecessors,
             remote_successors=remote_successors,
             caller_url=caller_url,
@@ -88,8 +88,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                                     self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
                                     await self.record_new(filepath)
                             
-                            if self.metadata_store_rpc is not None:
-                                entry_exists = await self.metadata_store_rpc.entry_exists(self.name, filepath)
+                            if self.metadata_store_caller is not None:
+                                entry_exists = await self.metadata_store_caller.entry_exists(self.name, filepath)
                                 if entry_exists is False:
                                     self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
                                     await self.record_new(filepath)

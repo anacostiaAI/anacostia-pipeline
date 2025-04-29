@@ -30,7 +30,10 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         @self.get("/entry_exists/")
         async def entry_exists(resource_node_name: str, location: str):
             exists = self.metadata_store.entry_exists(resource_node_name, location)
-            return {"exists": exists}
+            if exists:
+                return {"exists": True}
+            else:
+                return {"exists": False}
 
         @self.post("/log_metrics/")
         async def log_metrics(node_name: str, request: Request):
