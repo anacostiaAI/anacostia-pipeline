@@ -7,6 +7,7 @@ import traceback
 import time
 from abc import ABC, abstractmethod
 import asyncio
+import httpx
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -80,9 +81,28 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         filepath = os.path.join(root, filename)
                         filepath = filepath.removeprefix(self.path)     # Remove the path prefix
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
-                        if self.metadata_store.entry_exists(self.name, filepath) is False:
-                            self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
-                            await self.record_new(filepath)
+
+                        try:
+                            if self.metadata_store is not None:
+                                if self.metadata_store.entry_exists(self.name, filepath) is False:
+                                    self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
+                                    await self.record_new(filepath)
+                            
+                            if self.metadata_store_rpc is not None:
+                                entry_exists = await self.metadata_store_rpc.entry_exists(self.name, filepath)
+                                if entry_exists is False:
+                                    self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
+                                    await self.record_new(filepath)
+
+                        except httpx.ConnectError as e:
+                            self.log(f"FilesystemStoreNode '{self.name}' is no longer connected: {traceback.format_exc()}", level="ERROR")
+                            # Note: we continue here because we want to keep trying to check the resource until it is available
+                            # with that said, we should add an option for the user to specify the number of times to try before giving up
+                            # and throwing an exception
+                            # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that.
+                            # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
+                            # e.g., send an email to the data science team to let everyone know the resource is corrupted,
+                            # or just not move the file to current.
 
                 if self.exit_event.is_set() is True: break
                 try:

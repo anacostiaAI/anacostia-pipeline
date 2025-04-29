@@ -71,7 +71,8 @@ haiku_data_store_path = f"{input_path}/haiku"
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
+    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc",
+    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/leaf_data_node", f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
 )
 haiku_data_store = FilesystemStoreNode(
     name="haiku_data_store",
@@ -79,7 +80,8 @@ haiku_data_store = FilesystemStoreNode(
     metadata_store=metadata_store,
     init_state="new",
     max_old_samples=None,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/root_data_rpc"
+    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/root_data_rpc",
+    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
 )
 
 pipeline = RootPipeline(
