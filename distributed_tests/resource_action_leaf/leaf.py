@@ -20,11 +20,12 @@ leaf_test_path = "./testing_artifacts"
 path = f"./leaf-artifacts"
 input_path = f"{path}/input_artifacts"
 output_path = f"{path}/output_artifacts"
-shakespeare_data_store_path = f"{input_path}/shakespeare"
+shakespeare_input_path = f"{input_path}/shakespeare"
+shakespeare_output_path = f"{output_path}/shakespeare"
 
 # Create a file for Anacostia logs
 log_path = f"{leaf_test_path}/anacostia.log"
-log_file_handler = logging.FileHandler(log_path)
+log_file_handler = logging.FileHandler(log_path, mode='a')
 log_file_handler.setLevel(logging.INFO)
 log_formatter = logging.Formatter(
     fmt='LEAF %(asctime)s - %(levelname)s - %(message)s',
@@ -69,12 +70,10 @@ LOGGING_CONFIG = {
 
 class EvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SQLMetadataRPCCaller, root_data_rpc: FilesystemStoreRPCCaller, leaf_data_node: FilesystemStoreNode,
+        self, name: str, leaf_data_node: FilesystemStoreNode,
         loggers: Logger | List[Logger] = None
     ) -> None:
-        super().__init__(name=name, predecessors=[leaf_data_node], wait_for_connection=True, loggers=loggers)
-        self.metadata_store_rpc = metadata_store_rpc
-        self.root_data_rpc = root_data_rpc
+        super().__init__(name=name, predecessors=[leaf_data_node], loggers=loggers)
         self.leaf_data_node = leaf_data_node
     
     async def execute(self, *args, **kwargs) -> bool:
@@ -104,28 +103,22 @@ class EvalNode(BaseActionNode):
 
 
 metadata_store_rpc = SQLMetadataRPCCaller(caller_name="metadata_store_rpc")
-root_data_rpc = FilesystemStoreRPCCaller(caller_name="root_data_rpc", storage_directory=shakespeare_data_store_path)
-
-leaf_data_node = FilesystemStoreNode(name="leaf_data_node", resource_path=shakespeare_data_store_path, metadata_store_rpc=metadata_store_rpc)
-shakespeare_eval = EvalNode(
-    name="shakespeare_eval", 
-    metadata_store_rpc=metadata_store_rpc, 
-    root_data_rpc=root_data_rpc, 
-    leaf_data_node=leaf_data_node
+leaf_data_node = FilesystemStoreNode(
+    name="leaf_data_node", resource_path=shakespeare_input_path, metadata_store_rpc=metadata_store_rpc, wait_for_connection=True
 )
+shakespeare_eval = EvalNode(name="shakespeare_eval", leaf_data_node=leaf_data_node)
 
 pipeline = LeafPipeline(
     name="leaf_pipeline",
     nodes=[leaf_data_node, shakespeare_eval], 
     loggers=logger
 )
-
 service = LeafPipelineServer(
     name="leaf", 
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_rpc, root_data_rpc],
+    rpc_callers=[metadata_store_rpc],
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )

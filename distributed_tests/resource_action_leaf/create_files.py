@@ -14,7 +14,5 @@ if __name__ == "__main__":
 
     time.sleep(6)
     for i in range(10):
-        create_file(f"{haiku_data_store_path}/test_root_file{i}.txt", f"test root file {i}")
-        time.sleep(1.5)
         create_file(f"{shakespeare_data_store_path}/test_leaf_file{i}.txt", f"test leaf file {i}")
         time.sleep(1.5)

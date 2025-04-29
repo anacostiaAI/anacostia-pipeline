@@ -4,7 +4,6 @@ import argparse
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
-from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 
 
 parser = argparse.ArgumentParser()
@@ -18,7 +17,7 @@ root_test_path = "./testing_artifacts"
 
 # Create a file for Anacostia logs
 log_path = f"{root_test_path}/anacostia.log"
-log_file_handler = logging.FileHandler(log_path)
+log_file_handler = logging.FileHandler(log_path, mode='a')
 log_file_handler.setLevel(logging.INFO)
 log_formatter = logging.Formatter(
     fmt='ROOT %(asctime)s - %(levelname)s - %(message)s',
@@ -67,25 +66,14 @@ output_path = f"{path}/output_artifacts"
 metadata_store_path = f"{input_path}/metadata_store"
 haiku_data_store_path = f"{input_path}/haiku"
 
-
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
     caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc",
-    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/leaf_data_node", f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
+    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/leaf_data_node"]
 )
-haiku_data_store = FilesystemStoreNode(
-    name="haiku_data_store",
-    resource_path=haiku_data_store_path,
-    metadata_store=metadata_store,
-    init_state="new",
-    max_old_samples=None,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/root_data_rpc",
-    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
-)
-
 pipeline = RootPipeline(
-    nodes=[metadata_store, haiku_data_store],
+    nodes=[metadata_store],
     loggers=logger
 )
 
