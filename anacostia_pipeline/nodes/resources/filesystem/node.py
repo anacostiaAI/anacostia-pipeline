@@ -89,13 +89,17 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                                     await self.record_new(filepath)
                             
                             if self.metadata_store_caller is not None:
-                                entry_exists = await self.metadata_store_caller.entry_exists(self.name, filepath)
+                                try:
+                                    entry_exists = await self.metadata_store_caller.entry_exists(self.name, filepath)
+                                except httpx.ConnectError as e:
+                                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                                
                                 if entry_exists is False:
                                     self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
                                     await self.record_new(filepath)
-
-                        except httpx.ConnectError as e:
-                            self.log(f"FilesystemStoreNode '{self.name}' is no longer connected: {traceback.format_exc()}", level="ERROR")
+                        
+                        except Exception as e:
+                            self.log(f"Unexpected error in monitoring logic for '{self.name}': {traceback.format_exc()}", level="ERROR")
                             # Note: we continue here because we want to keep trying to check the resource until it is available
                             # with that said, we should add an option for the user to specify the number of times to try before giving up
                             # and throwing an exception
