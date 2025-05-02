@@ -37,6 +37,10 @@ class LeafPipelineServer(FastAPI):
         ssl_keyfile: str = None, 
         ssl_certfile: str = None, 
         uvicorn_access_log_config: Dict[str, Any] = None,
+        allow_origins: List[str] = None,
+        allow_credentials: bool = True,
+        allow_methods: List[str] = ["*"],
+        allow_headers: List[str] = ["*"],
         logger=Logger, *args, **kwargs
     ):
 
@@ -71,6 +75,17 @@ class LeafPipelineServer(FastAPI):
         self.logger = logger
         self.queue = Queue()
         self.background_task = None
+
+        if allow_origins is None and allow_credentials is True:
+            raise ValueError("allow_origins must be specified when allow_credentials is set to True")
+        
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=allow_origins,
+            allow_credentials=allow_credentials,
+            allow_methods=allow_methods,
+            allow_headers=allow_headers,
+        )
 
         config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, log_config=uvicorn_access_log_config)
         self.server = uvicorn.Server(config)
