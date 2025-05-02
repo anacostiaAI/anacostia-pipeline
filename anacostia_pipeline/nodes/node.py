@@ -74,7 +74,7 @@ class BaseNode(Thread):
         self.connection_event = Event()
         self.pause_event.set()
         self.queue: Queue | None = None
-        self.app: BaseGUI | None = None
+        self.gui: BaseGUI | None = None
         self.connector: Connector | None = None
 
         super().__init__(name=name)
@@ -88,9 +88,14 @@ class BaseNode(Thread):
         self.connector = Connector(self, host=host, port=port)
         return self.connector
 
-    def setup_node_GUI(self):
-        self.app = BaseGUI(self)
-        return self.app
+    def setup_node_GUI(self, host: str, port: int):
+        self.gui = BaseGUI(node=self, host=host, port=port)
+        return self.gui
+    
+    def get_node_gui(self):
+        if self.gui is None:
+            raise ValueError("Node GUI not set up")
+        return self.gui
     
     def setup_rpc_callee(self, host: str, port: int):
         self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)

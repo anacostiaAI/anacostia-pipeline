@@ -64,8 +64,15 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             monitoring=monitoring
         )
     
-    def setup_node_GUI(self) -> FilesystemStoreGUI:
-        return FilesystemStoreGUI(self, self.metadata_store)
+    def setup_node_GUI(self, host: str, port: int) -> FilesystemStoreGUI:
+        self.gui = FilesystemStoreGUI(
+            node=self, 
+            host=host,
+            port=port,
+            metadata_store=self.metadata_store, 
+            metadata_store_caller=self.metadata_store_caller
+        )
+        return self.gui
     
     def setup_rpc_callee(self, host, port):
         self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
@@ -93,6 +100,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                                     entry_exists = await self.metadata_store_caller.entry_exists(self.name, filepath)
                                 except httpx.ConnectError as e:
                                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                                    # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
                                 
                                 if entry_exists is False:
                                     self.log(f"'{self.name}' detected file: {filepath}", level="INFO")
@@ -100,27 +108,20 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         
                         except Exception as e:
                             self.log(f"Unexpected error in monitoring logic for '{self.name}': {traceback.format_exc()}", level="ERROR")
-                            # Note: we continue here because we want to keep trying to check the resource until it is available
-                            # with that said, we should add an option for the user to specify the number of times to try before giving up
-                            # and throwing an exception
-                            # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that.
-                            # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
-                            # e.g., send an email to the data science team to let everyone know the resource is corrupted,
-                            # or just not move the file to current.
+                            # If an exception is raised here, it means one of the self.record_new(filepath) calls failed.
 
                 if self.exit_event.is_set() is True: break
                 try:
                     await self.resource_trigger()
-
                 except Exception as e:
-                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
-                        # Note: we continue here because we want to keep trying to check the resource until it is available
-                        # with that said, we should add an option for the user to specify the number of times to try before giving up
-                        # and throwing an exception
-                        # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
-                        # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
-                        # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
-                        # or just not move the file to current.
+                    self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}", level="ERROR")
+                    # Note: we continue here because we want to keep trying to check the resource until it is available
+                    # with that said, we should add an option for the user to specify the number of times to try before giving up
+                    # and throwing an exception
+                    # Note: we also continue because we don't want to stop checking in the case of a corrupted file or something like that. 
+                    # We should also think about adding an option for the user to specify what actions to take in the case of an exception,
+                    # e.g., send an email to the data science team to let everyone know the resource is corrupted, 
+                    # or just not move the file to current.
                 
                 # sleep for a while before checking again
                 time.sleep(0.1)

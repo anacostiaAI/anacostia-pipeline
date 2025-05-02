@@ -7,9 +7,12 @@ from anacostia_pipeline.nodes.fragments import default_node_page
 
 
 class BaseGUI(FastAPI):
-    def __init__(self, node, use_default_router=True, *args, **kwargs):
+    def __init__(self, node, host: str, port: int, use_default_router=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
+        self.host = host
+        self.port = port
+
         self.client = httpx.AsyncClient()
 
         @self.get("/status", response_class=HTMLResponse)
@@ -23,6 +26,9 @@ class BaseGUI(FastAPI):
 
     def get_node_prefix(self):
         return f"/{self.node.name}/hypermedia"
+    
+    def get_gui_url(self):
+        return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
     
     def get_endpoint(self):
         return f"{self.get_node_prefix()}/home"

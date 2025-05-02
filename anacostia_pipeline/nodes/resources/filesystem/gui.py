@@ -10,11 +10,16 @@ from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 class FilesystemStoreGUI(BaseGUI):
-    def __init__(self, node, metadata_store, *args, **kwargs):
-        super().__init__(node, use_default_router=False, *args, **kwargs)
-        self.metadata_store = metadata_store
+    def __init__(self, node, host: str, port: int, metadata_store = None, metadata_store_caller = None, *args, **kwargs):
+        super().__init__(node, host=host, port=port, use_default_router=False, *args, **kwargs)
 
-        self.event_source = f"{self.get_node_prefix()}/table_update_events"
+        if metadata_store is None and metadata_store_caller is None:
+            raise ValueError("Either metadata_store or metadata_store_rpc must be provided")
+
+        self.metadata_store = metadata_store
+        self.metadata_store_caller = metadata_store_caller
+
+        self.event_source = f"{self.get_gui_url()}/table_update_events"
         self.event_name = "TableUpdate"
 
         self.displayed_file_entries = None
@@ -42,7 +47,12 @@ class FilesystemStoreGUI(BaseGUI):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
+            if self.metadata_store is not None:
+                file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
+            else:
+                if self.metadata_store_caller is not None:
+                    file_entries = await self.metadata_store_caller.get_entries(resource_node_name=self.node.name)
+
             self.displayed_file_entries = file_entries
             file_entries.reverse()
             file_entries = format_file_entries(file_entries)
@@ -56,8 +66,13 @@ class FilesystemStoreGUI(BaseGUI):
         @self.get("/table_update_events", response_class=HTMLResponse)
         async def samples(request: Request):
 
-            def get_table_update_events() -> Tuple[List[Dict]]:
-                file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
+            async def get_table_update_events() -> Tuple[List[Dict]]:
+                file_entries = None
+                if self.metadata_store is not None:
+                    file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
+                else:
+                    if self.metadata_store_caller is not None:
+                        file_entries = await self.metadata_store_caller.get_entries(resource_node_name=self.node.name)
 
                 added_rows = []
                 entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]
@@ -78,7 +93,7 @@ class FilesystemStoreGUI(BaseGUI):
                 print("event source /table_update_events connected")
                 while True:
                     try:
-                        added_rows, state_changes = get_table_update_events()
+                        added_rows, state_changes = await get_table_update_events()
 
                         if len(added_rows) > 0: 
                             formatted_dict = format_file_entries(added_rows)        # add information into dictionaries to prepare for html conversion

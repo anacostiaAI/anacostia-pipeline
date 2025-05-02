@@ -72,14 +72,6 @@ class LeafPipelineServer(FastAPI):
         self.queue = Queue()
         self.background_task = None
 
-        self.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-
         config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, log_config=uvicorn_access_log_config)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
@@ -89,7 +81,7 @@ class LeafPipelineServer(FastAPI):
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
-            node_gui: BaseGUI = node.setup_node_GUI()
+            node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
         
@@ -142,7 +134,7 @@ class LeafPipelineServer(FastAPI):
 
         edges = []
         for leaf_data_node, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
-            subapp: BaseGUI = leaf_node.setup_node_GUI()
+            subapp: BaseGUI = leaf_node.get_node_gui()
             leaf_data_node["id"] = leaf_data_node["name"]
             leaf_data_node["label"] = leaf_data_node["name"]
             leaf_data_node["origin_url"] = f"http://{self.host}:{self.port}"

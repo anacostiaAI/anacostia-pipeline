@@ -45,10 +45,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         """
         raise NotImplementedError("The setup method must be overridden in the child class.") 
     
-    def setup_node_GUI(self):
+    def setup_node_GUI(self, host: str, port: int):
         """Override to setup the node GUI."""
-        self._node_gui = SQLMetadataStoreGUI(self)
-        return self._node_gui
+        self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port)
+        return self.gui
 
     def setup_rpc_callee(self, host: str, port: int):
         """Override to setup the RPC callee."""
@@ -171,6 +171,9 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     ) -> None:
         node_id = self.get_node_id(resource_node_name)
 
+        if self.entry_exists(resource_node_name, filepath):
+            raise ValueError(f"Entry with location '{filepath}' already exists for node '{resource_node_name}'.")
+
         with self.get_session() as session:
             entry = Artifact(
                 run_id=run_id,
@@ -185,6 +188,28 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             )
             session.add(entry)
     
+    def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]) -> None:
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            for entry in entries:
+                if self.entry_exists(resource_node_name, entry["location"]):
+                    raise ValueError(f"Entry with location '{entry['location']}' already exists for node '{resource_node_name}'.")
+
+                new_entry = Artifact(
+                    run_id=entry["run_id"],
+                    node_id=node_id,
+                    location=entry["location"],
+                    created_at=entry["created_at"],
+                    end_time=entry["end_time"],
+                    state="new",
+                    hash=entry["hash"],
+                    hash_algorithm=entry["hash_algorithm"],
+                    size=entry["size"],
+                    content_type=entry["content_type"]
+                )
+                session.add(new_entry)
+
     def entry_exists(self, resource_node_name: str, filepath: str) -> bool:
         node_id = self.get_node_id(resource_node_name)
 

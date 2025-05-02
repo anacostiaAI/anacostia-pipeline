@@ -3,12 +3,12 @@ import logging
 from logging import Logger
 import argparse
 
+from fastapi.middleware.cors import CORSMiddleware
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCaller
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCaller
 
 
 parser = argparse.ArgumentParser()
@@ -122,4 +122,12 @@ service = LeafPipelineServer(
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )
+service.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 service.run()

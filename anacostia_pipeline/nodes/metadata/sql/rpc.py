@@ -1,5 +1,7 @@
-from typing import List, Union
+from typing import List, Union, Dict
 from logging import Logger
+import json
+from datetime import datetime
 
 from fastapi import Request
 import httpx
@@ -26,6 +28,12 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         @self.get("/create_entry/")
         async def create_entry(resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
             self.metadata_store.create_entry(resource_node_name, filepath, state, run_id)
+        
+        @self.post("/merge_artifacts_table/")
+        async def merge_artifacts_table(resource_node_name: str, request: Request):
+            entries = await request.json()
+            entries = json.loads(entries)
+            self.metadata_store.merge_artifacts_table(resource_node_name, entries)
         
         @self.get("/entry_exists/")
         async def entry_exists(resource_node_name: str, location: str):
@@ -108,6 +116,10 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
                     f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
                 )
     
+    async def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{self.get_callee_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=entries)
+    
     async def entry_exists(self, resource_node_name: str, location: str):
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self.get_callee_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
@@ -187,8 +199,15 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
             num_entries = response.json()["num_entries"]
             return num_entries
     
-    async def get_entries(self, resource_node_name: str, state: str):
+    async def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self.get_callee_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
             entries = response.json()
+
+            for entry in entries:
+                entry["created_at"] = datetime.fromisoformat(entry["created_at"])
+
+                if entry["end_time"] is not None:
+                    entry["end_time"] = datetime.fromisoformat(entry["end_time"])
+            
             return entries
