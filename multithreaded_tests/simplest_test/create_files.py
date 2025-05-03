@@ -2,7 +2,7 @@ import time
 
 
 
-sqlalchemy_tests_path = "./testing_artifacts/sqlalchemy_tests"
+sqlalchemy_tests_path = "./testing_artifacts"
 data_store_path = f"{sqlalchemy_tests_path}/data_store"
 
 

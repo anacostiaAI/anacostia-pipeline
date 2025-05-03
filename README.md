@@ -55,7 +55,7 @@ from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 # Create the testing artifacts directory for the SQLAlchemy tests
-tests_path = "./testing_artifacts/sqlalchemy_tests"
+tests_path = "./testing_artifacts"
 if os.path.exists(tests_path) is True:
     shutil.rmtree(tests_path)
 os.makedirs(tests_path)
@@ -63,7 +63,7 @@ metadata_store_path = f"{tests_path}/metadata_store"
 data_store_path = f"{tests_path}/data_store"
 
 # override the BaseActionNode to create a custom action node. This is just a placeholder for the actual implementation
-class LoggingNode(BaseActionNode):
+class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None) -> None:
         super().__init__(name=name, predecessors=predecessors)
     
@@ -74,10 +74,10 @@ class LoggingNode(BaseActionNode):
 # Create the nodes
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
-logging_node = LoggingNode("logging_node", predecessors=[data_store])
+printing_node = PrintingNode("logging_node", predecessors=[data_store])
 
 # Create the pipeline
-pipeline = RootPipeline(nodes=[metadata_store, data_store, logging_node])
+pipeline = RootPipeline(nodes=[metadata_store, data_store, printing_node])
 
 # Create the web server
 webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
@@ -90,8 +90,8 @@ To trigger the pipeline:
 ```python
 import time
 
-logging_tests_path = "./testing_artifacts/logging_tests"
-data_store_path = f"{logging_tests_path}/data_store"
+tests_path = "./testing_artifacts"
+data_store_path = f"{tests_path}/data_store"
 
 def create_file(file_path, content):
     try:
