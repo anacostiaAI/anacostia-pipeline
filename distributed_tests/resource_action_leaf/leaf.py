@@ -3,7 +3,6 @@ import logging
 from logging import Logger
 import argparse
 
-from fastapi.middleware.cors import CORSMiddleware
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
