@@ -37,13 +37,12 @@ class LeafPipelineServer(FastAPI):
         ssl_keyfile: str = None, 
         ssl_certfile: str = None, 
         uvicorn_access_log_config: Dict[str, Any] = None,
-        allow_origins: List[str] = None,
-        allow_credentials: bool = True,
+        allow_origins: List[str] = ["*"],
+        allow_credentials: bool = False,
         allow_methods: List[str] = ["*"],
         allow_headers: List[str] = ["*"],
         logger=Logger, *args, **kwargs
     ):
-
         @asynccontextmanager
         async def lifespan(app: LeafPipelineServer):
             app.logger.info(f"Leaf server '{app.name}' started")
@@ -76,8 +75,8 @@ class LeafPipelineServer(FastAPI):
         self.queue = Queue()
         self.background_task = None
 
-        if allow_origins is None and allow_credentials is True:
-            raise ValueError("allow_origins must be specified when allow_credentials is set to True")
+        if allow_credentials is True and allow_origins == ["*"]:
+            raise ValueError("If allow_credentials is True, allow_origins must be specified")
         
         self.add_middleware(
             CORSMiddleware,
