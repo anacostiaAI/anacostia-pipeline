@@ -3,6 +3,8 @@ from logging import Logger
 import threading
 from abc import ABC, abstractmethod
 
+import httpx
+
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
@@ -82,6 +84,20 @@ class BaseResourceNode(BaseNode, ABC):
         """Override to specify how the resource is triggered."""
         pass
 
+    async def entry_exists(self, filepath: str) -> bool:
+        if self.metadata_store is not None:
+            return self.metadata_store.entry_exists(self.name, filepath)
+        
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_caller is not None:
+                try:
+                    return await self.metadata_store_caller.entry_exists(self.name, filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                    # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
+            
+
     async def record_new(self, filepath: str) -> None:
         """
         Record a new artifact in the metadata store.
@@ -93,8 +109,20 @@ class BaseResourceNode(BaseNode, ABC):
         if self.metadata_store is not None:
             self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
 
-        if self.metadata_store_caller is not None:
-            await self.metadata_store_caller.create_entry(self.name, filepath=filepath, state="new")
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_caller is not None:
+                try:
+                    await self.metadata_store_caller.create_entry(self.name, filepath=filepath, state="new")
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
+                                
         
     async def record_current(self, filepath: str) -> None:
         """
@@ -179,15 +207,33 @@ class BaseResourceNode(BaseNode, ABC):
                 if self.metadata_store is not None:
                     self.metadata_store.log_trigger(node_name=self.name, message=message)
                 
-                if self.metadata_store_caller is not None:
-                    await self.metadata_store_caller.log_trigger(node_name=self.name, message=message)
+                if self.connection_event.is_set() is True:
+                    if self.metadata_store_caller is not None:
+                        await self.metadata_store_caller.log_trigger(node_name=self.name, message=message)
             
             self.resource_event.set()
+
+    def leaf_setup(self):
+        self.status = Status.INITIALIZING
+        self.setup()
 
     async def run_async(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
             self.start_monitoring()
+
+        if self.wait_for_connection:
+            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
+            
+            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
+            self.connection_event.wait()
+            if self.exit_event.is_set(): return
+
+            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
+
+        if self.metadata_store_caller is not None and self.metadata_store is not None and self.wait_for_connection is True:
+            entries = self.metadata_store.get_entries(self.name)
+            await self.metadata_store_caller.merge_artifacts_table(self.name, entries)
 
         while self.exit_event.is_set() is False:
             
