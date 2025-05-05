@@ -53,7 +53,10 @@ class BaseMetadataStoreNode(BaseNode):
         pass
     
     def create_entry(self, resource_node_name: str, **kwargs) -> None:
-        raise NotImplementedError
+        pass
+
+    def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]) -> None:
+        pass
 
     def get_entries(self, resource_node_name: str, state: str) -> List[dict]:
         pass

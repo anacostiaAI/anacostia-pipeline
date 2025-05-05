@@ -244,6 +244,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     Artifact.created_at,
                     Artifact.end_time,
                     Artifact.state,
+                    Artifact.hash,
+                    Artifact.hash_algorithm,
+                    Artifact.size,
+                    Artifact.content_type,
                     Node.node_name
                 )
                 .join(Node, Artifact.node_id == Node.id)
@@ -264,6 +268,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "created_at": row.created_at,
                     "end_time": row.end_time,
                     "state": row.state,
+                    "hash": row.hash,
+                    "hash_algorithm": row.hash_algorithm,
+                    "size": row.size,
+                    "content_type": row.content_type,
                     "node_name": row.node_name,
                 }
                 for row in result

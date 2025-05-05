@@ -33,6 +33,12 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
         async def merge_artifacts_table(resource_node_name: str, request: Request):
             entries = await request.json()
             entries = json.loads(entries)
+            
+            for entry in entries:
+                entry["created_at"] = datetime.fromisoformat(entry["created_at"])
+                if entry["end_time"] is not None:
+                    entry["end_time"] = datetime.fromisoformat(entry["end_time"])
+            
             self.metadata_store.merge_artifacts_table(resource_node_name, entries)
         
         @self.get("/entry_exists/")
@@ -118,7 +124,10 @@ class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
     
     async def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=entries)
+            for entry in entries:
+                entry["created_at"] = entry["created_at"].isoformat()
+            json_data = json.dumps(entries, indent=4)
+            response = await client.post(f"{self.get_callee_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=json_data)
     
     async def entry_exists(self, resource_node_name: str, location: str):
         async with httpx.AsyncClient() as client:
