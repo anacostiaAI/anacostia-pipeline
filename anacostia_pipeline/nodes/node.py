@@ -275,6 +275,7 @@ class BaseNode(Thread):
         self.log(f"Node '{self.name}' exiting at {datetime.now()}")
         
         # set all events so loop can continue to next checkpoint and break out of loop
+        self.connection_event.set()
         self.pause_event.set()
         self.exit_event.set()
 
