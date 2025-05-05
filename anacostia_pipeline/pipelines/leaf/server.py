@@ -129,6 +129,10 @@ class LeafPipelineServer(FastAPI):
                         if self.root_host is not None and self.root_port is not None:
                             await client.post(f"http://{self.root_host}:{self.root_port}/send_event", json=message)
                     
+                    except httpx.ConnectError as e:
+                        self.logger.error(f"Could not connect to root server at {self.root_host}:{self.root_port} - {str(e)}")
+                        self.queue.put(message)
+
                     except Exception as e:
                         self.logger.error(f"Error forwarding message: {str(e)}")
                         self.queue.put(message)
