@@ -14,4 +14,4 @@ if __name__ == "__main__":
 
     for i in range(10):
         create_file(f"{shakespeare_data_store_path}/test_leaf_file{i}.txt", f"test leaf file {i}")
-        time.sleep(1.5)
+        time.sleep(0.5)
