@@ -76,7 +76,7 @@ class LeafPipelineServer(FastAPI):
         self.background_task = None
 
         if allow_credentials is True and allow_origins == ["*"]:
-            raise ValueError("If allow_credentials is True, allow_origins must be specified")
+            raise ValueError("allow_origins cannot be [\"*\"] when allow_credentials = True")
         
         self.add_middleware(
             CORSMiddleware,
