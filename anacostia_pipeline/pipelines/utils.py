@@ -10,7 +10,6 @@ class ConnectionModel(BaseModel):
     root_port: int
     sender_name: str
     receiver_name: str
-    pipeline_id: str
 
 
 class EventModel(BaseModel):

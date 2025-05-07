@@ -9,10 +9,8 @@ import networkx as nx
 from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.network.receiver.node import ReceiverNode
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.utils.constants import Status
-
-from anacostia_pipeline.pipelines.root.pipeline import PipelineModel
 
 
 
@@ -52,10 +50,6 @@ class LeafPipeline:
         for node in nodes:
             for predecessor in node.predecessors:
                 self.graph.add_edge(predecessor, node)
-        
-        # set successors for all nodes
-        for node in nodes:
-            node.successors = list(self.graph.successors(node))
         
         # Set logger for all nodes
         if loggers is not None:
@@ -112,39 +106,50 @@ class LeafPipeline:
     def model(self):
         return PipelineModel(nodes=[n.model() for n in self.nodes])
     
-    def __setup_nodes(self, nodes: List[BaseNode]):
+    def setup_nodes(self):
         """
-        Sets up all the nodes in the pipeline.
+        Sets up all the registered nodes in topological order.
         """
 
-        threads: List[Thread] = []
-        for node in nodes:
-            node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-            thread = Thread(target=node.setup)
-            node.status = Status.INITIALIZING
-            thread.start()
-            threads.append(thread)
+        def __setup_nodes(nodes: List[BaseNode]):
+            """
+            Sets up all the nodes in the pipeline.
+            """
 
-        for thread, node in zip(threads, nodes):
-            thread.join()
-            node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}")
+            threads: List[Thread] = []
+            for node in nodes:
+                node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}", level="INFO")
+                thread = Thread(target=node.leaf_setup)
+                node.status = Status.INITIALIZING
+                thread.start()
+                threads.append(thread)
+
+            for thread, node in zip(threads, nodes):
+                thread.join()
+                node.log(f"--------------------------- finished setup phase of {node.name} at {datetime.now()}", level="INFO")
+
+        # set up metadata store nodes
+        metadata_stores: List[BaseMetadataStoreNode] = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
+        __setup_nodes(metadata_stores)
+
+        # set up resource nodes
+        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
+        __setup_nodes(resource_nodes)
+        
+        # set up action nodes
+        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
+        __setup_nodes(action_nodes)
+
+        # add nodes to metadata store's node list
+        for metadata_store in metadata_stores:
+            for node in self.nodes:
+                metadata_store.add_node(node.name, type(node).__name__)
 
     def launch_nodes(self):
         """
         Lanches all the registered nodes in topological order.
         """
-
-        # set up resource nodes
-        resource_nodes = [node for node in self.nodes if isinstance(node, BaseResourceNode) is True]
-        self.__setup_nodes(resource_nodes)
-        
-        # set up receiver nodes
-        receiver_nodes = [node for node in self.nodes if isinstance(node, ReceiverNode) is True]
-        self.__setup_nodes(receiver_nodes)
-
-        # set up action nodes
-        action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
-        self.__setup_nodes(action_nodes)
+        self.setup_nodes()
 
         # start nodes
         for node in self.nodes:

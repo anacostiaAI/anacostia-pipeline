@@ -12,7 +12,7 @@ from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.pipelines.root.app import RootPipelineApp
+from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
@@ -64,10 +64,10 @@ class ModelRetrainingNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
-        self.metadata_store.log_metrics(self, acc=1.00)
+        self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
-            self,
+            self.name,
             batch_size = 64, # how many independent sequences will we process in parallel?
             block_size = 256, # what is the maximum context length for predictions?
             max_iters = 2500,
@@ -82,7 +82,7 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
+        self.metadata_store.set_tags(self.name, test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
         # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
@@ -125,7 +125,7 @@ pipeline = RootPipeline(
 
 
 if __name__ == "__main__":
-    webserver = RootPipelineApp(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+    webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
     webserver.run()
 
     time.sleep(3)

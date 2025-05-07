@@ -8,8 +8,20 @@ from anacostia_pipeline.utils.constants import Result, Status
 
 
 class BaseActionNode(BaseNode):
-    def __init__(self, name: str, predecessors: List[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
-        super().__init__(name, predecessors, loggers=loggers)
+    def __init__(
+        self, 
+        name: str, 
+        predecessors: List[BaseNode], 
+        remote_predecessors: List[str] = None, 
+        remote_successors: List[str] = None,
+        caller_url: str = None,
+        wait_for_connection: bool = False,
+        loggers: Union[Logger, List[Logger]] = None
+    ) -> None:
+        super().__init__(
+            name, predecessors, remote_predecessors=remote_predecessors, 
+            remote_successors=remote_successors, caller_url=caller_url, wait_for_connection=wait_for_connection, loggers=loggers
+        )
 
     @BaseNode.log_exception
     def before_execution(self) -> None:
@@ -28,7 +40,7 @@ class BaseActionNode(BaseNode):
         pass
 
     @BaseNode.log_exception
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
@@ -58,24 +70,24 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    def run(self) -> None:
+    async def run_async(self) -> None:
         while self.exit_event.is_set() is False:
             self.status = Status.QUEUED
             self.wait_for_predecessors()
             
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.status = Status.PREPARATION
             self.before_execution()
 
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
 
             ret = None
             try:
-                if self.exit_event.is_set(): break
+                if self.exit_event.is_set(): return
                 self.status = Status.EXECUTING
-                ret = self.execute()
+                ret = await self.execute()
                 
-                if self.exit_event.is_set(): break
+                if self.exit_event.is_set(): return
                 
                 if ret:
                     self.status = Status.COMPLETE
@@ -85,23 +97,23 @@ class BaseActionNode(BaseNode):
                     self.on_failure()
 
             except Exception as e:
-                if self.exit_event.is_set(): break
-                self.log(f"Error executing node '{self.name}': {traceback.format_exc()}")
+                if self.exit_event.is_set(): return
+                self.log(f"Error executing action node '{self.name}': {traceback.format_exc()}", level="ERROR")
                 self.status = Status.ERROR
                 self.on_error(e)
 
             finally:
-                if self.exit_event.is_set(): break
+                if self.exit_event.is_set(): return
                 self.status = Status.CLEANUP
                 self.after_execution()
 
-            if self.exit_event.is_set(): break
-            self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
+            if self.exit_event.is_set(): return
+            await self.signal_successors(Result.SUCCESS if ret else Result.FAILURE)
 
             # checking for successors signals before signalling predecessors will 
             # ensure all action nodes have finished using the resource for current run
-            if self.exit_event.is_set(): break
+            if self.exit_event.is_set(): return
             self.wait_for_successors()
 
-            if self.exit_event.is_set(): break
-            self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)
+            if self.exit_event.is_set(): return
+            await self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)

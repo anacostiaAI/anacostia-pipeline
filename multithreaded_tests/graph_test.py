@@ -1,6 +1,5 @@
 from logging import Logger
 import os
-import time
 import logging
 import shutil
 from typing import List
@@ -11,7 +10,7 @@ from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.pipelines.root.app import RootPipelineApp
+from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.sqlite.node import SqliteMetadataStoreNode
@@ -34,13 +33,7 @@ class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, ) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, monitoring=False)
     
-    def create_filename(self) -> str:
-        return f"processed_data_file{self.get_num_artifacts('all')}.txt"
-
-    def save_artifact(self, content: str) -> None:
-        filename = self.create_filename()
-        filepath = os.path.join(self.path, filename)
-
+    def _save_artifact_hook(self, filepath: str, content: str) -> None:
         # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
         # that way, the Observer can see the file is already logged and ignore it
         self.record_current(filepath)
@@ -66,7 +59,7 @@ class ModelRetrainingNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors=[data_store, plots_store, model_registry])
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
         for filepath in self.data_store.list_artifacts("current"):
@@ -76,10 +69,10 @@ class ModelRetrainingNode(BaseActionNode):
         for filepath in self.data_store.list_artifacts("old"):
             self.log(f"Already trained on {filepath}", level="INFO")
         
-        self.metadata_store.log_metrics(self, acc=1.00)
+        self.metadata_store.log_metrics(self.name, acc=1.00)
         
         self.metadata_store.log_params(
-            self,
+            self.name,
             batch_size = 64, # how many independent sequences will we process in parallel?
             block_size = 256, # what is the maximum context length for predictions?
             max_iters = 2500,
@@ -94,10 +87,9 @@ class ModelRetrainingNode(BaseActionNode):
             split = 0.9    # first 90% will be train, rest val
         )
 
-        self.metadata_store.set_tags(self, test_name="Karpathy LLM test")
+        self.metadata_store.set_tags(self.name, test_name="Karpathy LLM test")
 
         self.log(f"Node '{self.name}' executed successfully.", level="INFO")
-        # time.sleep(2)     # simulate training time, uncomment to see edges light up in the dashboard
         return True
 
 
@@ -109,9 +101,9 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        self.metadata_store.log_metrics(self, shakespeare_test_loss=1.47)
+        self.metadata_store.log_metrics(self.name, shakespeare_test_loss=1.47)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -123,9 +115,9 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store = metadata_store
         super().__init__(name, predecessors, loggers)
     
-    def execute(self, *args, **kwargs) -> bool:
+    async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
-        self.metadata_store.log_metrics(self, haiku_test_loss=2.43)
+        self.metadata_store.log_metrics(self.name, haiku_test_loss=2.43)
         # time.sleep(2)     # simulate evaluation time, uncomment to see edges light up in the dashboard
         return True
 
@@ -175,10 +167,5 @@ pipeline = RootPipeline(
 
 
 if __name__ == "__main__":
-    webserver = RootPipelineApp(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+    webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
     webserver.run()
-
-    time.sleep(6)
-    for i in range(10):
-        create_file(f"{haiku_data_store_path}/test_file{i}.txt", f"test file {i}")
-        time.sleep(1.5)

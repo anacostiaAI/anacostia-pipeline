@@ -11,7 +11,6 @@ from anacostia_pipeline.nodes.node import BaseNode, NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.network.sender.node import SenderNode
 from anacostia_pipeline.utils.constants import Status
 
 
@@ -143,7 +142,7 @@ class RootPipeline:
             threads: List[Thread] = []
             for node in nodes:
                 node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-                thread = Thread(target=node.setup)
+                thread = Thread(target=node.root_setup)
                 node.status = Status.INITIALIZING
                 thread.start()
                 threads.append(thread)
@@ -164,14 +163,10 @@ class RootPipeline:
         action_nodes = [node for node in self.nodes if isinstance(node, BaseActionNode) is True]
         __setup_nodes(action_nodes)
 
-        # set up sender nodes
-        sender_nodes = [node for node in self.nodes if isinstance(node, SenderNode) is True]
-        __setup_nodes(sender_nodes)
-        
         # add nodes to metadata store's node list
         for metadata_store in metadata_stores:
             for node in self.nodes:
-                metadata_store.add_node(node)
+                metadata_store.add_node(node.name, type(node).__name__)
 
     def launch_nodes(self):
         """

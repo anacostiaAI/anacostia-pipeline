@@ -95,41 +95,42 @@ For additional directions regarding adding a `~/.pypirc` file, see https://githu
 anacostia_pipeline/
     ├── nodes/
     |   ├── node.py - contains BaseNode
-    |   ├── app.py - contains BaseApp
+    |   ├── gui.py - contains BaseApp
     |   ├── fragments.py - contains html fragments for BaseApp
     |   ├── actions/
     |   |   └── node.py - contains BaseActionNode (inherits BaseNode)
     |   ├── metadata/
     |   |   ├── node.py - contains BaseMetadataStoreNode (inherits BaseNode)
-    |   |   └── sqlite/
-    |   |       ├── node.py - contains SqliteMetadataStoreNode (inherits BaseMetadataStoreNode)
-    |   |       ├── app.py - contains SqliteMetadataStoreApp (inherits BaseApp)
-    |   |       └── fragments.py - contains html fragments for SqliteMetadataStoreApp
+    |   |   ├── rpc.py - contains BaseMetadataRPCCaller and BaseMetadataRPCCaller
+    |   |   ├── sql/
+    |   |   |   ├── node.py - contains BaseSQLMetadataStoreNode (inherits BaseMetadataStoreNode) 
+    |   |   |   ├── gui.py - contains SQLMetadataStoreGUI (inherits from BaseGUI) 
+    |   |   |   ├── fragments.py - contains html fragments for the metadata store GUI.
+    |   |   |   ├── rpc.py - contains RPC caller and callee that enables nodes to interact with and send data to each other over the network. 
+    |   |   |   ├── models.py - contains models to create tables in the metadata store
+    |   |   |   └── sqlite/
+    |   |   |       └── contains SqliteMetadataStoreNode (inherits BaseMetadataStoreNode)
+    |   |   └── nosql/
+    |   |       └── node.py - contains BaseNoSQLMetadataStoreNode (inherits BaseMetadataStoreNode) 
     |   ├── resources/
     |   |   ├── node.py - contains BaseResourceNode (inherits BaseNode)
+    |   |   ├── rpc.py - contains BaseResourceRPCCaller and BaseResourceRPCCallee
     |   |   └── filesystem/
     |   |       ├── node.py - contains FilesystemStoreNode (inherits BaseResourceNode)
-    |   |       ├── app.py - contains FilesystemStoreApp (inherits BaseApp)
+    |   |       ├── gui.py - contains FilesystemStoreApp (inherits BaseApp)
     |   |       └── fragments.py - contains html fragments for FilesystemStoreApp
-    |   └── network/
-    |       ├── receiver/
-    |       |   ├── node.py - contains ReceiverNode (inherits BaseNode)
-    |       |   └── app.py - contains ReceiverApp (inherits BaseApp)
-    |       └── sender/
-    |           ├── node.py - contains SenderNode (inherits BaseNode)
-    |           └── app.py - contains SenderApp (inherits BaseApp)
     ├── pipelines/ 
     |   ├── leaf/
     |   |   ├── pipeline.py - contains LeafPipeline
-    |   |   └── app.py - contains LeafPipelineApp
+    |   |   └── server.py - contains LeafPipelineApp
     |   └── root/
     |       ├── pipeline.py - contains RootPipeline
-    |       └── app.py - contains RootPipelineApp
+    |       └── server.py - contains RootPipelineApp
     ├── services/ 
     |   ├── leaf/
-    |   |   └── app.py - contains LeafServiceApp
+    |   |   └── gui.py - contains LeafServiceApp
     |   └── root/
-    |       └── app.py - contains RootServiceApp
+    |       └── gui.py - contains RootServiceApp
     ├── static/ - contains css, img, and js used by the project's html fragments
     ├── utils/ 
     |   ├── constants.py - contains enums and constants used in the project
@@ -142,9 +143,12 @@ anacostia_pipeline/
 `anacostia_pipeline/nodes` - this is where all node classes live.
 
 Notice how the `nodes/` package and all of its subpackages have a similar structure with the files:
-- `node.py`: which contains the code for the actual node itself.
-- `app.py`: which contains the code for the FastAPI sub-application that provides a custom GUI for visualizing information pertaining to the node.
-- `fragments.py` - which contains the html fragments used by the sub-application.
+- `node.py`: contains the code for the actual node itself.
+- `gui.py`: contains the code for the FastAPI sub-application that provides a custom GUI for visualizing information pertaining to the node.
+- `fragments.py`: contains the html fragments used by the sub-application.
+- `rpc.py`: contains the RPC caller and RPC callee that enables nodes to get information from other nodes from across the network.
+- `utils.py`: contains helper functions.
+- `connector.py`: contains the `Connector` class that is used to enable nodes to signal each other across the network. The connector class is not meant to be inherited. 
 
 Also notice that the node class inside each subpackage inherits from the node class inside the parent package (e.g., FilesystemStoreNode  inherits from BaseResourceNode which inherits from BaseNode). 
 
