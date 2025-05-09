@@ -7,7 +7,7 @@ import httpx
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreClient
 from anacostia_pipeline.utils.constants import Result, Status
 
 
@@ -24,7 +24,7 @@ class BaseResourceNode(BaseNode, ABC):
         name: str, 
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
-        metadata_store_caller: BaseMetadataRPCCaller = None,
+        metadata_store_caller: BaseMetadataStoreClient = None,
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
         wait_for_connection: bool = False,

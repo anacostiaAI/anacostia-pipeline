@@ -6,11 +6,11 @@ from datetime import datetime
 from fastapi import Request
 import httpx
 
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCallee, BaseMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreServer, BaseMetadataStoreClient
 
 
 
-class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
+class SQLMetadataStoreServer(BaseMetadataStoreServer):
     def __init__(self, metadata_store, caller_url, host = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
         super().__init__(metadata_store, caller_url, host, port, loggers, *args, **kwargs)
         self.metadata_store = metadata_store
@@ -95,7 +95,7 @@ class SQLMetadataRPCCallee(BaseMetadataRPCCallee):
             return entries
 
 
-class SQLMetadataRPCCaller(BaseMetadataRPCCaller):
+class SQLMetadataStoreClient(BaseMetadataStoreClient):
     def __init__(self, caller_name, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     

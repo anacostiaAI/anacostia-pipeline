@@ -6,7 +6,7 @@ from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
 
 
 
-class BaseMetadataRPCCallee(BaseServer):
+class BaseMetadataStoreServer(BaseServer):
     def __init__(
         self, 
         metadata_store: BaseMetadataStoreNode, 
@@ -22,7 +22,7 @@ class BaseMetadataRPCCallee(BaseServer):
 
 
 
-class BaseMetadataRPCCaller(BaseClient):
+class BaseMetadataStoreClient(BaseClient):
     def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     

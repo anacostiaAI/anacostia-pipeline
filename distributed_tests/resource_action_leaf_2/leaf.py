@@ -9,7 +9,7 @@ from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 
 
@@ -53,7 +53,7 @@ class EvalNode(BaseActionNode):
 
 
 metadata_store = SQLiteMetadataStoreNode(name="leaf_metadata_store", uri=metadata_store_path)
-metadata_store_caller = SQLMetadataRPCCaller(caller_name="metadata_store_rpc", loggers=logger)
+metadata_store_caller = SQLMetadataStoreClient(caller_name="metadata_store_rpc", loggers=logger)
 leaf_data_node = FilesystemStoreNode(
     name="leaf_data_node", 
     resource_path=shakespeare_input_path, 

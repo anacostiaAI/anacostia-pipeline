@@ -11,9 +11,9 @@ import httpx
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCallee
+from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreServer
 
 
 
@@ -23,7 +23,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         name: str, 
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
-        metadata_store_caller: BaseMetadataRPCCaller = None,
+        metadata_store_caller: BaseMetadataStoreClient = None,
         init_state: str = "new", 
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
@@ -75,7 +75,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         return self.gui
     
     def setup_rpc_callee(self, host, port):
-        self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
+        self.rpc_callee = FilesystemStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
         return self.rpc_callee
 
     def start_monitoring(self) -> None:

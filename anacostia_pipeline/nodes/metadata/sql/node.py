@@ -10,7 +10,7 @@ from sqlalchemy import exists, select, update
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sql.gui import SQLMetadataStoreGUI
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCallee
+from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataStoreServer
 from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
 
 
@@ -52,7 +52,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
     def setup_rpc_callee(self, host: str, port: int):
         """Override to setup the RPC callee."""
-        self.rpc_callee = SQLMetadataRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
+        self.rpc_callee = SQLMetadataStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
         return self.rpc_callee
 
     def init_scoped_session(self, session_factory: sessionmaker):

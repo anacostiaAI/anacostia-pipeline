@@ -6,11 +6,11 @@ from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.resources.rpc import BaseResourceRPCCallee, BaseResourceRPCCaller
+from anacostia_pipeline.nodes.resources.rpc import BaseResourceServer, BaseResourceClient
 
 
 
-class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
+class FilesystemStoreServer(BaseResourceServer):
     def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
@@ -88,7 +88,7 @@ class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
 
 
 
-class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
+class FilesystemStoreClient(BaseResourceClient):
     def __init__(self, storage_directory: str, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
 
