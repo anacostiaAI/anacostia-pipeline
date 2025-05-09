@@ -3,9 +3,6 @@ import shutil
 import logging
 from logging.config import dictConfig
 from typing import List
-import time
-from threading import Thread
-import traceback
 
 from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
@@ -39,6 +36,7 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
         highest_accuracy = max(accuracy_scores)
 
+        # trigger condition
         if highest_accuracy > 0.4:
             self.trigger(f"% accuracy = {highest_accuracy}, trigger condition % accuracy > 0.4 satisfied")
 

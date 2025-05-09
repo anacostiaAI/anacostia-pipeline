@@ -152,7 +152,8 @@ class BaseMetadataStoreNode(BaseNode):
     def metadata_store_trigger(self) -> None:
         """
         The default trigger for the SqliteMetadataStoreNode. 
-        metadata_store_trigger does not check any metric, it just simply triggers the pipeline.
+        In the default trigger, the metadata_store_trigger does not check anything in the metadata store, it just simply triggers the pipeline.
+        Override metadata_store_trigger in order to implement your own metadata store trigger (e.g., metric-based triggers)
         """
         self.trigger()
     
