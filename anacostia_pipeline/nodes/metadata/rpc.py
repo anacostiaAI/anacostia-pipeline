@@ -23,8 +23,8 @@ class BaseMetadataStoreServer(BaseServer):
 
 
 class BaseMetadataStoreClient(BaseClient):
-    def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, loggers = None, *args, **kwargs):
-        super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
+    def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, callee_url = None, loggers = None, *args, **kwargs):
+        super().__init__(caller_name=caller_name, caller_host=caller_host, caller_port=caller_port, callee_url=callee_url, loggers=loggers, *args, **kwargs)
     
     async def get_node_id(self, node_name: str):
         raise NotImplementedError("get_node_id method not implemented in SqliteMetadataRPCCaller")
