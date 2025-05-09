@@ -37,15 +37,15 @@ class BaseNode(Thread):
         self, 
         name: str, 
         predecessors: List[BaseNode] = None, 
-        remote_predecessors: List[str] = None,      # should be a list of urls or BaseRPCCaller
+        remote_predecessors: List[str] = None,      # should be a list of urls or BaseRPCclient
         remote_successors: List[str] = None, 
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
 
         self._status_lock = Lock()
-        self.caller_url = caller_url
+        self.client_url = client_url
         self.wait_for_connection = wait_for_connection
         
         if loggers is None:
@@ -98,7 +98,7 @@ class BaseNode(Thread):
         return self.gui
     
     def setup_node_server(self, host: str, port: int):
-        self.node_server = BaseServer(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
+        self.node_server = BaseServer(self, client_url=self.client_url, host=host, port=port, loggers=self.loggers)
         return self.node_server
 
     def __hash__(self) -> int:

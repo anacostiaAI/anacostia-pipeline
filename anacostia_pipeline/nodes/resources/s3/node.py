@@ -18,7 +18,7 @@ class S3Node(BaseResourceNode):
         aws_secret_access_key: str = None, 
         remote_predecessors: List[str] = None,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers = None, 
         monitoring = True
@@ -30,7 +30,7 @@ class S3Node(BaseResourceNode):
             remote_predecessors=remote_predecessors,
             remote_successors=remote_successors,
             wait_for_connection=wait_for_connection,
-            caller_url=caller_url,
+            client_url=client_url,
             loggers=loggers, 
             monitoring=monitoring
         )

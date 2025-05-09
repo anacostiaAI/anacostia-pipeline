@@ -15,13 +15,13 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
         name: str,
         uri: str,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
         if uri.startswith("sqlite:///") is False:
             raise ValueError(f"Invalid URI: {uri}. SQLite URIs must start with 'sqlite:///'")
 
-        super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
+        super().__init__(name, uri, remote_successors=remote_successors, client_url=client_url, loggers=loggers)
 
     def setup(self):
         # create the folder where the SQLite database will be stored if it does not exist

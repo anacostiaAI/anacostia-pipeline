@@ -24,11 +24,11 @@ class BaseMetadataStoreNode(BaseNode):
         name: str,
         uri: str,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
     
-        super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
+        super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, client_url=client_url, loggers=loggers)
         self.uri = uri
         self.run_id = 0
         self.trigger_event = Event()

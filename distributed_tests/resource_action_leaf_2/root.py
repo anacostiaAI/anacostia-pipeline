@@ -28,7 +28,7 @@ logger = logging.getLogger("root_anacostia")
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc",
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc",
     remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/leaf_data_node"]
 )
 pipeline = RootPipeline(

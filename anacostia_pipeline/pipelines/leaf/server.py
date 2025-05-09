@@ -31,7 +31,7 @@ class LeafPipelineServer(FastAPI):
     def __init__(
         self, name: str, 
         pipeline: LeafPipeline, 
-        rpc_callers: List[BaseClient],
+        rpc_clients: List[BaseClient],
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 
@@ -99,11 +99,11 @@ class LeafPipelineServer(FastAPI):
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
         
-        for rpc_caller in rpc_callers:
-            self.mount(rpc_caller.get_client_prefix(), rpc_caller)          # mount the BaseRPCCaller to PipelineWebserver
-            rpc_caller.add_loggers(self.logger)                             # add the logger to the rpc_caller
-            rpc_caller.client_host = self.host
-            rpc_caller.client_port = self.port
+        for rpc_client in rpc_clients:
+            self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
+            rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
+            rpc_client.client_host = self.host
+            rpc_client.client_port = self.port
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(connection: RootServerModel):

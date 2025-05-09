@@ -214,7 +214,7 @@ class RootPipelineServer(FastAPI):
 
             responses = await asyncio.gather(*task)
 
-            # Connect RPC servers to RPC callers
+            # Connect RPC servers to RPC clients
             task = []
             for node in self.pipeline.nodes:
                 task.append(node.node_server.connect())

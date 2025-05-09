@@ -10,8 +10,8 @@ from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
 
 
 class BaseResourceServer(BaseServer):
-    def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
+    def __init__(self, node, client_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
+        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
 
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):

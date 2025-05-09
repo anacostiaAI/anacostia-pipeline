@@ -87,8 +87,8 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     
 
 class ModelRegistryNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
     def _save_artifact_hook(self, filepath: str, content: str) -> None:
         with locked_file(filepath, 'w') as f:
@@ -100,8 +100,8 @@ class ModelRegistryNode(FilesystemStoreNode):
     
 
 class PlotsStoreNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
     def _load_artifact_hook(self, filepath) -> str:
         with locked_file(filepath, "r") as file:
@@ -179,19 +179,19 @@ plots_path = f"{output_path}/plots"
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
 )
 model_registry = ModelRegistryNode(
     name="model_registry", 
     resource_path=model_registry_path, 
     metadata_store=metadata_store,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
 )
 plots_store = PlotsStoreNode(
     name="plots_store", 
     resource_path=plots_path, 
     metadata_store=metadata_store,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
 )
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode(

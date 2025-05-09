@@ -30,10 +30,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         name: str,
         uri: str,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
-        super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
+        super().__init__(name, uri, remote_successors=remote_successors, client_url=client_url, loggers=loggers)
         self._ScopedSession: Session = None
     
     @abstractmethod
@@ -52,7 +52,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
     def setup_node_server(self, host: str, port: int):
         """Override to setup the RPC server."""
-        self.node_server = SQLMetadataStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
+        self.node_server = SQLMetadataStoreServer(self, self.client_url, host, port, loggers=self.loggers)
         return self.node_server
 
     def init_scoped_session(self, session_factory: sessionmaker):

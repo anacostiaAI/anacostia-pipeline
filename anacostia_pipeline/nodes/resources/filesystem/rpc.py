@@ -11,8 +11,8 @@ from anacostia_pipeline.nodes.resources.rpc import BaseResourceServer, BaseResou
 
 
 class FilesystemStoreServer(BaseResourceServer):
-    def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
+    def __init__(self, node, client_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
+        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
@@ -130,10 +130,10 @@ class FilesystemStoreClient(BaseResourceClient):
         """
         Upload a file back to the FilesystemStoreRPCserver on the root pipeline.
         Args:
-            filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the caller.
+            filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the client.
             remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the server.
         Raises:
-            FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the caller.
+            FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the client.
             HTTPException: If the response code from /upload_stream is not 200.
         """
 
@@ -210,7 +210,7 @@ class FilesystemStoreClient(BaseResourceClient):
         """
         pass
 
-    # TODO: add the load_artifact method to BaseResourceRPCCaller
+    # TODO: add the load_artifact method to BaseResourceRPCclient
     def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
         """
         Load an artifact from the specified path inside to the resource_path.

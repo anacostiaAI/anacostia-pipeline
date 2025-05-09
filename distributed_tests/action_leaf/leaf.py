@@ -155,7 +155,7 @@ service = LeafPipelineServer(
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
+    rpc_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )

@@ -11,8 +11,8 @@ from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreServer, BaseM
 
 
 class SQLMetadataStoreServer(BaseMetadataStoreServer):
-    def __init__(self, metadata_store, caller_url, host = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
-        super().__init__(metadata_store, caller_url, host, port, loggers, *args, **kwargs)
+    def __init__(self, metadata_store, client_url, host = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
+        super().__init__(metadata_store, client_url, host, port, loggers, *args, **kwargs)
         self.metadata_store = metadata_store
 
         @self.get("/get_run_id/")

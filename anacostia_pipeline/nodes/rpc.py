@@ -11,15 +11,15 @@ class RPCConnectionModel(BaseModel):
 
 
 
-# provides endpoints for caller to call to execute remote procedure calls
+# provides endpoints for client to call to execute remote procedure calls
 # endpoints call methods on the node
 class BaseServer(FastAPI):
-    def __init__(self, node, caller_url: str, host: str = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
+    def __init__(self, node, client_url: str, host: str = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
         self.host = host
         self.port = port
-        self.caller_url = caller_url
+        self.client_url = client_url
 
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -61,9 +61,9 @@ class BaseServer(FastAPI):
         return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
     
     async def connect(self):
-        if self.caller_url is not None:
+        if self.client_url is not None:
             async with httpx.AsyncClient() as client:
-                response = await client.post(f"{self.caller_url}/rpc/caller/connect", json={"url": self.get_server_url()})
+                response = await client.post(f"{self.client_url}/rpc/client/connect", json={"url": self.get_server_url()})
                 message = response.json()["message"]
                 self.log(message, level="INFO")
 
@@ -102,9 +102,9 @@ class BaseClient(FastAPI):
         if self.server_url is None:
             @self.post("/connect", status_code=status.HTTP_200_OK)
             async def connect(server: RPCConnectionModel):
-                self.log(f"server '{server.url}' connected to caller at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
+                self.log(f"server '{server.url}' connected to client at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
                 self.server_url = server.url
-                return {"message": f"Caller 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to server at '{server.url}'"}
+                return {"message": f"client 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to server at '{server.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
@@ -131,11 +131,11 @@ class BaseClient(FastAPI):
             print(message)
     
     def get_client_prefix(self):
-        return f"/{self.client_name}/rpc/caller"
+        return f"/{self.client_name}/rpc/client"
     
     def get_server_url(self):
         return self.server_url
     
     def get_client_url(self):
-        # sample output: http://127.0.0.1:8000/metadata/rpc/caller
+        # sample output: http://127.0.0.1:8000/metadata/rpc/client
         return f"http://{self.client_host}:{self.client_port}{self.get_client_prefix()}"

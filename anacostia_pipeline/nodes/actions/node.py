@@ -14,13 +14,13 @@ class BaseActionNode(BaseNode):
         predecessors: List[BaseNode], 
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
         super().__init__(
             name, predecessors, remote_predecessors=remote_predecessors, 
-            remote_successors=remote_successors, caller_url=caller_url, wait_for_connection=wait_for_connection, loggers=loggers
+            remote_successors=remote_successors, client_url=client_url, wait_for_connection=wait_for_connection, loggers=loggers
         )
 
     @BaseNode.log_exception
