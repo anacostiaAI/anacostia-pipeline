@@ -17,7 +17,7 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.rpc import BaseRPCCaller
+from anacostia_pipeline.nodes.rpc import BaseClient
 
 
 
@@ -31,7 +31,7 @@ class LeafPipelineServer(FastAPI):
     def __init__(
         self, name: str, 
         pipeline: LeafPipeline, 
-        rpc_callers: List[BaseRPCCaller],
+        rpc_callers: List[BaseClient],
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 

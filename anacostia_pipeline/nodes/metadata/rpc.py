@@ -2,11 +2,11 @@ from typing import List, Union
 from logging import Logger
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.rpc import BaseRPCCaller, BaseRPCCallee
+from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
 
 
 
-class BaseMetadataRPCCallee(BaseRPCCallee):
+class BaseMetadataRPCCallee(BaseServer):
     def __init__(
         self, 
         metadata_store: BaseMetadataStoreNode, 
@@ -22,7 +22,7 @@ class BaseMetadataRPCCallee(BaseRPCCallee):
 
 
 
-class BaseMetadataRPCCaller(BaseRPCCaller):
+class BaseMetadataRPCCaller(BaseClient):
     def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     

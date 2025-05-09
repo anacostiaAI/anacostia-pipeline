@@ -5,11 +5,11 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.rpc import BaseRPCCaller, BaseRPCCallee
+from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
 
 
 
-class BaseResourceRPCCallee(BaseRPCCallee):
+class BaseResourceRPCCallee(BaseServer):
     def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
         super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
 
@@ -31,7 +31,7 @@ class BaseResourceRPCCallee(BaseRPCCallee):
 
 
 
-class BaseResourceRPCCaller(BaseRPCCaller):
+class BaseResourceRPCCaller(BaseClient):
     def __init__(self, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
         super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
     

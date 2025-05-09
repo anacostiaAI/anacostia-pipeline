@@ -20,7 +20,7 @@ import httpx
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.gui import BaseGUI
-from anacostia_pipeline.nodes.rpc import BaseRPCCallee
+from anacostia_pipeline.nodes.rpc import BaseServer
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.utils import EventModel
@@ -104,7 +104,7 @@ class RootPipelineServer(FastAPI):
             self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
 
-            callee: BaseRPCCallee = node.setup_rpc_callee(host=self.host, port=self.port)
+            callee: BaseServer = node.setup_rpc_callee(host=self.host, port=self.port)
             self.mount(callee.get_node_prefix(), callee)                    # mount the BaseRPCCallee to PipelineWebserver
 
         @self.get('/', response_class=HTMLResponse)

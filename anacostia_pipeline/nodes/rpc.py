@@ -13,7 +13,7 @@ class RPCConnectionModel(BaseModel):
 
 # provides endpoints for caller to call to execute remote procedure calls
 # endpoints call methods on the node
-class BaseRPCCallee(FastAPI):
+class BaseServer(FastAPI):
     def __init__(self, node, caller_url: str, host: str = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
@@ -71,7 +71,7 @@ class BaseRPCCallee(FastAPI):
 
 # sends a connection request to the server
 # provides methods for pipeline to call to do a remote procedure call on the node attached to the callee
-class BaseRPCCaller(FastAPI):
+class BaseClient(FastAPI):
     def __init__(self, caller_name: str, caller_host: str = "127.0.0.1", caller_port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.caller_host = caller_host      # currently caller_host and caller_port are only used for logging

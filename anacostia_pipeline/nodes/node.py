@@ -15,7 +15,7 @@ import time
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.rpc import BaseRPCCallee
+from anacostia_pipeline.nodes.rpc import BaseServer
 
 
 
@@ -98,7 +98,7 @@ class BaseNode(Thread):
         return self.gui
     
     def setup_rpc_callee(self, host: str, port: int):
-        self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
+        self.rpc_callee = BaseServer(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
         return self.rpc_callee
 
     def __hash__(self) -> int:
