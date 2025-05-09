@@ -51,7 +51,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         return self.gui
 
     def setup_node_server(self, host: str, port: int):
-        """Override to setup the RPC callee."""
+        """Override to setup the RPC server."""
         self.node_server = SQLMetadataStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
         return self.node_server
 

@@ -128,10 +128,10 @@ class FilesystemStoreClient(BaseResourceClient):
 
     async def upload_file(self, filepath: str, remote_path: str = None):
         """
-        Upload a file back to the FilesystemStoreRPCCallee on the root pipeline.
+        Upload a file back to the FilesystemStoreRPCserver on the root pipeline.
         Args:
             filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the caller.
-            remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the callee.
+            remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the server.
         Raises:
             FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the caller.
             HTTPException: If the response code from /upload_stream is not 200.

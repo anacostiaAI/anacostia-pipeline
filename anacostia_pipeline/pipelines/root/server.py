@@ -104,8 +104,8 @@ class RootPipelineServer(FastAPI):
             self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
 
-            callee: BaseServer = node.setup_node_server(host=self.host, port=self.port)
-            self.mount(callee.get_node_prefix(), callee)                    # mount the BaseRPCCallee to PipelineWebserver
+            server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
+            self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
 
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
@@ -214,7 +214,7 @@ class RootPipelineServer(FastAPI):
 
             responses = await asyncio.gather(*task)
 
-            # Connect RPC callees to RPC callers
+            # Connect RPC servers to RPC callers
             task = []
             for node in self.pipeline.nodes:
                 task.append(node.node_server.connect())

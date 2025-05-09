@@ -54,10 +54,10 @@ class BaseServer(FastAPI):
             print(message)
 
     def get_node_prefix(self):
-        return f"/{self.node.name}/rpc/callee"
+        return f"/{self.node.name}/rpc/server"
     
     def get_server_url(self):
-        # sample output: http://127.0.0.1:8000/metadata/rpc/callee
+        # sample output: http://127.0.0.1:8000/metadata/rpc/server
         return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
     
     async def connect(self):
@@ -70,7 +70,7 @@ class BaseServer(FastAPI):
 
 
 # sends a connection request to the server
-# provides methods for pipeline to call to do a remote procedure call on the node attached to the callee
+# provides methods for pipeline to call to do a remote procedure call on the node attached to the server
 class BaseClient(FastAPI):
     def __init__(
         self, 
@@ -101,10 +101,10 @@ class BaseClient(FastAPI):
 
         if self.server_url is None:
             @self.post("/connect", status_code=status.HTTP_200_OK)
-            async def connect(callee: RPCConnectionModel):
-                self.log(f"Callee '{callee.url}' connected to caller at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
-                self.server_url = callee.url
-                return {"message": f"Caller 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to callee at '{callee.url}'"}
+            async def connect(server: RPCConnectionModel):
+                self.log(f"server '{server.url}' connected to caller at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
+                self.server_url = server.url
+                return {"message": f"Caller 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to server at '{server.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
