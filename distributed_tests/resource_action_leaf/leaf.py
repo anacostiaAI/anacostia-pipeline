@@ -1,8 +1,10 @@
 from typing import List, Dict, Union
 import logging
 from logging import Logger
+from logging.config import dictConfig
 import argparse
 
+from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
@@ -15,56 +17,16 @@ parser.add_argument('host', type=str)
 parser.add_argument('port', type=int)
 args = parser.parse_args()
 
-leaf_test_path = "./testing_artifacts"
 path = f"./leaf-artifacts"
 input_path = f"{path}/input_artifacts"
 output_path = f"{path}/output_artifacts"
 shakespeare_input_path = f"{input_path}/shakespeare"
 shakespeare_output_path = f"{output_path}/shakespeare"
 
-# Create a file for Anacostia logs
-log_path = f"{leaf_test_path}/anacostia.log"
-log_file_handler = logging.FileHandler(log_path, mode='a')
-log_file_handler.setLevel(logging.INFO)
-log_formatter = logging.Formatter(
-    fmt='LEAF %(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-log_file_handler.setFormatter(log_formatter)
-logger = logging.getLogger(__name__)
-logger.addHandler(log_file_handler)
-logger.setLevel(logging.INFO)  # Make sure it's at least INFO
 
-# Step 1: Create a file handler for access logs
-access_log_path = f"{leaf_test_path}/access.log"
-
-# Uvicorn needs a dictionary describing the log setup
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "LEAF ACCESS %(asctime)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-    },
-    "handlers": {
-        "access_file_handler": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "formatter": "default",
-            "filename": f"{access_log_path}",   # access_log_path = "./testing_artifacts/access.log" , log_path = "./testing_artifacts/anacostia.log"
-        },
-    },
-    "loggers": {
-        "uvicorn.access": {
-            "handlers": ["access_file_handler"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
-}
+# Set up logging
+dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
+logger = logging.getLogger("leaf_anacostia")
 
 
 class EvalNode(BaseActionNode):
@@ -123,7 +85,7 @@ service = LeafPipelineServer(
     allow_methods=["*"],
     allow_headers=["*"],
     logger=logger,
-    uvicorn_access_log_config=LOGGING_CONFIG
+    uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
 
 service.run()
