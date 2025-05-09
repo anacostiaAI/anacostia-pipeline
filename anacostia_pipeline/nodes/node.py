@@ -15,7 +15,7 @@ import time
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.rpc import BaseServer
+from anacostia_pipeline.nodes.api import BaseServer
 
 
 

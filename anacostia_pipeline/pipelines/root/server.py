@@ -20,7 +20,7 @@ import httpx
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.gui import BaseGUI
-from anacostia_pipeline.nodes.rpc import BaseServer
+from anacostia_pipeline.nodes.api import BaseServer
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
 from anacostia_pipeline.pipelines.utils import EventModel

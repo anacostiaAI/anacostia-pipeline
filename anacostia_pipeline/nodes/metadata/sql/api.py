@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import Request
 import httpx
 
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreServer, BaseMetadataStoreClient
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreServer, BaseMetadataStoreClient
 
 
 

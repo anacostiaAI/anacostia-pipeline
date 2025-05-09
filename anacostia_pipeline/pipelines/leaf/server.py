@@ -17,7 +17,7 @@ import httpx
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.rpc import BaseClient
+from anacostia_pipeline.nodes.api import BaseClient
 
 
 

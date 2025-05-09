@@ -6,8 +6,8 @@ from typing import List
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataStoreClient
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreClient
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
+from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
 from utils import create_file
 
 

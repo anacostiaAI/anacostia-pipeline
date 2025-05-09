@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
+from anacostia_pipeline.nodes.api import BaseClient, BaseServer
 
 
 

@@ -10,7 +10,7 @@ from sqlalchemy import exists, select, update
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sql.gui import SQLMetadataStoreGUI
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataStoreServer
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreServer
 from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
 
 

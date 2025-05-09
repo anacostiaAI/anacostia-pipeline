@@ -11,9 +11,9 @@ import httpx
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreClient
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreServer
+from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreServer
 
 
 

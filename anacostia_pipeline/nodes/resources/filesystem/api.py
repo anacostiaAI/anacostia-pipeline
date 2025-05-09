@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.resources.rpc import BaseResourceServer, BaseResourceClient
+from anacostia_pipeline.nodes.resources.api import BaseResourceServer, BaseResourceClient
 
 
 

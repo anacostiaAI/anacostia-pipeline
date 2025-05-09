@@ -2,7 +2,7 @@ from typing import List, Union
 from logging import Logger
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.rpc import BaseClient, BaseServer
+from anacostia_pipeline.nodes.api import BaseClient, BaseServer
 
 
 

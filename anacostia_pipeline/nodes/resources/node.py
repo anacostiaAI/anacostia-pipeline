@@ -7,7 +7,7 @@ import httpx
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataStoreClient
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.utils.constants import Result, Status
 
 

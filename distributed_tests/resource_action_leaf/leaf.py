@@ -7,7 +7,7 @@ from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataStoreClient
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 
 
 parser = argparse.ArgumentParser()
