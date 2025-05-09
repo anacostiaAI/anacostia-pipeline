@@ -74,9 +74,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         )
         return self.gui
     
-    def setup_rpc_callee(self, host, port):
-        self.rpc_callee = FilesystemStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
-        return self.rpc_callee
+    def setup_node_server(self, host, port):
+        self.node_server = FilesystemStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
+        return self.node_server
 
     def start_monitoring(self) -> None:
 

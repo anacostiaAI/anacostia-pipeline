@@ -50,10 +50,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port)
         return self.gui
 
-    def setup_rpc_callee(self, host: str, port: int):
+    def setup_node_server(self, host: str, port: int):
         """Override to setup the RPC callee."""
-        self.rpc_callee = SQLMetadataStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
-        return self.rpc_callee
+        self.node_server = SQLMetadataStoreServer(self, self.caller_url, host, port, loggers=self.loggers)
+        return self.node_server
 
     def init_scoped_session(self, session_factory: sessionmaker):
         """Call this from the child class after engine setup."""

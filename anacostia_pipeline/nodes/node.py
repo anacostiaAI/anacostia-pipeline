@@ -97,9 +97,9 @@ class BaseNode(Thread):
             raise ValueError("Node GUI not set up")
         return self.gui
     
-    def setup_rpc_callee(self, host: str, port: int):
-        self.rpc_callee = BaseServer(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
-        return self.rpc_callee
+    def setup_node_server(self, host: str, port: int):
+        self.node_server = BaseServer(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
+        return self.node_server
 
     def __hash__(self) -> int:
         return hash(self.name)
