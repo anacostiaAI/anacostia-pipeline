@@ -10,6 +10,11 @@ class RPCConnectionModel(BaseModel):
     url: str
 
 
+class NetworkConnectionNotEstablished(Exception):
+    """Raised when a network connection has not been established."""
+    def __init__(self, message="Network connection has not been made yet."):
+        super().__init__(message)
+
 
 # provides endpoints for client to call to execute remote procedure calls
 # endpoints call methods on the node
@@ -134,6 +139,8 @@ class BaseClient(FastAPI):
         return f"/{self.client_name}/rpc/client"
     
     def get_server_url(self):
+        if self.server_url is None:
+            raise NetworkConnectionNotEstablished(f"server_url = None, this is likely due to client {self.client_name} has not been connected to a server yet.")
         return self.server_url
     
     def get_client_url(self):

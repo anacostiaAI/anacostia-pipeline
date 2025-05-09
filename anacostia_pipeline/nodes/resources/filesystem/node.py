@@ -12,6 +12,7 @@ import httpx
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
+from anacostia_pipeline.nodes.api import NetworkConnectionNotEstablished
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreServer
 
@@ -101,6 +102,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 if self.exit_event.is_set() is True: break
                 try:
                     await self.resource_trigger()
+                
+                except NetworkConnectionNotEstablished as e:
+                    pass
+
                 except Exception as e:
                     self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}", level="ERROR")
                     # Note: we continue here because we want to keep trying to check the resource until it is available
