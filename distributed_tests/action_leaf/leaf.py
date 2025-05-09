@@ -138,9 +138,9 @@ class HaikuEvalNode(BaseActionNode):
 
         return True
 
-metadata_store_rpc = SQLMetadataStoreClient(caller_name="metadata_store_rpc")
-model_registry_rpc = FilesystemStoreClient(storage_directory=model_registry_path, caller_name="model_registry_rpc")
-plots_store_rpc = FilesystemStoreClient(storage_directory=plots_path, caller_name="plots_store_rpc")
+metadata_store_rpc = SQLMetadataStoreClient(client_name="metadata_store_rpc")
+model_registry_rpc = FilesystemStoreClient(storage_directory=model_registry_path, client_name="model_registry_rpc")
+plots_store_rpc = FilesystemStoreClient(storage_directory=plots_path, client_name="plots_store_rpc")
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, model_registry_rpc=model_registry_rpc)
 haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc, plots_store_rpc=plots_store_rpc)
 

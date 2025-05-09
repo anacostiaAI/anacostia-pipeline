@@ -74,17 +74,17 @@ class BaseServer(FastAPI):
 class BaseClient(FastAPI):
     def __init__(
         self, 
-        caller_name: str, 
-        caller_host: str = "127.0.0.1", 
-        caller_port: int = 8000, 
+        client_name: str, 
+        client_host: str = "127.0.0.1", 
+        client_port: int = 8000, 
         callee_url: str = None, 
         loggers: Union[Logger, List[Logger]] = None, 
         *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.caller_host = caller_host      # currently caller_host and caller_port are only used for logging
-        self.caller_port = caller_port
-        self.caller_name = caller_name
+        self.client_host = client_host      # currently client_host and client_port are only used for logging
+        self.client_port = client_port
+        self.client_name = client_name
         self.callee_url = callee_url
 
         if loggers is None:
@@ -98,9 +98,9 @@ class BaseClient(FastAPI):
         if self.callee_url is None:
             @self.post("/connect", status_code=status.HTTP_200_OK)
             async def connect(callee: RPCConnectionModel):
-                self.log(f"Callee '{callee.url}' connected to caller at 'http://{self.caller_host}:{self.caller_port}/{self.caller_name}'", level="INFO")
+                self.log(f"Callee '{callee.url}' connected to caller at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
                 self.callee_url = callee.url
-                return {"message": f"Caller 'http://{self.caller_host}:{self.caller_port}/{self.caller_name}' connected to callee at '{callee.url}'"}
+                return {"message": f"Caller 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to callee at '{callee.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
@@ -127,11 +127,11 @@ class BaseClient(FastAPI):
             print(message)
     
     def get_client_prefix(self):
-        return f"/{self.caller_name}/rpc/caller"
+        return f"/{self.client_name}/rpc/caller"
     
     def get_server_url(self):
         return self.callee_url
     
     def get_client_url(self):
         # sample output: http://127.0.0.1:8000/metadata/rpc/caller
-        return f"http://{self.caller_host}:{self.caller_port}{self.get_client_prefix()}"
+        return f"http://{self.client_host}:{self.client_port}{self.get_client_prefix()}"

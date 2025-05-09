@@ -32,8 +32,8 @@ class BaseResourceServer(BaseServer):
 
 
 class BaseResourceClient(BaseClient):
-    def __init__(self, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, callee_url = None, loggers = None, *args, **kwargs):
-        super().__init__(caller_name=caller_name, caller_host=caller_host, caller_port=caller_port, callee_url=callee_url, loggers=loggers, *args, **kwargs)
+    def __init__(self, client_name: str, client_host = "127.0.0.1", client_port = 8000, callee_url = None, loggers = None, *args, **kwargs):
+        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, callee_url=callee_url, loggers=loggers, *args, **kwargs)
     
     async def get_num_artifacts(self, state: str = "all") -> int:
         """

@@ -102,8 +102,8 @@ class LeafPipelineServer(FastAPI):
         for rpc_caller in rpc_callers:
             self.mount(rpc_caller.get_client_prefix(), rpc_caller)          # mount the BaseRPCCaller to PipelineWebserver
             rpc_caller.add_loggers(self.logger)                             # add the logger to the rpc_caller
-            rpc_caller.caller_host = self.host
-            rpc_caller.caller_port = self.port
+            rpc_caller.client_host = self.host
+            rpc_caller.client_port = self.port
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(connection: RootServerModel):

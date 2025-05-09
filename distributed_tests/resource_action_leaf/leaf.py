@@ -101,7 +101,7 @@ class EvalNode(BaseActionNode):
         return True
 
 
-metadata_store_caller = SQLMetadataStoreClient(caller_name="metadata_store_rpc")
+metadata_store_caller = SQLMetadataStoreClient(client_name="metadata_store_rpc")
 leaf_data_node = FilesystemStoreNode(
     name="leaf_data_node", resource_path=shakespeare_input_path, metadata_store_caller=metadata_store_caller, wait_for_connection=True
 )
