@@ -77,7 +77,7 @@ class BaseClient(FastAPI):
         client_name: str, 
         client_host: str = "127.0.0.1", 
         client_port: int = 8000, 
-        callee_url: str = None, 
+        server_url: str = None, 
         loggers: Union[Logger, List[Logger]] = None, 
         *args, **kwargs
     ):
@@ -85,7 +85,11 @@ class BaseClient(FastAPI):
         self.client_host = client_host      # currently client_host and client_port are only used for logging
         self.client_port = client_port
         self.client_name = client_name
-        self.callee_url = callee_url
+
+        # if you set server_url, you must not run the client as a FastAPI app using uvicorn. 
+        # this capability to enable developers to directly communicate with a node server to do things like logging.
+        # this capability is useful for use cases where developers want to log metrics from a deployment environment
+        self.server_url = server_url
 
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -95,11 +99,11 @@ class BaseClient(FastAPI):
             else:
                 self.loggers: List[Logger] = loggers
 
-        if self.callee_url is None:
+        if self.server_url is None:
             @self.post("/connect", status_code=status.HTTP_200_OK)
             async def connect(callee: RPCConnectionModel):
                 self.log(f"Callee '{callee.url}' connected to caller at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
-                self.callee_url = callee.url
+                self.server_url = callee.url
                 return {"message": f"Caller 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to callee at '{callee.url}'"}
     
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
@@ -130,7 +134,7 @@ class BaseClient(FastAPI):
         return f"/{self.client_name}/rpc/caller"
     
     def get_server_url(self):
-        return self.callee_url
+        return self.server_url
     
     def get_client_url(self):
         # sample output: http://127.0.0.1:8000/metadata/rpc/caller

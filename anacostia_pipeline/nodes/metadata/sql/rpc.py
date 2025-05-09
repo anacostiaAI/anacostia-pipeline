@@ -96,8 +96,8 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
 
 
 class SQLMetadataStoreClient(BaseMetadataStoreClient):
-    def __init__(self, client_name, client_host = "127.0.0.1", client_port = 8000, callee_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, callee_url=callee_url, loggers=loggers, *args, **kwargs)
+    def __init__(self, client_name, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
+        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
     
     async def get_run_id(self):
         async with httpx.AsyncClient() as client:
