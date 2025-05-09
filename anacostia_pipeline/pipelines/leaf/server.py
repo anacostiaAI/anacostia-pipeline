@@ -100,7 +100,7 @@ class LeafPipelineServer(FastAPI):
             node.set_queue(self.queue)                                      # set the queue for the node
         
         for rpc_caller in rpc_callers:
-            self.mount(rpc_caller.get_caller_prefix(), rpc_caller)          # mount the BaseRPCCaller to PipelineWebserver
+            self.mount(rpc_caller.get_client_prefix(), rpc_caller)          # mount the BaseRPCCaller to PipelineWebserver
             rpc_caller.add_loggers(self.logger)                             # add the logger to the rpc_caller
             rpc_caller.caller_host = self.host
             rpc_caller.caller_port = self.port

@@ -104,7 +104,7 @@ class FilesystemStoreClient(BaseResourceClient):
             async with httpx.AsyncClient() as client:
 
                 # Stream the response to handle large files efficiently
-                url = f"{self.get_callee_url()}/get_artifact/{filepath}"
+                url = f"{self.get_server_url()}/get_artifact/{filepath}"
                 async with client.stream("GET", url) as response:
                     if response.status_code != 200:
                         self.log(f"Error: Server returned status code {response.status_code}", level="ERROR")
@@ -173,7 +173,7 @@ class FilesystemStoreClient(BaseResourceClient):
             # Send the file using streaming upload
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.get_callee_url()}/upload_stream",
+                    f"{self.get_server_url()}/upload_stream",
                     headers=headers,
                     content=file_generator(),
                     timeout=None  # Disable timeout for large uploads

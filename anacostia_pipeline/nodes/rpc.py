@@ -56,14 +56,14 @@ class BaseServer(FastAPI):
     def get_node_prefix(self):
         return f"/{self.node.name}/rpc/callee"
     
-    def get_callee_url(self):
+    def get_server_url(self):
         # sample output: http://127.0.0.1:8000/metadata/rpc/callee
         return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
     
     async def connect(self):
         if self.caller_url is not None:
             async with httpx.AsyncClient() as client:
-                response = await client.post(f"{self.caller_url}/rpc/caller/connect", json={"url": self.get_callee_url()})
+                response = await client.post(f"{self.caller_url}/rpc/caller/connect", json={"url": self.get_server_url()})
                 message = response.json()["message"]
                 self.log(message, level="INFO")
 
@@ -117,12 +117,12 @@ class BaseClient(FastAPI):
         else:
             print(message)
     
-    def get_caller_prefix(self):
+    def get_client_prefix(self):
         return f"/{self.caller_name}/rpc/caller"
     
-    def get_callee_url(self):
+    def get_server_url(self):
         return self.callee_url
     
-    def get_caller_url(self):
+    def get_client_url(self):
         # sample output: http://127.0.0.1:8000/metadata/rpc/caller
-        return f"http://{self.caller_host}:{self.caller_port}{self.get_caller_prefix()}"
+        return f"http://{self.caller_host}:{self.caller_port}{self.get_client_prefix()}"

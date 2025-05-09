@@ -101,13 +101,13 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
     
     async def get_run_id(self):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_run_id/")
+            response = await client.get(f"{self.get_server_url()}/get_run_id/")
             run_id = response.json()["run_id"]
             return run_id
 
     async def get_node_id(self, node_name: str):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_node_id/?node_name={node_name}")
+            response = await client.get(f"{self.get_server_url()}/get_node_id/?node_name={node_name}")
             node_id = response.json()["node_id"]
             return node_id
     
@@ -115,11 +115,11 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
             if run_id is not None:
                 response = await client.get(
-                    f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}&run_id={run_id}"
+                    f"{self.get_server_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}&run_id={run_id}"
                 )
             else:
                 response = await client.get(
-                    f"{self.get_callee_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
+                    f"{self.get_server_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
                 )
     
     async def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
@@ -127,43 +127,43 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             for entry in entries:
                 entry["created_at"] = entry["created_at"].isoformat()
             json_data = json.dumps(entries, indent=4)
-            response = await client.post(f"{self.get_callee_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=json_data)
+            response = await client.post(f"{self.get_server_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=json_data)
     
     async def entry_exists(self, resource_node_name: str, location: str):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
+            response = await client.get(f"{self.get_server_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
             exists = response.json()["exists"]
             return exists
 
     async def get_num_entries(self, resource_node_name: str, state: str):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
             num_entries = response.json()["num_entries"]
             return num_entries
 
     async def log_metrics(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/log_metrics/?node_name={node_name}", json=kwargs)
+            response = await client.post(f"{self.get_server_url()}/log_metrics/?node_name={node_name}", json=kwargs)
     
     async def log_params(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/log_params/?node_name={node_name}", json=kwargs)
+            response = await client.post(f"{self.get_server_url()}/log_params/?node_name={node_name}", json=kwargs)
     
     async def set_tags(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/set_tags/?node_name={node_name}", json=kwargs)
+            response = await client.post(f"{self.get_server_url()}/set_tags/?node_name={node_name}", json=kwargs)
     
     async def get_metrics(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_metrics/?node_name={node_name}")
+                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_metrics/?run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_metrics/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_callee_url()}/get_metrics/")
+                response = await client.get(f"{self.get_server_url()}/get_metrics/")
 
             metrics = response.json()
             return metrics
@@ -172,13 +172,13 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_params/?node_name={node_name}&run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_params/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_params/?node_name={node_name}")
+                response = await client.get(f"{self.get_server_url()}/get_params/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_params/?run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_params/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_callee_url()}/get_params/")
+                response = await client.get(f"{self.get_server_url()}/get_params/")
 
             params = response.json()
             return params
@@ -187,30 +187,30 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_tags/?node_name={node_name}")
+                response = await client.get(f"{self.get_server_url()}/get_tags/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_callee_url()}/get_tags/?run_id={run_id}")
+                response = await client.get(f"{self.get_server_url()}/get_tags/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_callee_url()}/get_tags/")
+                response = await client.get(f"{self.get_server_url()}/get_tags/")
 
             tags = response.json()
             return tags
     
     async def log_trigger(self, node_name: str, message: str = None):
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_callee_url()}/log_trigger/?node_name={node_name}", json={"message": message})
+            response = await client.post(f"{self.get_server_url()}/log_trigger/?node_name={node_name}", json={"message": message})
 
     async def get_num_entries(self, resource_node_name: str, state: str):
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
             num_entries = response.json()["num_entries"]
             return num_entries
     
     async def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_callee_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
+            response = await client.get(f"{self.get_server_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
             entries = response.json()
 
             for entry in entries:

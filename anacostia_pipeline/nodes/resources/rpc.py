@@ -43,7 +43,7 @@ class BaseResourceClient(BaseClient):
         """
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.get_callee_url()}/get_num_artifacts/?state={state}")
+                response = await client.get(f"{self.get_server_url()}/get_num_artifacts/?state={state}")
                 if response.status_code == 200:
                     return response.json()["num_artifacts"]
                 else:
@@ -61,7 +61,7 @@ class BaseResourceClient(BaseClient):
         """
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.get_callee_url()}/list_artifacts/?state={state}")
+                response = await client.get(f"{self.get_server_url()}/list_artifacts/?state={state}")
                 if response.status_code == 200:
                     return response.json()["artifacts"]
                 else:
