@@ -32,7 +32,8 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
     def metadata_store_trigger(self) -> None:
         # get the highest accuracy for this run
         run_id = self.get_run_id()
-        metrics = self.get_metrics(node_name=self.name, run_id=run_id)
+        node_name = "edge_deployment"
+        metrics = self.get_metrics(node_name=node_name, run_id=run_id)
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
         highest_accuracy = max(accuracy_scores)
 

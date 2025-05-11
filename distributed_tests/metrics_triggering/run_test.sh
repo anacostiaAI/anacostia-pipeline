@@ -28,6 +28,11 @@ cleanup() {
 # or when the script receives a termination signal (TERM)
 trap cleanup EXIT INT TERM
 
+# Both ports are available, set up testing environment
+echo "Setting up distributed tests"
+python setup.py
+echo "Done."
+
 echo "Starting root server on port 8000"
 python3 $SCRIPT &
 PID=$!

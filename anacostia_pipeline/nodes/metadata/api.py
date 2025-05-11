@@ -26,6 +26,9 @@ class BaseMetadataStoreClient(BaseClient):
     def __init__(self, client_name: str, client_host: str = "127.0.0.1", client_port: int = 8000, server_url = None, loggers = None, *args, **kwargs):
         super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
     
+    async def add_node(self, node_name: str, node_type: str):
+        raise NotImplementedError("add_node method not implemented in SqliteMetadataRPCclient")
+    
     async def get_node_id(self, node_name: str):
         raise NotImplementedError("get_node_id method not implemented in SqliteMetadataRPCclient")
     
