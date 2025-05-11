@@ -10,10 +10,12 @@ from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("root_anacostia")
 
+# make sure metadata_store_name is the same as the name of the metadata store in the pipeline
+metadata_store_name = "metadata_store"
 node_name = "edge_deployment"
 metadata_store_client = SQLMetadataStoreClient(
     client_name="metadata_store_client", 
-    server_url=f"http://127.0.0.1:8000/metadata_store/rpc/server",
+    server_url=f"http://127.0.0.1:8000/{metadata_store_name}/rpc/server",
     loggers=logger
 )
 

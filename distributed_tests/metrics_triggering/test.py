@@ -32,6 +32,9 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
     def metadata_store_trigger(self) -> None:
         # get the highest accuracy for this run
         run_id = self.get_run_id()
+
+        # note: make sure the node_name is the same as the name of the node in the client, 
+        # essentially we are showing how to get the metrics logged by the client, and the client can be anywhere
         node_name = "edge_deployment"
         metrics = self.get_metrics(node_name=node_name, run_id=run_id)
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
