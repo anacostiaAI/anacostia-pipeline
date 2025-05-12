@@ -59,16 +59,16 @@ class BaseServer(FastAPI):
             print(message)
 
     def get_node_prefix(self):
-        return f"/{self.node.name}/rpc/server"
+        return f"/{self.node.name}/api/server"
     
     def get_server_url(self):
-        # sample output: http://127.0.0.1:8000/metadata/rpc/server
+        # sample output: http://127.0.0.1:8000/metadata/api/server
         return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
     
     async def connect(self):
         if self.client_url is not None:
             async with httpx.AsyncClient() as client:
-                response = await client.post(f"{self.client_url}/rpc/client/connect", json={"url": self.get_server_url()})
+                response = await client.post(f"{self.client_url}/api/client/connect", json={"url": self.get_server_url()})
                 message = response.json()["message"]
                 self.log(message, level="INFO")
 
@@ -136,7 +136,7 @@ class BaseClient(FastAPI):
             print(message)
     
     def get_client_prefix(self):
-        return f"/{self.client_name}/rpc/client"
+        return f"/{self.client_name}/api/client"
     
     def get_server_url(self):
         if self.server_url is None:
@@ -144,5 +144,5 @@ class BaseClient(FastAPI):
         return self.server_url
     
     def get_client_url(self):
-        # sample output: http://127.0.0.1:8000/metadata/rpc/client
+        # sample output: http://127.0.0.1:8000/metadata/api/client
         return f"http://{self.client_host}:{self.client_port}{self.get_client_prefix()}"

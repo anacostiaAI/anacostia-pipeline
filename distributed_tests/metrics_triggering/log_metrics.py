@@ -15,7 +15,7 @@ metadata_store_name = "metadata_store"
 node_name = "edge_deployment"
 metadata_store_client = SQLMetadataStoreClient(
     client_name="metadata_store_client", 
-    server_url=f"http://127.0.0.1:8000/{metadata_store_name}/rpc/server",
+    server_url=f"http://127.0.0.1:8000/{metadata_store_name}/api/server",
     loggers=logger
 )
 
