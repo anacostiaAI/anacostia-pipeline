@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import traceback
 from datetime import datetime
 import hashlib
+import json
 
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy import exists, select, update
@@ -117,6 +118,20 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         self.log(f"--------------------------- started run {run_id} at {start_time}")
     
+    def hash_run_metadata(self, metrics: List[Dict], params: List[Dict], tags: List[Dict]) -> str:
+        def stable_hash(records: List[Dict], sort_key: str) -> str:
+            sorted_records = sorted(records, key=lambda r: r[sort_key])
+            serialized = json.dumps(sorted_records, sort_keys=True)
+            return hashlib.sha256(serialized.encode()).hexdigest()
+
+        metrics_hash = stable_hash(metrics, sort_key="id")
+        params_hash = stable_hash(params, sort_key="id")
+        tags_hash = stable_hash(tags, sort_key="id")
+
+        # Combine into a final hash for the run
+        combined = metrics_hash + params_hash + tags_hash
+        return hashlib.sha256(combined.encode()).hexdigest()
+
     def end_run(self) -> None:
         end_time = datetime.now()
 
@@ -125,7 +140,15 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         entries = self.get_entries(state="current")
         artifact_hashes = [entry["hash"] for entry in entries]
         artifact_hashes = ''.join(sorted(artifact_hashes))
-        run_hash = hashlib.sha256(artifact_hashes.encode()).hexdigest()
+
+        run_metadata_hash = self.hash_run_metadata(
+            metrics=self.get_metrics(run_id=self.get_run_id()),
+            params=self.get_params(run_id=self.get_run_id()),
+            tags=self.get_tags(run_id=self.get_run_id())
+        )
+
+        combined_hash = artifact_hashes + run_metadata_hash
+        run_hash = hashlib.sha256(combined_hash.encode()).hexdigest()
 
         with self.get_session() as session:
             # Update runs
