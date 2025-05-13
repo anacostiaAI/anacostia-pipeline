@@ -88,6 +88,8 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                     <th>End Time</th>
                     <th>Location</th>
                     <th>State</th>
+                    <th>Hash</th>
+                    <th>Hash Algorithm</th>
                 </tr>
             </thead>
             <tbody>
@@ -102,6 +104,8 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                             <td>{ sample["end_time"] }</td>
                             <td>{ sample["location"] }</td>
                             <td>{ sample["state"] }</td>
+                            <td>{ sample["hash"] }</td>
+                            <td>{ sample["hash_algorithm"] }</td>
                         </tr>
                         ''' for sample in samples
                     ])

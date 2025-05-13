@@ -97,8 +97,8 @@ class Artifact(Base):
     created_at = Column(DateTime)
     end_time = Column(DateTime, nullable=True)
     state = Column(String, default='new')
-    hash = Column(String, nullable=True)
-    hash_algorithm = Column(String, nullable=True)
+    hash = Column(String, nullable=False)
+    hash_algorithm = Column(String, nullable=False)
     size = Column(Integer, nullable=True)
     content_type = Column(String, nullable=True)
 

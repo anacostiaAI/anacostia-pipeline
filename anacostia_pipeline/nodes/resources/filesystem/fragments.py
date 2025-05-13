@@ -15,6 +15,8 @@ def table_row(file_entry: Dict[str, str]):
             <td>{ file_entry["end_time"] }</td>
             <td>{ file_entry["location"] }</td>
             <td sse-swap="{ file_entry["state_change_event_name"] }" hx-target="closest tr" hx-swap="outerHTML">{ file_entry["state"] }</td>
+            <td>{ file_entry["hash"] }</td>
+            <td>{ file_entry["hash_algorithm"] }</td>
         </tr>
     """
 
@@ -44,6 +46,8 @@ def filesystemstore_home(sse_endpoint: str, event_name: str, file_entries: List[
                         <th>End Time</th>
                         <th>Location</th>
                         <th>State</th>
+                        <th>Hash</th>
+                        <th>Hash Algorithm</th>
                     </tr>
                 </thead>
                 <tbody hx-ext="sse" sse-connect="{sse_endpoint}" sse-swap="{event_name}" hx-swap="afterbegin">

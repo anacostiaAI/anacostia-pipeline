@@ -133,6 +133,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             while chunk := f.read(chunk_size):
                 sha256.update(chunk)
         return sha256.hexdigest()
+    
+    def verify_file_hash(self, filepath: str, expected_hash: str) -> bool:
+        actual_hash = self.hash_file(filepath)
+        return actual_hash == expected_hash
 
     async def resource_trigger(self) -> None:
         """
