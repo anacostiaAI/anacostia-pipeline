@@ -30,8 +30,14 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
             node_id = self.metadata_store.get_node_id(node_name)
             return {"node_id": node_id}
 
-        @self.get("/create_entry/")
-        async def create_entry(resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+        @self.post("/create_entry/")
+        async def create_entry(request: Request):
+            data = await request.json()
+            resource_node_name = data["resource_node_name"]
+            filepath = data["filepath"]
+            state = data["state"]
+            run_id = data["run_id"]
+
             self.metadata_store.create_entry(resource_node_name, filepath, state, run_id)
         
         @self.post("/merge_artifacts_table/")
@@ -127,15 +133,15 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             return node_id
     
     async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+        data = {
+            "resource_node_name": resource_node_name,
+            "filepath": filepath,
+            "state": state,
+            "run_id": run_id
+        }
+
         async with httpx.AsyncClient() as client:
-            if run_id is not None:
-                response = await client.get(
-                    f"{self.get_server_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}&run_id={run_id}"
-                )
-            else:
-                response = await client.get(
-                    f"{self.get_server_url()}/create_entry/?resource_node_name={resource_node_name}&filepath={filepath}&state={state}"
-                )
+            response = await client.post(f"{self.get_server_url()}/create_entry/", json=data)
     
     async def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
         async with httpx.AsyncClient() as client:
