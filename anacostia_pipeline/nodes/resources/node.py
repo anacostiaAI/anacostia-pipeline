@@ -98,7 +98,7 @@ class BaseResourceNode(BaseNode, ABC):
                     # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
             
 
-    async def record_new(self, filepath: str) -> None:
+    async def record_new(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record a new artifact in the metadata store.
 
@@ -107,12 +107,12 @@ class BaseResourceNode(BaseNode, ABC):
         """
 
         if self.metadata_store is not None:
-            self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
 
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="new")
+                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e

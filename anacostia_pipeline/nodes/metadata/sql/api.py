@@ -37,8 +37,12 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
             self.metadata_store.create_entry(
                 resource_node_name = data["resource_node_name"], 
                 filepath = data["filepath"], 
+                hash = data["hash"],
+                hash_algorithm = data["hash_algorithm"],
                 state = data["state"], 
-                run_id = data["run_id"]
+                run_id = data["run_id"],
+                file_size = data["file_size"],
+                content_type = data["content_type"]
             )
         
         @self.post("/merge_artifacts_table/")
@@ -133,12 +137,19 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             node_id = response.json()["node_id"]
             return node_id
     
-    async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+    async def create_entry(
+        self, resource_node_name: str, filepath: str, 
+        state: str = "new", run_id: int = None, hash: str = None, hash_algorithm: str = None, file_size: int = None, content_type: str = None
+    ):
         data = {
             "resource_node_name": resource_node_name,
             "filepath": filepath,
             "state": state,
-            "run_id": run_id
+            "run_id": run_id,
+            "hash": hash,
+            "hash_algorithm": hash_algorithm,
+            "file_size": file_size,
+            "content_type": content_type
         }
 
         async with httpx.AsyncClient() as client:

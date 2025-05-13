@@ -7,7 +7,7 @@ import traceback
 import time
 from abc import ABC, abstractmethod
 import asyncio
-import httpx
+import hashlib
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -87,13 +87,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 for root, dirnames, filenames in os.walk(self.path):
                     for filename in filenames:
                         filepath = os.path.join(root, filename)
+                        
+                        hash = self.hash_file(filepath)
+
                         filepath = filepath.removeprefix(self.path)     # Remove the path prefix
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
 
                         try:
                             entry_exists = await self.entry_exists(filepath) 
                             if entry_exists is False:
-                                await self.record_new(filepath)
+                                await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
                         except Exception as e:
@@ -123,6 +126,13 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         # because we can't run an event loop in the same thread as the FilesystemStoreNode
         self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
         self.observer_thread.start()
+
+    def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                sha256.update(chunk)
+        return sha256.hexdigest()
 
     async def resource_trigger(self) -> None:
         """
