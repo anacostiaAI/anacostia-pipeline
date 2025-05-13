@@ -133,10 +133,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             while chunk := f.read(chunk_size):
                 sha256.update(chunk)
         return sha256.hexdigest()
-    
-    def verify_file_hash(self, filepath: str, expected_hash: str) -> bool:
-        actual_hash = self.hash_file(filepath)
-        return actual_hash == expected_hash
 
     async def resource_trigger(self) -> None:
         """
@@ -190,10 +186,11 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         try:
             # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
             # that way, the Observer can see the file is already logged and ignore it.
-            # await self.record_current(filepath)
+            # await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
 
             self._save_artifact_hook(artifact_save_path, *args, **kwargs)
-            await self.record_current(filepath)
+            hash = self.hash_file(artifact_save_path)
+            await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
         except Exception as e:

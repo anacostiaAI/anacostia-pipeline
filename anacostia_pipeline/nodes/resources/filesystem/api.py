@@ -1,6 +1,7 @@
 from typing import List, Union, Any, Optional
 from logging import Logger
 import os
+import hashlib
 
 from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
@@ -11,7 +12,7 @@ from anacostia_pipeline.nodes.resources.api import BaseResourceServer, BaseResou
 
 
 class FilesystemStoreServer(BaseResourceServer):
-    def __init__(self, node, client_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
+    def __init__(self, node, client_url: str, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
         super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
 
@@ -25,9 +26,13 @@ class FilesystemStoreServer(BaseResourceServer):
                     self.log(f"Error: File not found - {artifact_path}", level="ERROR")
                     raise HTTPException(status_code=404, detail=f"Resource path not found: {artifact_path}")
 
+                # Compute SHA-256 hash of the file
+                file_hash = self.node.hash_file(artifact_path)
+                headers = {"X-File-Hash": file_hash}
+
                 # Return the file as a response
                 self.log(f"Sending file: {artifact_path}", level="INFO")
-                return FileResponse(path=artifact_path, media_type="application/octet-stream")
+                return FileResponse(path=artifact_path, media_type="application/octet-stream", headers=headers)
 
             except HTTPException as e:
                 self.log(f"HTTPException: {str(e)}", level="ERROR")
@@ -67,8 +72,19 @@ class FilesystemStoreServer(BaseResourceServer):
                             progress = bytes_received / total_size * 100
                             self.log(f"Received: {bytes_received/1024/1024:.2f}MB / {total_size/1024/1024:.2f}MB ({progress:.1f}%)", level="INFO")
 
+                # Compute SHA-256 hash of the file
+                expected_hash = request.headers.get("x-file-hash")
+                if not expected_hash:
+                    raise HTTPException(status_code=500, detail="Missing file hash in response headers")
+                
+                # Verify file hash
+                actual_hash = self.node.hash_file(file_path)
+                if actual_hash != expected_hash:
+                    self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
+                    raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
+
                 # enter the uploaded file into the metadata store
-                await self.node.record_current(x_filename)
+                await self.node.record_current(x_filename, hash=actual_hash, hash_algorithm="sha256")
                 
                 return JSONResponse(
                     content={
@@ -97,6 +113,13 @@ class FilesystemStoreClient(BaseResourceClient):
         if os.path.exists(self.storage_directory) is False:
             os.makedirs(self.storage_directory)
         
+    def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                sha256.update(chunk)
+        return sha256.hexdigest()
+    
     async def get_artifact(self, filepath: str) -> Any:
         local_filepath = os.path.join(self.storage_directory, filepath)
 
@@ -119,6 +142,17 @@ class FilesystemStoreClient(BaseResourceClient):
                             async for chunk in response.aiter_bytes():
                                 f.write(chunk)
                         
+                        # Get expected hash from header
+                        expected_hash = response.headers.get("x-file-hash")
+                        if not expected_hash:
+                            raise HTTPException(status_code=500, detail="Missing file hash in response headers")
+                        
+                        # Verify file hash
+                        actual_hash = self.hash_file(local_filepath)
+                        if actual_hash != expected_hash:
+                            self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
+                            raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
+
                         self.log(f"File downloaded successfully: {local_filepath}", level="INFO")
                         return True
 
@@ -153,10 +187,13 @@ class FilesystemStoreClient(BaseResourceClient):
             filesize = os.path.getsize(filepath)
 
             self.log(f"Preparing to upload: {filename} ({filesize/1024/1024:.2f} MB)", level="INFO")
+
+            file_hash = self.hash_file(filepath)
             
             # Set up headers with file metadata
             headers = {
                 "X-Filename": filename,
+                "X-File-Hash": file_hash,
                 "Content-Type": "application/octet-stream",
                 "Content-Length": str(filesize)
             }

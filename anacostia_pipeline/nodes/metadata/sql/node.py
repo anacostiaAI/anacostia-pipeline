@@ -176,7 +176,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         with self.get_session() as session:
             entry = Artifact(
-                run_id=run_id,
+                run_id=self.get_run_id() if state == "current" else run_id,
                 node_id=node_id,
                 location=filepath,
                 created_at=datetime.now(),
