@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 import traceback
 from datetime import datetime
+import hashlib
 
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy import exists, select, update
@@ -119,12 +120,19 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     def end_run(self) -> None:
         end_time = datetime.now()
 
+        # Create the hash for the run by retrieving the hashes of all artifacts, metrics, params, and tags associated with the current run into a list,
+        # sorting the list, concatenating the hashes in the list into a string, and then hashing the string
+        entries = self.get_entries(state="current")
+        artifact_hashes = [entry["hash"] for entry in entries]
+        artifact_hashes = ''.join(sorted(artifact_hashes))
+        run_hash = hashlib.sha256(artifact_hashes.encode()).hexdigest()
+
         with self.get_session() as session:
             # Update runs
             stmt_run = (
                 update(Run)
                 .where(Run.end_time.is_(None))
-                .values(end_time=end_time)
+                .values(end_time=end_time, hash=run_hash)
             )
             session.execute(stmt_run)
 
@@ -285,6 +293,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "run_id": run.run_id,
                     "start_time": run.start_time,
                     "end_time": run.end_time,
+                    "hash": run.hash
                 }
                 for run in result
             ]

@@ -14,6 +14,7 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
                     <th>Run ID</th>
                     <th>Start Time</th>
                     <th>End Time</th>
+                    <th>Run Hash</th>
                 </tr>
             </thead>
             <tbody>
@@ -24,6 +25,7 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
                             <th>{ run["run_id"] }</th>
                             <td>{ run["start_time"] }</td>
                             <td>{ run["end_time"] }</td>
+                            <td>{ run["hash"] }</td>
                         </tr>
                         ''' for run in runs
                     ])

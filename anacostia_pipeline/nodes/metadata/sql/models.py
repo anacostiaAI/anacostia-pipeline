@@ -12,6 +12,7 @@ class Run(Base):
     run_id = Column(Integer, primary_key=True)
     start_time = Column(DateTime)
     end_time = Column(DateTime, nullable=True)
+    hash = Column(String, nullable=True)
 
     # Optional: add relationships if needed
     metrics = relationship("Metric", back_populates="run")
