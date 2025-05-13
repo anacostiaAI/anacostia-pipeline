@@ -33,12 +33,13 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
         @self.post("/create_entry/")
         async def create_entry(request: Request):
             data = await request.json()
-            resource_node_name = data["resource_node_name"]
-            filepath = data["filepath"]
-            state = data["state"]
-            run_id = data["run_id"]
-
-            self.metadata_store.create_entry(resource_node_name, filepath, state, run_id)
+            
+            self.metadata_store.create_entry(
+                resource_node_name = data["resource_node_name"], 
+                filepath = data["filepath"], 
+                state = data["state"], 
+                run_id = data["run_id"]
+            )
         
         @self.post("/merge_artifacts_table/")
         async def merge_artifacts_table(resource_node_name: str, request: Request):
