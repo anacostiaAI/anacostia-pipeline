@@ -1,8 +1,7 @@
 import time
 
+from utils import *
 
-sqlalchemy_tests_path = "./testing_artifacts"
-data_store_path = f"{sqlalchemy_tests_path}/data_store"
 
 
 def create_file(file_path, content):
@@ -15,5 +14,5 @@ def create_file(file_path, content):
 
 
 for i in range(10):
-    create_file(f"{data_store_path}/test_file{i}.txt", f"test file {i}")
+    create_file(f"{root_input_artifacts}/test_file{i}.txt", f"test file {i}")
     time.sleep(1.5)
