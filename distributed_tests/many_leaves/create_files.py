@@ -14,5 +14,5 @@ def create_file(file_path, content):
 
 
 for i in range(10):
-    create_file(f"{root_input_artifacts}/test_file{i}.txt", f"test file {i}")
+    create_file(f"{root_input_artifacts}/data_store/test_file{i}.txt", f"test file {i}")
     time.sleep(1.5)

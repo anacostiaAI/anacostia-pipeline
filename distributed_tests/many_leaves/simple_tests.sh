@@ -10,10 +10,8 @@ ROOT_PORT=8000
 LEAF_SCRIPT_1="leaf1.py"
 LEAF_PORT_1=8001
 
-: '
 LEAF_SCRIPT_2="leaf2.py"
 LEAF_PORT_2=8002
-'
 
 is_port_available() {
     if command -v nc >/dev/null 2>&1; then
@@ -99,7 +97,7 @@ echo "Setting up distributed tests"
 python setup.py
 echo "Done."
 
-echo "Starting leaf2 server on port $LEAF_PORT_1..."
+echo "Starting leaf1 server on port $LEAF_PORT_1..."
 python3 $LEAF_SCRIPT_1 "127.0.0.1" $LEAF_PORT_1 &
 LEAF_PID_1=$!
 

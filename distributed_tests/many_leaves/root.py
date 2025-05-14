@@ -27,11 +27,8 @@ args = parser.parse_args()
 
 
 # Create the testing artifacts directory for the SQLAlchemy tests
-if os.path.exists(testing_artifacts) is True:
-    shutil.rmtree(testing_artifacts)
-os.makedirs(testing_artifacts)
-metadata_store_path = f"{testing_artifacts}/metadata_store"
-data_store_path = f"{testing_artifacts}/data_store"
+metadata_store_path = f"{root_input_artifacts}/metadata_store"
+data_store_path = f"{root_input_artifacts}/data_store"
 
 
 dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
@@ -44,7 +41,7 @@ class LoggingNode(BaseActionNode):
         super().__init__(name=name, predecessors=predecessors, remote_successors=remote_successors)
     
     async def execute(self, *args, **kwargs) -> bool:
-        self.log("Logging node 1 executed", level="INFO")
+        self.log("Root logging node executed", level="INFO")
         return True
 
 # Create the nodes
@@ -54,6 +51,7 @@ logging_node = LoggingNode(
     name="logging_node", 
     predecessors=[data_store],
     #remote_successors=[f"http://{args.leaf1_host}:{args.leaf1_port}/logging1", f"http://{args.leaf2_host}:{args.leaf2_port}/logging2"]
+    remote_successors=[f"http://{args.leaf1_host}:{args.leaf1_port}/logging1"]
 )
 
 # Create the pipeline
