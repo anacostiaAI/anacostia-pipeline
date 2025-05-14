@@ -101,7 +101,7 @@ echo "Starting leaf2 server on port $LEAF_PORT_2..."
 python3 $LEAF_SCRIPT_2 "127.0.0.1" $LEAF_PORT_2 &
 LEAF_PID_2=$!
 
-# Give the server time to start
+# Give the leaf servers time to start
 sleep 2
 
 # Verify leaf server started successfully
@@ -119,6 +119,9 @@ fi
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT_1 and $LEAF_PORT_2 ..."
 python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT_1 "127.0.0.1" $LEAF_PORT_2 &
 ROOT_PID=$!
+
+# Give the root server time to start
+sleep 2
 
 # Verify leaf server started successfully
 if ! kill -0 $ROOT_PID 2>/dev/null; then

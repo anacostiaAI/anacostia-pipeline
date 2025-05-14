@@ -28,7 +28,7 @@ class LoggingNode(BaseActionNode):
         return True
 
 
-logging_node = LoggingNode("logging1")
+logging_node = LoggingNode("logging_leaf_1")
 pipeline = LeafPipeline(name="leaf1", nodes=[logging_node], loggers=logger)
 server = LeafPipelineServer(
     "leaf1_server", pipeline=pipeline, host=args.leaf1_host, port=args.leaf1_port, logger=logger, uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG_1

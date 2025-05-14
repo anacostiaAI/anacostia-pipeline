@@ -44,6 +44,7 @@ class LoggingNode(BaseActionNode):
         self.log("Root logging node executed", level="INFO")
         return True
 
+
 # Create the nodes
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
@@ -51,8 +52,8 @@ logging_node = LoggingNode(
     name="logging_root", 
     predecessors=[data_store],
     remote_successors=[
-        f"http://{args.leaf1_host}:{args.leaf1_port}/logging1", 
-        f"http://{args.leaf2_host}:{args.leaf2_port}/logging2"
+        f"http://{args.leaf1_host}:{args.leaf1_port}/logging_leaf_1", 
+        f"http://{args.leaf2_host}:{args.leaf2_port}/logging_leaf_2"
     ]
 )
 
