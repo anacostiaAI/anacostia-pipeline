@@ -29,7 +29,7 @@ class LoggingNode(BaseActionNode):
         super().__init__(name=name, predecessors=predecessors)
     
     async def execute(self, *args, **kwargs) -> bool:
-        self.log("Logging node executed", level="INFO")
+        self.log("Logging node 1 executed", level="INFO")
         return True
 
 # Create the nodes
@@ -38,8 +38,13 @@ data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_pat
 logging_node = LoggingNode("logging_node", predecessors=[data_store])
 
 # Create the pipeline
-pipeline = RootPipeline(nodes=[metadata_store, data_store, logging_node])
+pipeline = RootPipeline(
+    nodes=[metadata_store, data_store, logging_node],
+    loggers=logger
+)
 
 # Create the web server
-webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+webserver = RootPipelineServer(
+    name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG, logger=logger
+)
 webserver.run()
