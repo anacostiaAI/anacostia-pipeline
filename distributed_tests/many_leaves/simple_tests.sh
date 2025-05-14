@@ -53,14 +53,12 @@ cleanup() {
         wait $LEAF_PID_1 2>/dev/null
     fi
     
-    : '
     # Then kill the server
     if [ -n "$LEAF_PID_2" ] && kill -0 $LEAF_PID_2 2>/dev/null; then
         echo "Stopping server (PID: $LEAF_PID_2)..."
         kill -TERM $LEAF_PID_2 2>/dev/null
         wait $LEAF_PID_2 2>/dev/null
     fi
-    '
     
     echo "All processes terminated."
     exit 0
@@ -78,13 +76,11 @@ if ! is_port_available $LEAF_PORT_1; then
     exit 1
 fi
 
-: '
 # Check client port
 if ! is_port_available $LEAF_PORT_2; then
     echo "Error: Port $LEAF_PORT_2 is already in use."
     exit 1
 fi
-'
 
 # Register the cleanup function for multiple signals
 # This ensures cleanup runs when Ctrl+C is pressed (INT)
@@ -101,11 +97,9 @@ echo "Starting leaf1 server on port $LEAF_PORT_1..."
 python3 $LEAF_SCRIPT_1 "127.0.0.1" $LEAF_PORT_1 &
 LEAF_PID_1=$!
 
-: '
 echo "Starting leaf2 server on port $LEAF_PORT_2..."
 python3 $LEAF_SCRIPT_2 "127.0.0.1" $LEAF_PORT_2 &
 LEAF_PID_2=$!
-'
 
 # Give the server time to start
 sleep 2
@@ -116,13 +110,11 @@ if ! kill -0 $LEAF_PID_1 2>/dev/null; then
     exit 1
 fi
 
-: '
 # Verify leaf server started successfully
 if ! kill -0 $LEAF_PID_2 2>/dev/null; then
     echo "Error: Leaf2 server failed to start. Check ./testing_artifacts/leaf_server_output.log for details."
     exit 1
 fi
-'
 
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT_1 and $LEAF_PORT_2 ..."
 python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT_1 "127.0.0.1" $LEAF_PORT_2 &
@@ -134,8 +126,7 @@ if ! kill -0 $ROOT_PID 2>/dev/null; then
     exit 1
 fi
 
-#echo "leaf1 server (PID: $LEAF_PID_1), leaf2 server (PID: $LEAF_PID_2), and root server (PID: $ROOT_PID) are running."
-echo "leaf1 server (PID: $LEAF_PID_1), and root server (PID: $ROOT_PID) are running."
+echo "leaf1 server (PID: $LEAF_PID_1), leaf2 server (PID: $LEAF_PID_2), and root server (PID: $ROOT_PID) are running."
 echo "Press Ctrl+C to stop both processes."
 
 # Create test data
@@ -154,12 +145,10 @@ while true; do
         break
     fi
     
-    : '
     if ! kill -0 $LEAF_PID_2 2>/dev/null; then
         echo "Leaf process terminated unexpectedly. Check leaf_server_output.log for details."
         break
     fi
-    '
     
     if ! kill -0 $ROOT_PID 2>/dev/null; then
         echo "Root process terminated. Test may have completed."

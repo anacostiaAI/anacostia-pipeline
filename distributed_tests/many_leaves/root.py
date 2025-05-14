@@ -50,8 +50,10 @@ data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_pat
 logging_node = LoggingNode(
     name="logging_node", 
     predecessors=[data_store],
-    #remote_successors=[f"http://{args.leaf1_host}:{args.leaf1_port}/logging1", f"http://{args.leaf2_host}:{args.leaf2_port}/logging2"]
-    remote_successors=[f"http://{args.leaf1_host}:{args.leaf1_port}/logging1"]
+    remote_successors=[
+        f"http://{args.leaf1_host}:{args.leaf1_port}/logging1", 
+        f"http://{args.leaf2_host}:{args.leaf2_port}/logging2"
+    ]
 )
 
 # Create the pipeline
