@@ -52,8 +52,8 @@ logging_node = LoggingNode(
     name="logging_root", 
     predecessors=[data_store],
     remote_successors=[
-        f"http://{args.leaf1_host}:{args.leaf1_port}/logging_leaf_1", 
-        f"http://{args.leaf2_host}:{args.leaf2_port}/logging_leaf_2"
+        f"http://{args.leaf1_host}:{args.leaf1_port}/logging_leaf_1",   # http://127.0.0.1:8001/logging_leaf_1
+        f"http://{args.leaf2_host}:{args.leaf2_port}/logging_leaf_2"    # http://127.0.0.1:8002/logging_leaf_2
     ]
 )
 
