@@ -75,6 +75,7 @@ class BaseNode(Thread):
         self.pause_event.set()
         self.queue: Queue | None = None
         self.gui: BaseGUI | None = None
+        self.node_server: BaseServer | None = None
         self.connector: Connector | None = None
 
         super().__init__(name=name)

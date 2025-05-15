@@ -101,11 +101,11 @@ class RootPipelineServer(FastAPI):
             self.mount(connector.get_connector_prefix(), connector)          
 
             node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
-            self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
-            node.set_queue(self.queue)                                      # set the queue for the node
+            self.mount(node_gui.get_node_prefix(), node_gui)            # mount the BaseNodeApp to PipelineWebserver
+            node.set_queue(self.queue)                                  # set the queue for the node
 
             server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
-            self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
+            self.mount(server.get_node_prefix(), server)                # mount the BaseRPCserver to PipelineWebserver
 
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
