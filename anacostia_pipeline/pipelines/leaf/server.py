@@ -20,6 +20,7 @@ from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseClient
 from anacostia_pipeline.nodes.api import BaseServer
+from anacostia_pipeline.pipelines.utils import EventModel
 
 
 
@@ -136,7 +137,15 @@ class LeafPipelineServer(FastAPI):
         async def finish_connect():
             for node in self.pipeline.nodes:
                 node.connection_event.set()  # Set the connection event for each node
-
+        
+        # in cases where there are other leaf pipelines connected to this leaf pipeline (e.g., root -> leaf1 -> leaf2), 
+        # the /send_event endpoint enables leaf2 to relay its messages to leaf1 by putting its messages into leaf1's queue,
+        # leaf1 then relays all of its messages and leaf2's messages back to the root pipeline
+        @self.post('/send_event')
+        async def send_event(message: EventModel):
+            self.queue.put_nowait(message.model_dump())
+            return {"status": "ok"}
+        
         self.queue = Queue()
     
     async def process_queue(self):
