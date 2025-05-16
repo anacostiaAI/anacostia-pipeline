@@ -26,9 +26,6 @@ class PipelineModel(BaseModel):
 
     nodes: List[NodeModel]
 
-    def add_node(self, node: NodeModel):
-        self.nodes.append(node)
-
 
 class RootPipeline:
     """
@@ -116,18 +113,6 @@ class RootPipeline:
 
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
-    
-    def set_pipeline_model(self, pipeline_model: PipelineModel):
-        """
-        Sets the pipeline model for the pipeline. This is used by the root service to create a pipeline model from all of the leaf pipeline models.
-        """
-        self.pipeline_model = pipeline_model
-
-    def model(self):
-        if self.pipeline_model is None:
-            return PipelineModel(nodes=[n.model() for n in self.nodes])
-        else:
-            return self.pipeline_model
     
     def setup_nodes(self):
         """
