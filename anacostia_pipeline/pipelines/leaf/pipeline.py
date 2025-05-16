@@ -100,12 +100,11 @@ class LeafPipeline:
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
         """
 
+        self.pipeline_model = PipelineModel(nodes=[n.model() for n in self.nodes])
+
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
 
-    def model(self):
-        return PipelineModel(nodes=[n.model() for n in self.nodes])
-    
     def setup_nodes(self):
         """
         Sets up all the registered nodes in topological order.

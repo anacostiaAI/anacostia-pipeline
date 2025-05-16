@@ -222,8 +222,7 @@ class LeafPipelineServer(FastAPI):
             responses = await asyncio.gather(*task)
         
     def frontend_json(self):
-        leaf_data = {}
-        leaf_data["nodes"] = self.pipeline.model().model_dump()["nodes"]
+        leaf_data = self.pipeline.pipeline_model.model_dump()
 
         edges = []
         for leaf_node_model, leaf_node in zip(leaf_data["nodes"], self.pipeline.nodes):
