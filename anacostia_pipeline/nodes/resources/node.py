@@ -224,10 +224,6 @@ class BaseResourceNode(BaseNode, ABC):
             
             self.resource_event.set()
 
-    def leaf_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
-
     async def run_async(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:

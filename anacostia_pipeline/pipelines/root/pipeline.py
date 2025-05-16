@@ -142,7 +142,7 @@ class RootPipeline:
             threads: List[Thread] = []
             for node in nodes:
                 node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-                thread = Thread(target=node.root_setup)
+                thread = Thread(target=node.setup)
                 node.status = Status.INITIALIZING
                 thread.start()
                 threads.append(thread)

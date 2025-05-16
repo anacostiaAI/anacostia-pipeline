@@ -71,6 +71,15 @@ class BaseActionNode(BaseNode):
         pass
 
     async def run_async(self) -> None:
+        if self.wait_for_connection:
+            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
+            
+            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
+            self.connection_event.wait()
+            if self.exit_event.is_set(): return
+
+            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
+
         while self.exit_event.is_set() is False:
             self.status = Status.QUEUED
             self.wait_for_predecessors()

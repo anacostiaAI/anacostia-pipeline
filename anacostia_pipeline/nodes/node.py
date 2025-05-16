@@ -300,23 +300,6 @@ class BaseNode(Thread):
         """
         pass
     
-    def root_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
-    
-    def leaf_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
-
-        if self.wait_for_connection:
-            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
-            
-            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
-            self.connection_event.wait()
-            if self.exit_event.is_set(): return
-
-            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
-
     async def run_async(self) -> None:
         """
         override to specify the logic of the node.

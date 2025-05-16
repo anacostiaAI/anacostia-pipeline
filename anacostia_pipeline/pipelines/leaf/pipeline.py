@@ -119,7 +119,7 @@ class LeafPipeline:
             threads: List[Thread] = []
             for node in nodes:
                 node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}", level="INFO")
-                thread = Thread(target=node.leaf_setup)
+                thread = Thread(target=node.setup)
                 node.status = Status.INITIALIZING
                 thread.start()
                 threads.append(thread)
