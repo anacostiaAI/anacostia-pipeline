@@ -38,11 +38,7 @@ class RootPipeline:
     2. Ensuring the user built the graph correctly (i.e., ensuring the graph is a DAG)
     """
 
-    def __init__(
-        self, 
-        nodes: Iterable[BaseNode],
-        loggers: Union[Logger, List[Logger]] = None
-    ) -> None:
+    def __init__(self, nodes: Iterable[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
 
         self.node_dict = dict()
         self.graph = nx.DiGraph()
@@ -83,12 +79,7 @@ class RootPipeline:
         for node in self.nodes:
             if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
                 raise InvalidNodeDependencyError("There can only be one metadata store node")
-        """
-                
-        # set metadata store node
-        self.metadata_store = self.nodes[0]
 
-        """
         # check 5: make sure all resource nodes are successors of the metadata store node
         for node in self.nodes:
             if isinstance(node, BaseResourceNode) is True:
