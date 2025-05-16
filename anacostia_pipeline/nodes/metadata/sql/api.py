@@ -52,8 +52,6 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
             
             for entry in entries:
                 entry["created_at"] = datetime.fromisoformat(entry["created_at"])
-                if entry["end_time"] is not None:
-                    entry["end_time"] = datetime.fromisoformat(entry["end_time"])
             
             self.metadata_store.merge_artifacts_table(resource_node_name, entries)
         
@@ -249,7 +247,4 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             for entry in entries:
                 entry["created_at"] = datetime.fromisoformat(entry["created_at"])
 
-                if entry["end_time"] is not None:
-                    entry["end_time"] = datetime.fromisoformat(entry["end_time"])
-            
             return entries

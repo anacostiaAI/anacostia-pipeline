@@ -96,7 +96,6 @@ class Artifact(Base):
     node_id = Column(Integer, ForeignKey('nodes.id'))
     location = Column(String)
     created_at = Column(DateTime)
-    end_time = Column(DateTime, nullable=True)
     state = Column(String, default='new')
     hash = Column(String, nullable=False)
     hash_algorithm = Column(String, nullable=False)

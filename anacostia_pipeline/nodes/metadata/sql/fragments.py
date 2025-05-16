@@ -13,7 +13,6 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
                 <tr>
                     <th>Run ID</th>
                     <th>Start Time</th>
-                    <th>End Time</th>
                     <th>Run Hash</th>
                 </tr>
             </thead>
@@ -24,7 +23,6 @@ def sqlmetadatastore_runs_table(runs: List[Dict[str, str]], runs_endpoint: str):
                         <tr>
                             <th>{ run["run_id"] }</th>
                             <td>{ run["start_time"] }</td>
-                            <td>{ run["end_time"] }</td>
                             <td>{ run["hash"] }</td>
                         </tr>
                         ''' for run in runs
@@ -87,7 +85,6 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                     <th>Run ID</th>
                     <th>Node Name</th>
                     <th>Created At</th>
-                    <th>End Time</th>
                     <th>Location</th>
                     <th>State</th>
                     <th>Hash</th>
@@ -103,7 +100,6 @@ def sqlmetadatastore_samples_table(samples: List[Dict[str, str]], samples_endpoi
                             <td>{ sample["run_id"] }</td>
                             <td>{ sample["node_name"] }</td>
                             <td>{ sample["created_at"] }</td>
-                            <td>{ sample["end_time"] }</td>
                             <td>{ sample["location"] }</td>
                             <td>{ sample["state"] }</td>
                             <td>{ sample["hash"] }</td>

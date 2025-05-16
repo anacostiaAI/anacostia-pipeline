@@ -162,8 +162,8 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             # Update artifacts
             stmt_artifact = (
                 update(Artifact)
-                .where(Artifact.end_time.is_(None), Artifact.state == "current")
-                .values(end_time=end_time, state="old")
+                .where(Artifact.state == "current")
+                .values(state="old")
             )
             session.execute(stmt_artifact)
 
@@ -232,7 +232,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     node_id=node_id,
                     location=entry["location"],
                     created_at=entry["created_at"],
-                    end_time=entry["end_time"],
                     state="new",
                     hash=entry["hash"],
                     hash_algorithm=entry["hash_algorithm"],
@@ -273,7 +272,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     Artifact.run_id,
                     Artifact.location,
                     Artifact.created_at,
-                    Artifact.end_time,
                     Artifact.state,
                     Artifact.hash,
                     Artifact.hash_algorithm,
@@ -297,7 +295,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "run_id": row.run_id,
                     "location": row.location,
                     "created_at": row.created_at,
-                    "end_time": row.end_time,
                     "state": row.state,
                     "hash": row.hash,
                     "hash_algorithm": row.hash_algorithm,

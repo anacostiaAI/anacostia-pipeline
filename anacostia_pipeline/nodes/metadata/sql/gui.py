@@ -47,8 +47,6 @@ class SQLMetadataStoreGUI(BaseGUI):
             samples = self.node.get_entries()
             for sample in samples:
                 sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
-                if sample['end_time'] is not None:
-                    sample['end_time'] = sample['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
                 
             return sqlmetadatastore_samples_table(samples, self.data_options["samples"])
         
