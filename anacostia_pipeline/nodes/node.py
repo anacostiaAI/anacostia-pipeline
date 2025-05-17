@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict
 import json
 import asyncio
 import httpx
-import time
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.gui import BaseGUI
@@ -37,12 +36,24 @@ class BaseNode(Thread):
         self, 
         name: str, 
         predecessors: List[BaseNode] = None, 
-        remote_predecessors: List[str] = None,      # should be a list of urls or BaseRPCclient
+        remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None, 
         client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
+
+        """
+        Base class for all nodes in the pipeline.
+        Args:
+            name (str): Name of the node.
+            predecessors (List[BaseNode], optional): List of predecessor nodes. Defaults to None.
+            remote_predecessors (List[str], optional): List of remote predecessor URLs. Defaults to None.
+            remote_successors (List[str], optional): List of remote successor URLs. Defaults to None.
+            client_url (str, optional): URL of the BaseClient for the BaseServer of this node to connect to. Defaults to None.
+            wait_for_connection (bool, optional): Whether to wait for connection. Defaults to False.
+            loggers (Union[Logger, List[Logger]], optional): Logger or list of loggers for logging. Defaults to None.
+        """
 
         self._status_lock = Lock()
         self.client_url = client_url

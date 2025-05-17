@@ -27,7 +27,7 @@ class PipelineModel(BaseModel):
     nodes: List[NodeModel]
 
 
-class RootPipeline:
+class Pipeline:
     """
     Pipeline is a class that is in charge of graph management and execution; this includes:
     1. Providing an API to interact with the nodes.

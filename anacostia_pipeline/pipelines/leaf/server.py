@@ -133,10 +133,13 @@ class LeafPipelineServer(FastAPI):
             self.logger.info(f"Leaf server {self.name} connected to root server at {self.root_host}:{self.root_port}")
             return self.frontend_json()
         
+        self.connected = False
+        
         @self.post("/finish_connect", status_code=status.HTTP_200_OK)
         async def finish_connect():
             for node in self.pipeline.nodes:
                 node.connection_event.set()  # Set the connection event for each node
+            self.connected = True
         
         # in cases where there are other leaf pipelines connected to this leaf pipeline (e.g., root -> leaf1 -> leaf2), 
         # the /send_event endpoint enables leaf2 to relay its messages to leaf1 by putting its messages into leaf1's queue,
@@ -151,7 +154,7 @@ class LeafPipelineServer(FastAPI):
     async def process_queue(self):
         async with httpx.AsyncClient() as client:
             while True:
-                if self.queue.empty() is False:
+                if self.queue.empty() is False and self.connected is True:
                     message = self.queue.get()
                     
                     try:
@@ -161,10 +164,12 @@ class LeafPipelineServer(FastAPI):
                     except httpx.ConnectError as e:
                         self.logger.error(f"Could not connect to root server at {self.root_host}:{self.root_port} - {str(e)}")
                         self.queue.put(message)
+                        self.connected = False
 
                     except Exception as e:
                         self.logger.error(f"Error forwarding message: {str(e)}")
                         self.queue.put(message)
+                        self.connected = False
                     
                     finally:
                         self.queue.task_done()
