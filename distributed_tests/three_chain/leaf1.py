@@ -6,7 +6,7 @@ from typing import List
 from loggers import LEAF_ACCESS_LOGGING_CONFIG_1, LEAF_ANACOSTIA_LOGGING_CONFIG_1
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 
 parser = argparse.ArgumentParser()
@@ -38,7 +38,7 @@ logging_node = LoggingNode(
     ]
 )
 pipeline = Pipeline(name="leaf1", nodes=[logging_node], loggers=logger)
-server = LeafPipelineServer(
+server = PipelineServer(
     "leaf1_server", pipeline=pipeline, host=args.leaf1_host, port=args.leaf1_port, logger=logger, uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG_1
 )
 server.run()

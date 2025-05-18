@@ -11,7 +11,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.root.server import RootPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 from utils import *
 
@@ -62,7 +62,7 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = RootPipelineServer(
+webserver = PipelineServer(
     name="test_pipeline", pipeline=pipeline, host=args.root_host, port=args.root_port, uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG, logger=logger
 )
 webserver.run()

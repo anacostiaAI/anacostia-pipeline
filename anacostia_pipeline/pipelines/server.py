@@ -118,6 +118,7 @@ class PipelineServer(FastAPI):
                     self.successor_ip_addresses.append(base_url)
 
         # get metadata store from the pipeline
+        self.metadata_store = None
         for node in self.pipeline.nodes:
             if isinstance(node, BaseMetadataStoreNode):
                 self.metadata_store = node
@@ -276,12 +277,13 @@ class PipelineServer(FastAPI):
                 self.leaf_models.append(response_data)
 
                 # Extract the node name and type from the responses and add them to the metadata store
-                for node_data in response_data["nodes"]:
-                    node_name = node_data["name"]
-                    node_type = node_data["type"]
-            
-                    if self.metadata_store.node_exists(node_name=node_name) is False:
-                        self.metadata_store.add_node(node_name=node_name, node_type=node_type)
+                if self.metadata_store is not None:
+                    for node_data in response_data["nodes"]:
+                        node_name = node_data["name"]
+                        node_type = node_data["type"]
+                
+                        if self.metadata_store.node_exists(node_name=node_name) is False:
+                            self.metadata_store.add_node(node_name=node_name, node_type=node_type)
 
             # Connect each node to its remote successors
             task = []
