@@ -3,7 +3,7 @@ import logging
 from logging import Logger
 from typing import List
 
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
@@ -144,7 +144,7 @@ plots_store_rpc = FilesystemStoreClient(storage_directory=plots_path, client_nam
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, model_registry_rpc=model_registry_rpc)
 haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc, plots_store_rpc=plots_store_rpc)
 
-pipeline = LeafPipeline(
+pipeline = Pipeline(
     name="leaf_pipeline",
     nodes=[shakespeare_eval, haiku_eval],
     loggers=logger

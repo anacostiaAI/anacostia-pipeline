@@ -4,7 +4,7 @@ import argparse
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG_2, LEAF_ANACOSTIA_LOGGING_CONFIG_2
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
 
 
@@ -29,7 +29,7 @@ class LoggingNode(BaseActionNode):
 
 
 logging_node = LoggingNode("logging_leaf_2")
-pipeline = LeafPipeline(name="leaf2", nodes=[logging_node], loggers=logger)
+pipeline = Pipeline(name="leaf2", nodes=[logging_node], loggers=logger)
 server = LeafPipelineServer(
     "leaf2_server", pipeline=pipeline, host=args.leaf2_host, port=args.leaf2_port, logger=logger, uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG_2
 )

@@ -8,7 +8,7 @@ from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 
 from utils import *
@@ -203,7 +203,8 @@ retraining = ModelRetrainingNode(
     remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval", f"http://{args.leaf_host}:{args.leaf_port}/haiku_eval"]
 )
 
-pipeline = RootPipeline(
+pipeline = Pipeline(
+    name="root_pipeline", 
     nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining], 
     loggers=logger
 )

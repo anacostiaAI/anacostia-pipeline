@@ -3,7 +3,7 @@ from logging.config import dictConfig
 import argparse
 
 from loggers import ROOT_ANACOSTIA_LOGGING_CONFIG, ROOT_ACCESS_LOGGING_CONFIG
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.root.server import RootPipelineServer
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 
@@ -31,7 +31,8 @@ metadata_store = SQLiteMetadataStoreNode(
     client_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc",
     remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/leaf_data_node"]
 )
-pipeline = RootPipeline(
+pipeline = Pipeline(
+    name="root_pipeline", 
     nodes=[metadata_store],
     loggers=logger
 )

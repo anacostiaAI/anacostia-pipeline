@@ -6,7 +6,7 @@ import argparse
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
@@ -69,7 +69,7 @@ leaf_data_node = FilesystemStoreNode(
 )
 shakespeare_eval = EvalNode(name="shakespeare_eval", leaf_data_node=leaf_data_node)
 
-pipeline = LeafPipeline(
+pipeline = Pipeline(
     name="leaf_pipeline",
     nodes=[leaf_data_node, shakespeare_eval], 
     loggers=logger
