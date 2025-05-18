@@ -25,7 +25,7 @@ from anacostia_pipeline.nodes.api import BaseClient
 from anacostia_pipeline.nodes.api import BaseServer
 from anacostia_pipeline.pipelines.utils import EventModel
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
+from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
 class PredecessorModel(BaseModel):
