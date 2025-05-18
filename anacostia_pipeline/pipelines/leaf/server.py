@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseClient
@@ -33,7 +33,7 @@ class RootServerModel(BaseModel):
 class LeafPipelineServer(FastAPI):
     def __init__(
         self, name: str, 
-        pipeline: LeafPipeline, 
+        pipeline: Pipeline, 
         rpc_clients: List[BaseClient] = None,
         host: str = "127.0.0.1", 
         port: int = 8000, 

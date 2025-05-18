@@ -22,7 +22,7 @@ from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.api import BaseServer
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.utils import EventModel
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
@@ -32,7 +32,7 @@ class RootPipelineServer(FastAPI):
     def __init__(
         self, 
         name: str, 
-        pipeline: RootPipeline, 
+        pipeline: Pipeline, 
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 
