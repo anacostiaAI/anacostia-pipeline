@@ -28,9 +28,9 @@ from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
-class RootServerModel(BaseModel):
-    root_host: str
-    root_port: int
+class PredecessorModel(BaseModel):
+    predecessor_host: str
+    predecessor_port: int
 
 
 class PipelineServer(FastAPI):
@@ -145,9 +145,9 @@ class PipelineServer(FastAPI):
         self.successor_host = None
         self.successor_port = None
         @self.post("/connect", status_code=status.HTTP_200_OK)
-        async def connect(connection: RootServerModel):
-            self.successor_host = connection.root_host
-            self.successor_port = connection.root_port
+        async def connect(connection: PredecessorModel):
+            self.successor_host = connection.predecessor_host
+            self.successor_port = connection.predecessor_port
             self.logger.info(f"Leaf server {self.name} connected to root server at {self.successor_host}:{self.successor_port}")
             return self.frontend_json()
         
@@ -263,8 +263,8 @@ class PipelineServer(FastAPI):
             task = []
             for leaf_ip_address in self.successor_ip_addresses:
                 root_server_model={
-                    "root_host": self.host, 
-                    "root_port": self.port 
+                    "predecessor_host": self.host, 
+                    "predecessor_port": self.port 
                 }
                 task.append(client.post(f"{leaf_ip_address}/connect", json=root_server_model))
 
