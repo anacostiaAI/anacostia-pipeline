@@ -1,5 +1,5 @@
 from typing import List, Dict
-from anacostia_pipeline.pipelines.root.fragments import head_template
+from anacostia_pipeline.pipelines.fragments import head_template
 
 
 
