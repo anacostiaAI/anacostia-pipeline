@@ -138,10 +138,10 @@ class PipelineServer(FastAPI):
 
         if remote_clients is not None:
             for rpc_client in remote_clients:
-                self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
                 rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
                 rpc_client.client_host = self.host
                 rpc_client.client_port = self.port
+                self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
         
         self.successor_host = None
         self.successor_port = None
@@ -296,14 +296,14 @@ class PipelineServer(FastAPI):
                     }
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
-            responses = await asyncio.gather(*task)
+            await asyncio.gather(*task)
 
             # Connect RPC servers to RPC clients
             task = []
             for node in self.pipeline.nodes:
                 task.append(node.node_server.connect())
-            
-            responses = await asyncio.gather(*task)
+
+            await asyncio.gather(*task)
 
             # Finish the connection process for each leaf pipeline
             # Leaf pipeline will set the connection event for each node
@@ -311,7 +311,7 @@ class PipelineServer(FastAPI):
             for leaf_ip_address in self.successor_ip_addresses:
                 task.append(client.post(f"{leaf_ip_address}/finish_connect"))
 
-            responses = await asyncio.gather(*task)
+            await asyncio.gather(*task)
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
