@@ -10,7 +10,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.root.server import RootPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 # Create the testing artifacts directory for the SQLAlchemy tests
 tests_path = "./testing_artifacts"
@@ -68,5 +68,5 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = RootPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
 webserver.run()
