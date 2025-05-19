@@ -9,7 +9,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.root.server import RootPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 from utils import *
 
@@ -209,5 +209,5 @@ pipeline = Pipeline(
     loggers=logger
 )
 
-service = RootPipelineServer(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger, uvicorn_access_log_config=LOGGING_CONFIG)
+service = PipelineServer(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger, uvicorn_access_log_config=LOGGING_CONFIG)
 service.run()

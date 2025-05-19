@@ -4,7 +4,7 @@ from logging import Logger
 from typing import List
 
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
@@ -150,12 +150,12 @@ pipeline = Pipeline(
     loggers=logger
 )
 
-service = LeafPipelineServer(
+service = PipelineServer(
     name="leaf", 
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
+    remote_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )
