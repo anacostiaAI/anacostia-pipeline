@@ -106,6 +106,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             session.execute(stmt_artifacts)
 
             # Update triggers where run_triggered is NULL and trigger_time is earlier than this run
+            # Note: there are instances where multiple triggers are required to trigger a run (e.g., a metric trigger and a resource trigger)
             stmt_triggers = (
                 update(Trigger)
                 .where(
