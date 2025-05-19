@@ -5,7 +5,7 @@ from logging.config import dictConfig
 import argparse
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
-from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
@@ -74,12 +74,12 @@ pipeline = Pipeline(
     nodes=[leaf_data_node, shakespeare_eval], 
     loggers=logger
 )
-service = LeafPipelineServer(
+service = PipelineServer(
     name="leaf", 
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_clients=[metadata_store_client],
+    remote_clients=[metadata_store_client],
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],

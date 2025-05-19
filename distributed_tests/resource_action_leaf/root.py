@@ -4,7 +4,7 @@ import argparse
 
 from loggers import ROOT_ANACOSTIA_LOGGING_CONFIG, ROOT_ACCESS_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.root.server import RootPipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 
 
@@ -36,7 +36,7 @@ pipeline = Pipeline(
     loggers=logger
 )
 
-service = RootPipelineServer(
+service = PipelineServer(
     name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger, uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
 service.run()
