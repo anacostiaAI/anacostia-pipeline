@@ -140,9 +140,10 @@ class Pipeline:
         __setup_nodes(action_nodes)
 
         # add nodes to metadata store's node list
-        for metadata_store in metadata_stores:
-            for node in self.nodes:
-                metadata_store.add_node(node.name, type(node).__name__)
+        if len(metadata_stores) > 0:
+            for metadata_store in metadata_stores:
+                for node in self.nodes:
+                    metadata_store.add_node(node.name, type(node).__name__)
 
     # consider renaming this method to start_pipeline
     def launch_nodes(self):
