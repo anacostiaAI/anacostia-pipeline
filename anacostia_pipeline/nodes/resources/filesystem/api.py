@@ -1,4 +1,4 @@
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, Callable
 from logging import Logger
 import os
 import hashlib
@@ -231,34 +231,26 @@ class FilesystemStoreClient(BaseResourceClient):
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
-    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
-        """
-        This method should be overridden by the user to implement the logic for loading an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the load operation fails.
-        This method is called by the load_artifact method.
-        Args:
-            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the load operation fails.
-        """
-        pass
-
     # TODO: add the load_artifact method to BaseResourceRPCclient
-    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
+    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
         """
-        Load an artifact from the specified path inside to the resource_path.
+        Load an artifact from the specified path relative to the resource_path.
+
         Args:
-            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the artifact to load, relative to the resource_path.
+                            Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
+                                                 and returns the loaded artifact. 
+                                                 Note: if you subclass FilesystemStoreClient, make sure to include a default argument for load_fn.
+            *args: Additional positional arguments to pass to `load_fn`.
+            **kwargs: Additional keyword arguments to pass to `load_fn`.
+
         Returns:
             Any: The loaded artifact.
+
         Raises:
             FileNotFoundError: If the artifact file does not exist.
+            Exception: If an error occurs during loading.
         """
         
         artifact_save_path = os.path.join(self.storage_directory, filepath)
@@ -266,7 +258,7 @@ class FilesystemStoreClient(BaseResourceClient):
             raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
 
         try:
-            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+            return load_fn(artifact_save_path, *args, **kwargs)
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise e

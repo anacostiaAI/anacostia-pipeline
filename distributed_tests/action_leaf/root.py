@@ -74,6 +74,15 @@ LOGGING_CONFIG = {
 
 
 
+def save_model(filepath: str, content: str) -> None:
+    with locked_file(filepath, 'w') as f:
+        f.write(content)
+
+def load_model(filepath: str) -> None:
+    with locked_file(filepath, "r") as file:
+        return file.read()
+
+
 class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
@@ -81,31 +90,27 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     ) -> None:
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, init_state=init_state, max_old_samples=max_old_samples)
     
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
-    
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
+
 
 class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
-    def _save_artifact_hook(self, filepath: str, content: str) -> None:
-        with locked_file(filepath, 'w') as f:
-            f.write(content)
+    async def save_artifact(self, filepath: str, content: str, *args, **kwargs):
+        await super().save_artifact(filepath, save_fn=save_model, content=content, *args, **kwargs)
 
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
     
 
 class PlotsStoreNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
         super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
     
 
 class ModelRetrainingNode(BaseActionNode):

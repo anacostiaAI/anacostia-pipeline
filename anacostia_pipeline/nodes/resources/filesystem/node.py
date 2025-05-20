@@ -1,5 +1,5 @@
 import os
-from typing import List, Any, Union
+from typing import List, Any, Union, Callable
 from datetime import datetime
 from logging import Logger
 from threading import Thread
@@ -75,7 +75,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         )
         return self.gui
     
-    def setup_node_server(self, host, port):
+    def setup_node_server(self, host: str, port: int):
         self.node_server = FilesystemStoreServer(self, self.client_url, host, port, loggers=self.loggers)
         return self.node_server
 
@@ -143,30 +143,17 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         if num_new_artifacts > 0:
             await self.trigger(message=f"New files detected in {self.resource_path}")
     
-    def _save_artifact_hook(self, filepath: str, *args, **kwargs) -> None:
-        """
-        This method should be overridden by the user to implement the logic for saving an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the save operation fails.
-        This method is called by the save_artifact method.
-        Args:
-            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the save operation fails.
-        """
-        pass
-
-    async def save_artifact(self, filepath: str, *args, **kwargs):
+    async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
-        
+
         Args:
-            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the file to save relative to the resource_path.
+                            Example: "data/file.txt" will save the file at resource_path/data/file.txt.
+            save_fn (Callable): A function that takes the full save path as its first argument,
+                                followed by *args and **kwargs. It is responsible for writing the file.
+            *args: Additional positional arguments passed to `save_fn`.
+            **kwargs: Additional keyword arguments passed to `save_fn`.
         """
 
         # as of right now, i am not going to allow monitoring resource nodes to be used for detecting new data,
@@ -188,7 +175,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             # that way, the Observer can see the file is already logged and ignore it.
             # await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
 
-            self._save_artifact_hook(artifact_save_path, *args, **kwargs)
+            # write the file to artifact_save_path using the user-provided function save_fn
+            save_fn(artifact_save_path, *args, **kwargs)
+
             hash = self.hash_file(artifact_save_path)
             await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
@@ -209,34 +198,25 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         entries = await super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
-    
-    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
-        """
-        This method should be overridden by the user to implement the logic for loading an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the load operation fails.
-        This method is called by the load_artifact method.
-        Args:
-            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the load operation fails.
-        """
-        pass
 
-    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
+    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
         """
-        Load an artifact from the specified path inside to the resource_path.
+        Load an artifact from the specified path relative to the resource_path.
+
         Args:
-            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the artifact to load, relative to the resource_path.
+                            Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
+                                                 and returns the loaded artifact.
+            *args: Additional positional arguments to pass to `load_fn`.
+            **kwargs: Additional keyword arguments to pass to `load_fn`.
+
         Returns:
             Any: The loaded artifact.
+
         Raises:
             FileNotFoundError: If the artifact file does not exist.
+            Exception: If an error occurs during loading.
         """
         
         artifact_save_path = os.path.join(self.resource_path, filepath)
@@ -244,7 +224,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
 
         try:
-            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+            artifact = load_fn(artifact_save_path, *args, **kwargs)
+            # TODO: verify the hash of the artifact
+            return artifact
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise e
