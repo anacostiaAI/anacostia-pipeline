@@ -5,7 +5,7 @@ from logging import Logger
 from threading import Thread
 import traceback
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 import asyncio
 import hashlib
 
@@ -224,8 +224,11 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
 
         try:
+            actual_hash = self.hash_file(artifact_save_path)
+            expected_hash = None
+            # TODO: get hash from metadata store and compare the expected hash with actual_hash
+
             artifact = load_fn(artifact_save_path, *args, **kwargs)
-            # TODO: verify the hash of the artifact
             return artifact
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")

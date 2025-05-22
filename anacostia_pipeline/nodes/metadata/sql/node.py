@@ -265,6 +265,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
             return query.count()
 
+    #def get_entries(self, resource_node_name: str = None, location: str = None, state: str = "all") -> List[Dict]:
     def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
         with self.get_session() as session:
             stmt = (
@@ -285,6 +286,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
             if resource_node_name is not None:
                 stmt = stmt.where(Node.node_name == resource_node_name)
+            """
+            if location is not None:
+                stmt = stmt.where(Artifact.location == location)
+            """
             if state != "all":
                 stmt = stmt.where(Artifact.state == state)
 
