@@ -8,11 +8,7 @@ from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.r
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard_data import ModelCardData
 
 
-def save_default_model_card(model_card_path: str, card_data: ModelCardData, *args, **kwargs):
-    card = ModelCard.from_template(
-        card_data=card_data,
-        **kwargs
-    )
+def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
     card.save(filepath=model_card_path)
     
 
@@ -52,10 +48,17 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         save_model_fn: Callable[[str, Any], None], 
         model: Any, 
         model_path: str, 
-        model_card_path: str, 
-        card_data: ModelCardData, 
-        save_model_card_fn: Callable[[str, Any], None] = save_default_model_card, 
+        model_card_path: str = None, 
+        card: ModelCard = None, 
         *args, **kwargs
     ):
         await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model)
-        await self.save_artifact(filepath=model_card_path, save_fn=save_model_card_fn, card_data=card_data, *args, **kwargs)
+
+        # save a model card for the model if given
+        if model_card_path is not None and card is not None:
+            await self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
+        elif model_card_path is not None and card is None:
+            raise ValueError("You provided `model_card_path` but did not provide a `ModelCard` instance (`card`).")
+        elif model_card_path is None and card is not None:
+            raise ValueError("You provided a `ModelCard` instance (`card`) but did not provide `model_card_path` to save it.")
+
