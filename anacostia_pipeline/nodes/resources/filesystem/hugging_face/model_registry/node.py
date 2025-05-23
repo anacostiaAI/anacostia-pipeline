@@ -5,7 +5,6 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard import ModelCard
-from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard_data import ModelCardData
 
 
 def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
@@ -57,8 +56,10 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         # save a model card for the model if given
         if model_card_path is not None and card is not None:
             await self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
+            
         elif model_card_path is not None and card is None:
             raise ValueError("You provided `model_card_path` but did not provide a `ModelCard` instance (`card`).")
+
         elif model_card_path is None and card is not None:
             raise ValueError("You provided a `ModelCard` instance (`card`) but did not provide `model_card_path` to save it.")
 
