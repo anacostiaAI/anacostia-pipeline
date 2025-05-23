@@ -53,6 +53,11 @@ class Pipeline:
             for predecessor in node.predecessors:
                 self.graph.add_edge(predecessor, node)
         
+        for node in nodes:
+            for successor in node.successors:
+                if successor not in nodes:
+                    raise ValueError(f"Node '{successor.name}' has not been registered with pipeline. Check the 'nodes' parameter in the Pipeline class")
+        
         # Set logger for all nodes
         if loggers is not None:
             for node in nodes:
