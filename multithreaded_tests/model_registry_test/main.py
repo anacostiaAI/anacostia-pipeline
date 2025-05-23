@@ -1,40 +1,90 @@
-from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard import ModelCard
+import os
+import shutil
+from typing import List
+
+from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
+from anacostia_pipeline.nodes.actions.node import BaseActionNode
+from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.pipelines.pipeline import Pipeline
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard_data import ModelCardData, EvalResult
+from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard import ModelCard
+from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.node import HuggingFaceModelRegistryNode
 
 
-"""
-card_data = ModelCardData(
-    language='en',
-    license='mit',
-    library_name='timm',
-    tags=['image-classification', 'resnet'],
-    datasets=['beans'],
-    metrics=['accuracy'],
+# Create the testing artifacts directory for the SQLAlchemy tests
+tests_path = "./testing_artifacts"
+if os.path.exists(tests_path) is True:
+    shutil.rmtree(tests_path)
+os.makedirs(tests_path)
+metadata_store_path = f"{tests_path}/metadata_store"
+data_store_path = f"{tests_path}/data_store"
+model_registry_path = f"{tests_path}/model_registry"
+
+
+class TrainingNode(BaseActionNode):
+    def __init__(
+        self, name, model_registry: HuggingFaceModelRegistryNode, data_store: FilesystemStoreNode, predecessors, 
+        remote_predecessors = None, remote_successors = None, client_url = None, wait_for_connection = False, loggers = None
+    ):
+        super().__init__(name, predecessors, remote_predecessors, remote_successors, client_url, wait_for_connection, loggers)
+        self.model_registry = model_registry
+        self.data_store = data_store
+    
+    async def execute(self, *args, **kwargs):
+        card_data = ModelCardData(
+            language='en', 
+            license='mit', 
+            library_name='keras',
+            eval_results=[
+                EvalResult(
+                    task_type='image-classification',
+                    dataset_type='beans',
+                    dataset_name='Beans',
+                    metric_type='accuracy',
+                    metric_value=0.9,
+                ),
+            ],
+            model_name='my-cool-model'
+        )
+        card = ModelCard.from_template(
+            card_data,
+            model_id='my-cool-model',
+            model_description="this model does this and that",
+            developers="Nate Raw",
+            repo="https://github.com/huggingface/huggingface_hub",
+            template_path="sample_model_card_template.md",
+        )
+
+        def save_model_fn(filepath: str, model: str) -> None:
+            with locked_file(filepath, 'w') as f:
+                f.write(model)
+
+        num_artifacts = await self.data_store.get_num_artifacts('all')
+        await self.model_registry.save_model(
+            save_model_fn=save_model_fn,
+            model=f"model {num_artifacts}",
+            model_path=f"model{num_artifacts}.txt",
+            model_card_path=f"model{num_artifacts}_card.md",
+            card=card
+        )
+
+        return True
+
+
+metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
+data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
+model_registry = HuggingFaceModelRegistryNode("nro_model_registry", resource_path=model_registry_path, metadata_store=metadata_store, monitoring=False)
+training_node = TrainingNode("training", model_registry=model_registry, data_store=data_store, predecessors=[data_store])
+
+# Create the pipeline
+pipeline = Pipeline(
+    name="test_pipeline", 
+    nodes=[metadata_store, data_store, model_registry, training_node]
 )
 
-card = ModelCard.from_template(
-    card_data,
-    model_description='This model does x + y...'
-)
-
-"""
-
-card_data = ModelCardData(
-language='en',
-tags=['image-classification', 'resnet'],
-eval_results=[
-    EvalResult(
-        task_type='image-classification',
-        dataset_type='beans',
-        dataset_name='Beans',
-        metric_type='accuracy',
-        metric_value=0.9,
-    ),
-],
-model_name='my-cool-model')
-
-card = ModelCard.from_template(
-    card_data,
-    model_description='This model does x + y...'
-)
-card.save('sample_model_card.md')
+# Create the web server
+webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+webserver.run()
