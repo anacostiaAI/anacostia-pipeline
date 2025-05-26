@@ -8,7 +8,7 @@ newline = "\n"
 def model_entry_card(model_entry: Dict[str, str]):
     return f"""
     <div class="model-entry-card">
-        <h1>Model Metadata</h1>
+        <h1>{ model_entry["location"].split("/")[-1] } Metadata</h1>
         <div class="model-entry-row">
             <div class="item"><span class="label">Run ID:</span> { model_entry["run_id"] }</div>
             <div class="item"><span class="label">Model ID:</span> { model_entry["id"] }</div>
@@ -16,7 +16,10 @@ def model_entry_card(model_entry: Dict[str, str]):
             <div class="item"><span class="label">Created At:</span> { model_entry["created_at"] }</div>
         </div>
         <p><span class="label">Model Path:</span> { model_entry["location"] }</p>
-        <button class="open-model-card-modal-btn">Show Model Card { model_entry["model_card_location"] }</button>
+        <button class="open-model-card-modal-btn" 
+            hx-get="{ model_entry["modal_open_endpoint"] }" hx-trigger="click" hx-target="#modal-container" hx-swap="innerHTML">
+            Show Model Card
+        </button>
     </div>
     """
 
@@ -46,16 +49,16 @@ def model_registry_home(update_endpoint: str, model_entries: List[Dict[str, str]
                 ]) 
             }
         </div>
-        <script src="/static/mathjax-reload.js"></script>
+        <script src="/static/js/src/mathjax-reload.js"></script>
     """
 
-def model_card_viewer(markdown_html_str: str):
+def model_card_modal(modal_close_endpoint: str, markdown_html_str: str):
     """
-    Renders the markdown file in HTML 
+    Renders the markdown file in modal window
     """
 
     return f"""
-        <div class="markdown-div page-border">
-            {markdown_html_str}
-        </div>
+    <div class="modal-overlay" hx-get="{modal_close_endpoint}" hx-trigger="click target:.modal-overlay" hx-target="#modal-container">
+        <div class="markdown-div page-border">{markdown_html_str}</div>
+    </div>
     """

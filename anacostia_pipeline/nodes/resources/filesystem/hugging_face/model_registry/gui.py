@@ -6,7 +6,7 @@ import markdown
 import yaml
 
 from anacostia_pipeline.nodes.gui import BaseGUI
-from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.fragments import model_registry_home, model_entry_card
+from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.fragments import model_registry_home, model_entry_card, model_card_modal
 from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
@@ -30,8 +30,14 @@ class ModelRegistryGUI(BaseGUI):
             model_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is False]
             model_card_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is True]
 
+            if len(model_card_entries) != len(model_entries):
+                print(model_entries)
+                print(model_card_entries)
+                raise ValueError("model card has not been produced yet")
+
             for model_entry, model_card_entry in zip(model_entries, model_card_entries):
-                model_entry["model_card_location"] = model_card_entry["location"]
+                model_entry["modal_open_endpoint"] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_entry["location"]}"
+                model_entry["location"] = f"{self.node.resource_path}/{model_entry['location']}"
 
             return model_entries
         
@@ -74,6 +80,7 @@ class ModelRegistryGUI(BaseGUI):
         async def modal(action: str, card_path: str = None):
             if action == "open":
                 # Load the markdown file
+                card_path = f"{self.node.resource_path}/{card_path}"
                 with open(card_path, "r") as f:
                     content = f.read()
 
@@ -86,12 +93,10 @@ class ModelRegistryGUI(BaseGUI):
 
                 # Render markdown (including embedded HTML)
                 html = markdown.markdown(body, extensions=['extra', 'toc', 'nl2br', "fenced_code"])
-
-                return f"""
-                <div class="modal-overlay" hx-get="/modal/?action=close" hx-trigger="click target:.modal-overlay" hx-target="#modal-container">
-                    <div class="markdown-div page-border">{html}</div>
-                </div>
-                """
+                return model_card_modal(
+                    modal_close_endpoint=f"{self.get_gui_url()}/modal/?action=close", 
+                    markdown_html_str=html
+                )
 
             elif action == "close":
                 return ""

@@ -1,6 +1,7 @@
 import os
 import shutil
 from typing import List
+import logging
 
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
@@ -23,6 +24,16 @@ metadata_store_path = f"{tests_path}/metadata_store"
 data_store_path = f"{tests_path}/data_store"
 model_registry_path = f"{tests_path}/model_registry"
 
+log_path = f"{tests_path}/anacostia.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename=log_path,
+    filemode='a'
+)
+logger = logging.getLogger(__name__)
+
 
 class TrainingNode(BaseActionNode):
     def __init__(
@@ -34,6 +45,10 @@ class TrainingNode(BaseActionNode):
         self.data_store = data_store
     
     async def execute(self, *args, **kwargs):
+        num_artifacts = await self.data_store.get_num_artifacts('all')
+        model_name = f"model{num_artifacts}.txt"
+        model_card_name = f"model{num_artifacts}_card.md"
+
         card_data = ModelCardData(
             language='en', 
             license='mit', 
@@ -47,11 +62,11 @@ class TrainingNode(BaseActionNode):
                     metric_value=0.9,
                 ),
             ],
-            model_name='my-cool-model'
+            model_name=model_name
         )
         card = ModelCard.from_template(
             card_data,
-            model_id='my-cool-model',
+            model_id=model_name,
             model_description="this model does this and that",
             developers="Nate Raw",
             repo="https://github.com/huggingface/huggingface_hub",
@@ -62,12 +77,11 @@ class TrainingNode(BaseActionNode):
             with locked_file(filepath, 'w') as f:
                 f.write(model)
 
-        num_artifacts = await self.data_store.get_num_artifacts('all')
         await self.model_registry.save_model(
             save_model_fn=save_model_fn,
             model=f"model {num_artifacts}",
-            model_path=f"model{num_artifacts}.txt",
-            model_card_path=f"model{num_artifacts}_card.md",
+            model_path=model_name,
+            model_card_path=model_card_name,
             card=card
         )
 
@@ -82,9 +96,10 @@ training_node = TrainingNode("training", model_registry=model_registry, data_sto
 # Create the pipeline
 pipeline = Pipeline(
     name="test_pipeline", 
-    nodes=[metadata_store, data_store, model_registry, training_node]
+    nodes=[metadata_store, data_store, model_registry, training_node],
+    loggers=logger
 )
 
 # Create the web server
-webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
 webserver.run()
