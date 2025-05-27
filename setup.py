@@ -28,7 +28,7 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
 setup(
     name="anacostia_pipeline",
-    version="0.6.0",
+    version="0.6.1",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
@@ -45,6 +45,8 @@ setup(
     install_requires=[
         "sqlalchemy>=1.4.0",
         "networkx==3.1",
+        "markdown",
+        "jinja2>=3.0.0",
         "pydantic",
         "fastapi", 
         "uvicorn[standard]",
