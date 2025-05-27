@@ -36,8 +36,8 @@ class ModelRegistryGUI(BaseGUI):
                 raise ValueError("model card has not been produced yet")
 
             for model_entry, model_card_entry in zip(model_entries, model_card_entries):
-                model_entry["modal_open_endpoint"] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_entry["location"]}"
-                model_entry["location"] = f"{self.node.resource_path}/{model_entry['location']}"
+                model_entry['modal_open_endpoint'] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_entry['location']}"
+                model_entry['location'] = f"{self.node.resource_path}/{model_entry['location']}"
 
             return model_entries
         
