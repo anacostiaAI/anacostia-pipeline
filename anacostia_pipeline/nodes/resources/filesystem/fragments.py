@@ -1,5 +1,5 @@
 from typing import List, Dict
-from anacostia_pipeline.pipelines.root.fragments import head_template
+from anacostia_pipeline.pipelines.fragments import head_template
 
 
 
@@ -12,9 +12,10 @@ def table_row(file_entry: Dict[str, str]):
             <th>{ file_entry["id"] }</th>
             <td>{ file_entry["run_id"] }</td>
             <td>{ file_entry["created_at"] }</td>
-            <td>{ file_entry["end_time"] }</td>
             <td>{ file_entry["location"] }</td>
             <td sse-swap="{ file_entry["state_change_event_name"] }" hx-target="closest tr" hx-swap="outerHTML">{ file_entry["state"] }</td>
+            <td>{ file_entry["hash"] }</td>
+            <td>{ file_entry["hash_algorithm"] }</td>
         </tr>
     """
 
@@ -41,9 +42,10 @@ def filesystemstore_home(sse_endpoint: str, event_name: str, file_entries: List[
                         <th>file_entry ID</th>
                         <th>Run ID</th>
                         <th>Created At</th>
-                        <th>End Time</th>
                         <th>Location</th>
                         <th>State</th>
+                        <th>Hash</th>
+                        <th>Hash Algorithm</th>
                     </tr>
                 </thead>
                 <tbody hx-ext="sse" sse-connect="{sse_endpoint}" sse-swap="{event_name}" hx-swap="afterbegin">

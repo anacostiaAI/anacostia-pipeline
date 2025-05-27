@@ -1,18 +1,19 @@
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, Callable
 from logging import Logger
 import os
+import hashlib
 
 from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.resources.rpc import BaseResourceRPCCallee, BaseResourceRPCCaller
+from anacostia_pipeline.nodes.resources.api import BaseResourceServer, BaseResourceClient
 
 
 
-class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
-    def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
+class FilesystemStoreServer(BaseResourceServer):
+    def __init__(self, node, client_url: str, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
+        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
         self.resource_path: str = node.resource_path
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
@@ -25,9 +26,13 @@ class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
                     self.log(f"Error: File not found - {artifact_path}", level="ERROR")
                     raise HTTPException(status_code=404, detail=f"Resource path not found: {artifact_path}")
 
+                # Compute SHA-256 hash of the file
+                file_hash = self.node.hash_file(artifact_path)
+                headers = {"X-File-Hash": file_hash}
+
                 # Return the file as a response
                 self.log(f"Sending file: {artifact_path}", level="INFO")
-                return FileResponse(path=artifact_path, media_type="application/octet-stream")
+                return FileResponse(path=artifact_path, media_type="application/octet-stream", headers=headers)
 
             except HTTPException as e:
                 self.log(f"HTTPException: {str(e)}", level="ERROR")
@@ -67,8 +72,19 @@ class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
                             progress = bytes_received / total_size * 100
                             self.log(f"Received: {bytes_received/1024/1024:.2f}MB / {total_size/1024/1024:.2f}MB ({progress:.1f}%)", level="INFO")
 
+                # Compute SHA-256 hash of the file
+                expected_hash = request.headers.get("x-file-hash")
+                if not expected_hash:
+                    raise HTTPException(status_code=500, detail="Missing file hash in response headers")
+                
+                # Verify file hash
+                actual_hash = self.node.hash_file(file_path)
+                if actual_hash != expected_hash:
+                    self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
+                    raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
+
                 # enter the uploaded file into the metadata store
-                await self.node.record_current(x_filename)
+                await self.node.record_current(x_filename, hash=actual_hash, hash_algorithm="sha256")
                 
                 return JSONResponse(
                     content={
@@ -88,15 +104,22 @@ class FilesystemStoreRPCCallee(BaseResourceRPCCallee):
 
 
 
-class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
-    def __init__(self, storage_directory: str, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
-        super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
+class FilesystemStoreClient(BaseResourceClient):
+    def __init__(self, storage_directory: str, client_name: str, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
+        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
 
-        self.storage_directory = f"{storage_directory}/{caller_name}"
+        self.storage_directory = f"{storage_directory}/{client_name}"
     
         if os.path.exists(self.storage_directory) is False:
             os.makedirs(self.storage_directory)
         
+    def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                sha256.update(chunk)
+        return sha256.hexdigest()
+    
     async def get_artifact(self, filepath: str) -> Any:
         local_filepath = os.path.join(self.storage_directory, filepath)
 
@@ -104,7 +127,7 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
             async with httpx.AsyncClient() as client:
 
                 # Stream the response to handle large files efficiently
-                url = f"{self.get_callee_url()}/get_artifact/{filepath}"
+                url = f"{self.get_server_url()}/get_artifact/{filepath}"
                 async with client.stream("GET", url) as response:
                     if response.status_code != 200:
                         self.log(f"Error: Server returned status code {response.status_code}", level="ERROR")
@@ -119,6 +142,17 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
                             async for chunk in response.aiter_bytes():
                                 f.write(chunk)
                         
+                        # Get expected hash from header
+                        expected_hash = response.headers.get("x-file-hash")
+                        if not expected_hash:
+                            raise HTTPException(status_code=500, detail="Missing file hash in response headers")
+                        
+                        # Verify file hash
+                        actual_hash = self.hash_file(local_filepath)
+                        if actual_hash != expected_hash:
+                            self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
+                            raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
+
                         self.log(f"File downloaded successfully: {local_filepath}", level="INFO")
                         return True
 
@@ -128,12 +162,12 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
 
     async def upload_file(self, filepath: str, remote_path: str = None):
         """
-        Upload a file back to the FilesystemStoreRPCCallee on the root pipeline.
+        Upload a file back to the FilesystemStoreRPCserver on the root pipeline.
         Args:
-            filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the caller.
-            remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the callee.
+            filepath (str): Path to the file to be uploaded. Note that this path is relative to the storage directory of the client.
+            remote_path (str): Path where the file will be stored on the root pipeline. Note that this path is relative to the storage directory of the server.
         Raises:
-            FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the caller.
+            FileNotFoundError: If the file does not exist at the specified path relative to the storage directory of the client.
             HTTPException: If the response code from /upload_stream is not 200.
         """
 
@@ -153,10 +187,13 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
             filesize = os.path.getsize(filepath)
 
             self.log(f"Preparing to upload: {filename} ({filesize/1024/1024:.2f} MB)", level="INFO")
+
+            file_hash = self.hash_file(filepath)
             
             # Set up headers with file metadata
             headers = {
                 "X-Filename": filename,
+                "X-File-Hash": file_hash,
                 "Content-Type": "application/octet-stream",
                 "Content-Length": str(filesize)
             }
@@ -173,7 +210,7 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
             # Send the file using streaming upload
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.get_callee_url()}/upload_stream",
+                    f"{self.get_server_url()}/upload_stream",
                     headers=headers,
                     content=file_generator(),
                     timeout=None  # Disable timeout for large uploads
@@ -194,34 +231,26 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
-    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
+    # TODO: add the load_artifact method to BaseResourceRPCclient
+    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
         """
-        This method should be overridden by the user to implement the logic for loading an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the load operation fails.
-        This method is called by the load_artifact method.
-        Args:
-            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the load operation fails.
-        """
-        pass
+        Load an artifact from the specified path relative to the resource_path.
 
-    # TODO: add the load_artifact method to BaseResourceRPCCaller
-    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
-        """
-        Load an artifact from the specified path inside to the resource_path.
         Args:
-            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the artifact to load, relative to the resource_path.
+                            Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
+                                                 and returns the loaded artifact. 
+                                                 Note: if you subclass FilesystemStoreClient, make sure to include a default argument for load_fn.
+            *args: Additional positional arguments to pass to `load_fn`.
+            **kwargs: Additional keyword arguments to pass to `load_fn`.
+
         Returns:
             Any: The loaded artifact.
+
         Raises:
             FileNotFoundError: If the artifact file does not exist.
+            Exception: If an error occurs during loading.
         """
         
         artifact_save_path = os.path.join(self.storage_directory, filepath)
@@ -229,7 +258,7 @@ class FilesystemStoreRPCCaller(BaseResourceRPCCaller):
             raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
 
         try:
-            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+            return load_fn(artifact_save_path, *args, **kwargs)
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise e

@@ -10,12 +10,11 @@ from pydantic import BaseModel, ConfigDict
 import json
 import asyncio
 import httpx
-import time
 
 from anacostia_pipeline.utils.constants import Status, Result
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.rpc import BaseRPCCallee
+from anacostia_pipeline.nodes.api import BaseServer
 
 
 
@@ -37,15 +36,27 @@ class BaseNode(Thread):
         self, 
         name: str, 
         predecessors: List[BaseNode] = None, 
-        remote_predecessors: List[str] = None,      # should be a list of urls or BaseRPCCaller
+        remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None, 
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
 
+        """
+        Base class for all nodes in the pipeline.
+        Args:
+            name (str): Name of the node.
+            predecessors (List[BaseNode], optional): List of predecessor nodes. Defaults to None.
+            remote_predecessors (List[str], optional): List of remote predecessor URLs. Defaults to None.
+            remote_successors (List[str], optional): List of remote successor URLs. Defaults to None.
+            client_url (str, optional): URL of the BaseClient for the BaseServer of this node to connect to. Defaults to None.
+            wait_for_connection (bool, optional): Whether to wait for connection. Defaults to False.
+            loggers (Union[Logger, List[Logger]], optional): Logger or list of loggers for logging. Defaults to None.
+        """
+
         self._status_lock = Lock()
-        self.caller_url = caller_url
+        self.client_url = client_url
         self.wait_for_connection = wait_for_connection
         
         if loggers is None:
@@ -75,6 +86,7 @@ class BaseNode(Thread):
         self.pause_event.set()
         self.queue: Queue | None = None
         self.gui: BaseGUI | None = None
+        self.node_server: BaseServer | None = None
         self.connector: Connector | None = None
 
         super().__init__(name=name)
@@ -97,9 +109,9 @@ class BaseNode(Thread):
             raise ValueError("Node GUI not set up")
         return self.gui
     
-    def setup_rpc_callee(self, host: str, port: int):
-        self.rpc_callee = BaseRPCCallee(self, caller_url=self.caller_url, host=host, port=port, loggers=self.loggers)
-        return self.rpc_callee
+    def setup_node_server(self, host: str, port: int):
+        self.node_server = BaseServer(self, client_url=self.client_url, host=host, port=port, loggers=self.loggers)
+        return self.node_server
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -299,23 +311,6 @@ class BaseNode(Thread):
         """
         pass
     
-    def root_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
-    
-    def leaf_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
-
-        if self.wait_for_connection:
-            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
-            
-            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
-            self.connection_event.wait()
-            if self.exit_event.is_set(): return
-
-            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
-
     async def run_async(self) -> None:
         """
         override to specify the logic of the node.

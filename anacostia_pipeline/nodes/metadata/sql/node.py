@@ -4,13 +4,15 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 import traceback
 from datetime import datetime
+import hashlib
+import json
 
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy import exists, select, update
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.sql.gui import SQLMetadataStoreGUI
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCallee
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreServer
 from anacostia_pipeline.nodes.metadata.sql.models import Artifact, Metric, Param, Run, Tag, Trigger, Node
 
 
@@ -30,10 +32,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         name: str,
         uri: str,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
-        super().__init__(name, uri, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
+        super().__init__(name, uri, remote_successors=remote_successors, client_url=client_url, loggers=loggers)
         self._ScopedSession: Session = None
     
     @abstractmethod
@@ -50,10 +52,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port)
         return self.gui
 
-    def setup_rpc_callee(self, host: str, port: int):
-        """Override to setup the RPC callee."""
-        self.rpc_callee = SQLMetadataRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
-        return self.rpc_callee
+    def setup_node_server(self, host: str, port: int):
+        """Override to setup the RPC server."""
+        self.node_server = SQLMetadataStoreServer(self, self.client_url, host, port, loggers=self.loggers)
+        return self.node_server
 
     def init_scoped_session(self, session_factory: sessionmaker):
         """Call this from the child class after engine setup."""
@@ -104,6 +106,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             session.execute(stmt_artifacts)
 
             # Update triggers where run_triggered is NULL and trigger_time is earlier than this run
+            # Note: there are instances where multiple triggers are required to trigger a run (e.g., a metric trigger and a resource trigger)
             stmt_triggers = (
                 update(Trigger)
                 .where(
@@ -116,23 +119,52 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         self.log(f"--------------------------- started run {run_id} at {start_time}")
     
+    def hash_run_metadata(self, metrics: List[Dict], params: List[Dict], tags: List[Dict]) -> str:
+        def stable_hash(records: List[Dict], sort_key: str) -> str:
+            sorted_records = sorted(records, key=lambda r: r[sort_key])
+            serialized = json.dumps(sorted_records, sort_keys=True)
+            return hashlib.sha256(serialized.encode()).hexdigest()
+
+        metrics_hash = stable_hash(metrics, sort_key="id")
+        params_hash = stable_hash(params, sort_key="id")
+        tags_hash = stable_hash(tags, sort_key="id")
+
+        # Combine into a final hash for the run
+        combined = metrics_hash + params_hash + tags_hash
+        return hashlib.sha256(combined.encode()).hexdigest()
+
     def end_run(self) -> None:
         end_time = datetime.now()
+
+        # Create the hash for the run by retrieving the hashes of all artifacts, metrics, params, and tags associated with the current run into a list,
+        # sorting the list, concatenating the hashes in the list into a string, and then hashing the string
+        entries = self.get_entries(state="current")
+        artifact_hashes = [entry["hash"] for entry in entries]
+        artifact_hashes = ''.join(sorted(artifact_hashes))
+
+        run_metadata_hash = self.hash_run_metadata(
+            metrics=self.get_metrics(run_id=self.get_run_id()),
+            params=self.get_params(run_id=self.get_run_id()),
+            tags=self.get_tags(run_id=self.get_run_id())
+        )
+
+        combined_hash = artifact_hashes + run_metadata_hash
+        run_hash = hashlib.sha256(combined_hash.encode()).hexdigest()
 
         with self.get_session() as session:
             # Update runs
             stmt_run = (
                 update(Run)
                 .where(Run.end_time.is_(None))
-                .values(end_time=end_time)
+                .values(end_time=end_time, hash=run_hash)
             )
             session.execute(stmt_run)
 
             # Update artifacts
             stmt_artifact = (
                 update(Artifact)
-                .where(Artifact.end_time.is_(None), Artifact.state == "current")
-                .values(end_time=end_time, state="old")
+                .where(Artifact.state == "current")
+                .values(state="old")
             )
             session.execute(stmt_artifact)
 
@@ -166,8 +198,8 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             ]
 
     def create_entry(
-        self, resource_node_name: str, filepath: str, 
-        state: str = "new", run_id: int = None, hash: str = None, hash_algorithm: str = None, file_size: int = None, content_type: str = None
+        self, resource_node_name: str, filepath: str, hash: str, hash_algorithm: str, 
+        state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
     ) -> None:
         node_id = self.get_node_id(resource_node_name)
 
@@ -176,7 +208,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         with self.get_session() as session:
             entry = Artifact(
-                run_id=run_id,
+                run_id=self.get_run_id() if state == "current" else run_id,
                 node_id=node_id,
                 location=filepath,
                 created_at=datetime.now(),
@@ -201,7 +233,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     node_id=node_id,
                     location=entry["location"],
                     created_at=entry["created_at"],
-                    end_time=entry["end_time"],
                     state="new",
                     hash=entry["hash"],
                     hash_algorithm=entry["hash_algorithm"],
@@ -234,6 +265,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
             return query.count()
 
+    #def get_entries(self, resource_node_name: str = None, location: str = None, state: str = "all") -> List[Dict]:
     def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
         with self.get_session() as session:
             stmt = (
@@ -242,7 +274,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     Artifact.run_id,
                     Artifact.location,
                     Artifact.created_at,
-                    Artifact.end_time,
                     Artifact.state,
                     Artifact.hash,
                     Artifact.hash_algorithm,
@@ -255,6 +286,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
             if resource_node_name is not None:
                 stmt = stmt.where(Node.node_name == resource_node_name)
+            """
+            if location is not None:
+                stmt = stmt.where(Artifact.location == location)
+            """
             if state != "all":
                 stmt = stmt.where(Artifact.state == state)
 
@@ -266,7 +301,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "run_id": row.run_id,
                     "location": row.location,
                     "created_at": row.created_at,
-                    "end_time": row.end_time,
                     "state": row.state,
                     "hash": row.hash,
                     "hash_algorithm": row.hash_algorithm,
@@ -285,6 +319,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "run_id": run.run_id,
                     "start_time": run.start_time,
                     "end_time": run.end_time,
+                    "hash": run.hash
                 }
                 for run in result
             ]

@@ -1,63 +1,81 @@
 import threading
 import signal
-import asyncio
 from logging import Logger
 from contextlib import asynccontextmanager
-import os
-import sys
 from queue import Queue
-from urllib.parse import urlparse
+import asyncio
+from pydantic import BaseModel
+from typing import List, Dict, Any
+import sys
+import os
 import json
-from typing import Dict, Any
-
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from starlette.routing import Mount
+from urllib.parse import urlparse
 
 import uvicorn
 import httpx
+from fastapi import FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
-from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
-from anacostia_pipeline.nodes.rpc import BaseRPCCallee
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
+from anacostia_pipeline.nodes.api import BaseClient
+from anacostia_pipeline.nodes.api import BaseServer
 from anacostia_pipeline.pipelines.utils import EventModel
-from anacostia_pipeline.pipelines.root.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
+class PredecessorModel(BaseModel):
+    predecessor_host: str
+    predecessor_port: int
 
-class RootPipelineServer(FastAPI):
+
+class PipelineServer(FastAPI):
     def __init__(
         self, 
         name: str, 
-        pipeline: RootPipeline, 
+        pipeline: Pipeline, 
+        remote_clients: List[BaseClient] = None,
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 
         ssl_certfile: str =None, 
         logger: Logger = None, 
         uvicorn_access_log_config: Dict[str, Any] = None,
+        allow_origins: List[str] = ["*"],
+        allow_credentials: bool = False,
+        allow_methods: List[str] = ["*"],
+        allow_headers: List[str] = ["*"],
         *args, **kwargs
     ):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
-        async def lifespan(app: RootPipelineServer):
+        async def lifespan(app: PipelineServer):
             if app.logger is not None:
-                app.logger.info(f"Root server '{app.name}' started")
-            
+                app.logger.info(f"Pipeline server '{app.name}' started")
+
+            # queue must be set for all nodes prior to starting the background task
+            for node in app.pipeline.nodes:
+                node.set_queue(app.queue)
+
+            app.background_task = asyncio.create_task(app.process_queue())
+
             await app.connect()     # Connect to the leaf services
 
             yield
-            
-            for route in app.routes:
-                if isinstance(route, Mount) and isinstance(route.app, BaseGUI):
-                    subapp: BaseGUI = route.app
-                    # this currently does nothing, add code here for cleanup if needed
+
+            # Cancel and cleanup the background task when the app shuts down
+            app.background_task.cancel()
+            try:
+                await app.background_task
+            except asyncio.CancelledError:
+                pass
 
             if app.logger is not None:
-                app.logger.info(f"Root server '{app.name}' shut down")
+                app.logger.info(f"Pipeline server '{app.name}' shut down")
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
@@ -65,48 +83,90 @@ class RootPipelineServer(FastAPI):
         self.host = host
         self.port = port
         self.logger = logger
-        self.connections = []
-        self.leaf_ip_addresses = []
         self.leaf_models = []
-        self.leaf_node_names = []
         self.queue = Queue()
+        self.background_task = None
 
-        # get metadata store from the pipeline
-        for node in self.pipeline.nodes:
-            if isinstance(node, BaseMetadataStoreNode):
-                self.metadata_store = node
-                break
+        if allow_credentials is True and allow_origins == ["*"]:
+            raise ValueError("allow_origins cannot be [\"*\"] when allow_credentials = True")
+        
+        self.add_middleware(
+            CORSMiddleware,
+            allow_origins=allow_origins,
+            allow_credentials=allow_credentials,
+            allow_methods=allow_methods,
+            allow_headers=allow_headers,
+        )
 
         # Mount the static files directory to the webserver
         DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
-        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile, log_config=uvicorn_access_log_config)
+        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, log_config=uvicorn_access_log_config)
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
-        # get the leaf ip addresses
+        # get the successor ip addresses
+        self.successor_ip_addresses = []
         for node in self.pipeline.nodes:
             for url in node.remote_successors:
                 parsed = urlparse(url)
                 base_url = f"{parsed.scheme}://{parsed.netloc}"
 
-                if base_url not in self.leaf_ip_addresses:
-                    self.leaf_ip_addresses.append(base_url)
-    
+                if base_url not in self.successor_ip_addresses:
+                    self.successor_ip_addresses.append(base_url)
+
+        # get metadata store from the pipeline
+        self.metadata_store = None
+        for node in self.pipeline.nodes:
+            if isinstance(node, BaseMetadataStoreNode):
+                self.metadata_store = node
+                break
+
         # Mount the apps and connectors to the webserver
         for node in self.pipeline.nodes:
             connector: Connector = node.setup_connector(host=self.host, port=self.port)
             self.mount(connector.get_connector_prefix(), connector)          
 
             node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
-            self.mount(node_gui.get_node_prefix(), node_gui)          # mount the BaseNodeApp to PipelineWebserver
+            self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
             node.set_queue(self.queue)                                      # set the queue for the node
+        
+            server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
+            self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
 
-            callee: BaseRPCCallee = node.setup_rpc_callee(host=self.host, port=self.port)
-            self.mount(callee.get_node_prefix(), callee)                    # mount the BaseRPCCallee to PipelineWebserver
-
+        if remote_clients is not None:
+            for rpc_client in remote_clients:
+                rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
+                rpc_client.client_host = self.host
+                rpc_client.client_port = self.port
+                self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
+        
+        self.successor_host = None
+        self.successor_port = None
+        @self.post("/connect", status_code=status.HTTP_200_OK)
+        async def connect(connection: PredecessorModel):
+            self.successor_host = connection.predecessor_host
+            self.successor_port = connection.predecessor_port
+            self.logger.info(f"Leaf server {self.name} connected to root server at {self.successor_host}:{self.successor_port}")
+            return self.frontend_json()
+        
+        self.connected = False
+        @self.post("/finish_connect", status_code=status.HTTP_200_OK)
+        async def finish_connect():
+            for node in self.pipeline.nodes:
+                node.connection_event.set()  # Set the connection event for each node
+            self.connected = True
+        
+        # in cases where there are other leaf pipelines connected to this leaf pipeline (e.g., root -> leaf1 -> leaf2), 
+        # the /send_event endpoint enables leaf2 to relay its messages to leaf1 by putting its messages into leaf1's queue,
+        # leaf1 then relays all of its messages and leaf2's messages back to the root pipeline
+        @self.post('/send_event')
+        async def send_event(message: EventModel):
+            self.queue.put_nowait(message.model_dump())
+            return {"status": "ok"}
+    
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
             frontend_json = self.frontend_json()
@@ -132,13 +192,7 @@ class RootPipelineServer(FastAPI):
 
             return "\n".join(html_responses)
         
-        @self.post('/send_event')
-        async def send_event(message: EventModel):
-            self.queue.put_nowait(message.model_dump())
-            return {"status": "ok"}
-        
         self.recent_messages = {}
-            
         @self.get('/graph_sse', response_class=StreamingResponse)
         async def graph_sse(request: Request):
             async def event_stream():
@@ -175,14 +229,43 @@ class RootPipelineServer(FastAPI):
         def dag_page(response: Response):
             response.headers["HX-Redirect"] = "/"
 
+    async def process_queue(self):
+        async with httpx.AsyncClient() as client:
+            while True:
+                if self.queue.empty() is False and self.connected is True:
+                    message = self.queue.get()
+                    
+                    try:
+                        if self.successor_host is not None and self.successor_port is not None:
+                            await client.post(f"http://{self.successor_host}:{self.successor_port}/send_event", json=message)
+                    
+                    except httpx.ConnectError as e:
+                        self.logger.error(f"Could not connect to root server at {self.successor_host}:{self.successor_port} - {str(e)}")
+                        self.queue.put(message)
+                        self.connected = False
+
+                    except Exception as e:
+                        self.logger.error(f"Error forwarding message: {str(e)}")
+                        self.queue.put(message)
+                        self.connected = False
+                    
+                    finally:
+                        self.queue.task_done()
+                
+                try:
+                    await asyncio.sleep(0.1)
+                except asyncio.CancelledError:
+                    self.logger.info("Background task cancelled; breaking out of queue processing loop")
+                    break 
+
     async def connect(self):
         async with httpx.AsyncClient() as client:
             # Connect to leaf pipeline
             task = []
-            for leaf_ip_address in self.leaf_ip_addresses:
+            for leaf_ip_address in self.successor_ip_addresses:
                 root_server_model={
-                    "root_host": self.host, 
-                    "root_port": self.port 
+                    "predecessor_host": self.host, 
+                    "predecessor_port": self.port 
                 }
                 task.append(client.post(f"{leaf_ip_address}/connect", json=root_server_model))
 
@@ -194,12 +277,13 @@ class RootPipelineServer(FastAPI):
                 self.leaf_models.append(response_data)
 
                 # Extract the node name and type from the responses and add them to the metadata store
-                for node_data in response_data["nodes"]:
-                    node_name = node_data["name"]
-                    node_type = node_data["type"]
-            
-                    if self.metadata_store.node_exists(node_name=node_name) is False:
-                        self.metadata_store.add_node(node_name=node_name, node_type=node_type)
+                if self.metadata_store is not None:
+                    for node_data in response_data["nodes"]:
+                        node_name = node_data["name"]
+                        node_type = node_data["type"]
+                
+                        if self.metadata_store.node_exists(node_name=node_name) is False:
+                            self.metadata_store.add_node(node_name=node_name, node_type=node_type)
 
             # Connect each node to its remote successors
             task = []
@@ -212,23 +296,23 @@ class RootPipelineServer(FastAPI):
                     }
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
-            responses = await asyncio.gather(*task)
+            await asyncio.gather(*task)
 
-            # Connect RPC callees to RPC callers
+            # Connect RPC servers to RPC clients
             task = []
             for node in self.pipeline.nodes:
-                task.append(node.rpc_callee.connect())
-            
-            responses = await asyncio.gather(*task)
+                task.append(node.node_server.connect())
+
+            await asyncio.gather(*task)
 
             # Finish the connection process for each leaf pipeline
             # Leaf pipeline will set the connection event for each node
             task = []
-            for leaf_ip_address in self.leaf_ip_addresses:
+            for leaf_ip_address in self.successor_ip_addresses:
                 task.append(client.post(f"{leaf_ip_address}/finish_connect"))
 
-            responses = await asyncio.gather(*task)
-        
+            await asyncio.gather(*task)
+
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
         edges = []
@@ -271,14 +355,17 @@ class RootPipelineServer(FastAPI):
         original_sigterm_handler = signal.getsignal(signal.SIGTERM)
 
         def _kill_webserver(sig, frame):
+
+            # Stop the server
             print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
             self.server.should_exit = True
             self.fastapi_thread.join()
-            print(f"Anacostia Webservice {self.name} Killed...")
+            print(f"Anacostia leaf webserver {self.name} Killed...")
 
-            print("Killing root pipeline...")
+            # Terminate the pipeline
+            print("Killing leaf pipeline...")
             self.pipeline.terminate_nodes()
-            print("Root pipeline Killed.")
+            print("Leaf pipeline Killed.")
 
             # register the original default kill handler once the pipeline is killed
             signal.signal(signal.SIGINT, original_sigint_handler)
@@ -295,7 +382,6 @@ class RootPipelineServer(FastAPI):
         # Start the webserver
         self.fastapi_thread.start()
 
-        # Launch the root pipeline
         self.pipeline.launch_nodes()
 
         # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"

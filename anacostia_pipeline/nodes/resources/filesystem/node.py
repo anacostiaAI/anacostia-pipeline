@@ -1,19 +1,20 @@
 import os
-from typing import List, Any, Union
+from typing import List, Any, Union, Callable
 from datetime import datetime
 from logging import Logger
 from threading import Thread
 import traceback
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 import asyncio
-import httpx
+import hashlib
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
+from anacostia_pipeline.nodes.api import NetworkConnectionNotEstablished
 from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCallee
+from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreServer
 
 
 
@@ -23,12 +24,12 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         name: str, 
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
-        metadata_store_caller: BaseMetadataRPCCaller = None,
+        metadata_store_client: BaseMetadataStoreClient = None,
         init_state: str = "new", 
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None, 
         monitoring: bool = True
@@ -55,10 +56,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             name=name, 
             resource_path=resource_path, 
             metadata_store=metadata_store, 
-            metadata_store_caller=metadata_store_caller,
+            metadata_store_client=metadata_store_client,
             remote_predecessors=remote_predecessors,
             remote_successors=remote_successors,
-            caller_url=caller_url,
+            client_url=client_url,
             wait_for_connection=wait_for_connection,
             loggers=loggers, 
             monitoring=monitoring
@@ -70,13 +71,13 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             host=host,
             port=port,
             metadata_store=self.metadata_store, 
-            metadata_store_caller=self.metadata_store_caller
+            metadata_store_client=self.metadata_store_client
         )
         return self.gui
     
-    def setup_rpc_callee(self, host, port):
-        self.rpc_callee = FilesystemStoreRPCCallee(self, self.caller_url, host, port, loggers=self.loggers)
-        return self.rpc_callee
+    def setup_node_server(self, host: str, port: int):
+        self.node_server = FilesystemStoreServer(self, self.client_url, host, port, loggers=self.loggers)
+        return self.node_server
 
     def start_monitoring(self) -> None:
 
@@ -86,13 +87,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 for root, dirnames, filenames in os.walk(self.path):
                     for filename in filenames:
                         filepath = os.path.join(root, filename)
+                        
+                        hash = self.hash_file(filepath)
+
                         filepath = filepath.removeprefix(self.path)     # Remove the path prefix
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
 
                         try:
                             entry_exists = await self.entry_exists(filepath) 
                             if entry_exists is False:
-                                await self.record_new(filepath)
+                                await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
                         except Exception as e:
@@ -101,6 +105,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 if self.exit_event.is_set() is True: break
                 try:
                     await self.resource_trigger()
+                
+                except NetworkConnectionNotEstablished as e:
+                    pass
+
                 except Exception as e:
                     self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}", level="ERROR")
                     # Note: we continue here because we want to keep trying to check the resource until it is available
@@ -119,6 +127,13 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
         self.observer_thread.start()
 
+    def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                sha256.update(chunk)
+        return sha256.hexdigest()
+
     async def resource_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
@@ -128,30 +143,17 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         if num_new_artifacts > 0:
             await self.trigger(message=f"New files detected in {self.resource_path}")
     
-    def _save_artifact_hook(self, filepath: str, *args, **kwargs) -> None:
-        """
-        This method should be overridden by the user to implement the logic for saving an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the save operation fails.
-        This method is called by the save_artifact method.
-        Args:
-            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the save operation fails.
-        """
-        pass
-
-    async def save_artifact(self, filepath: str, *args, **kwargs):
+    async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
-        
+
         Args:
-            filepath (str): Path of the file to save relative to the resource_path. Example: "data/file.txt" will save the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the file to save relative to the resource_path.
+                            Example: "data/file.txt" will save the file at resource_path/data/file.txt.
+            save_fn (Callable): A function that takes the full save path as its first argument,
+                                followed by *args and **kwargs. It is responsible for writing the file.
+            *args: Additional positional arguments passed to `save_fn`.
+            **kwargs: Additional keyword arguments passed to `save_fn`.
         """
 
         # as of right now, i am not going to allow monitoring resource nodes to be used for detecting new data,
@@ -171,10 +173,15 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         try:
             # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
             # that way, the Observer can see the file is already logged and ignore it.
-            # await self.record_current(filepath)
+            # await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
 
-            self._save_artifact_hook(artifact_save_path, *args, **kwargs)
-            await self.record_current(filepath)
+            # write the file to artifact_save_path using the user-provided function save_fn
+            save_fn(artifact_save_path, *args, **kwargs)
+
+            hash = self.hash_file(artifact_save_path)
+
+            # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
+            await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
         except Exception as e:
@@ -193,34 +200,25 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         entries = await super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
-    
-    def _load_artifact_hook(self, filepath: str, *args, **kwargs) -> Any:
-        """
-        This method should be overridden by the user to implement the logic for loading an artifact.
-        The method should accept the filepath as the first argument and any additional arguments or keyword arguments as needed.
-        The method should raise an exception if the load operation fails.
-        This method is called by the load_artifact method.
-        Args:
-            filepath (str): Path of the file to load relative to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
-        Raises:
-            NotImplementedError: If the method is not implemented by the user.
-            Exception: If the load operation fails.
-        """
-        pass
 
-    def load_artifact(self, filepath: str, *args, **kwargs) -> Any:
+    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
         """
-        Load an artifact from the specified path inside to the resource_path.
+        Load an artifact from the specified path relative to the resource_path.
+
         Args:
-            artifact_path (str): The path of the artifact to load, inside to the resource_path. Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            *args: Additional positional arguments for the function.
-            **kwargs: Additional keyword arguments for the function.
+            filepath (str): Path of the artifact to load, relative to the resource_path.
+                            Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
+                                                 and returns the loaded artifact.
+            *args: Additional positional arguments to pass to `load_fn`.
+            **kwargs: Additional keyword arguments to pass to `load_fn`.
+
         Returns:
             Any: The loaded artifact.
+
         Raises:
             FileNotFoundError: If the artifact file does not exist.
+            Exception: If an error occurs during loading.
         """
         
         artifact_save_path = os.path.join(self.resource_path, filepath)
@@ -228,7 +226,12 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
 
         try:
-            return self._load_artifact_hook(artifact_save_path, *args, **kwargs)
+            actual_hash = self.hash_file(artifact_save_path)
+            expected_hash = None
+            # TODO: get hash from metadata store and compare the expected hash with actual_hash
+
+            artifact = load_fn(artifact_save_path, *args, **kwargs)
+            return artifact
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise e

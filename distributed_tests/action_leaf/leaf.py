@@ -3,11 +3,11 @@ import logging
 from logging import Logger
 from typing import List
 
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
-from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
+from anacostia_pipeline.pipelines.pipeline import Pipeline
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCaller
-from anacostia_pipeline.nodes.resources.filesystem.rpc import FilesystemStoreRPCCaller
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
+from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
 from utils import create_file
 
 
@@ -71,7 +71,7 @@ LOGGING_CONFIG = {
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SQLMetadataRPCCaller, model_registry_rpc: FilesystemStoreRPCCaller = None,
+        self, name: str, metadata_store_rpc: SQLMetadataStoreClient, model_registry_rpc: FilesystemStoreClient = None,
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
@@ -103,7 +103,7 @@ class ShakespeareEvalNode(BaseActionNode):
 
 class HaikuEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SQLMetadataRPCCaller, plots_store_rpc: FilesystemStoreRPCCaller = None,
+        self, name: str, metadata_store_rpc: SQLMetadataStoreClient, plots_store_rpc: FilesystemStoreClient = None,
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
@@ -138,24 +138,24 @@ class HaikuEvalNode(BaseActionNode):
 
         return True
 
-metadata_store_rpc = SQLMetadataRPCCaller(caller_name="metadata_store_rpc")
-model_registry_rpc = FilesystemStoreRPCCaller(storage_directory=model_registry_path, caller_name="model_registry_rpc")
-plots_store_rpc = FilesystemStoreRPCCaller(storage_directory=plots_path, caller_name="plots_store_rpc")
+metadata_store_rpc = SQLMetadataStoreClient(client_name="metadata_store_rpc")
+model_registry_rpc = FilesystemStoreClient(storage_directory=model_registry_path, client_name="model_registry_rpc")
+plots_store_rpc = FilesystemStoreClient(storage_directory=plots_path, client_name="plots_store_rpc")
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, model_registry_rpc=model_registry_rpc)
 haiku_eval = HaikuEvalNode("haiku_eval", metadata_store_rpc=metadata_store_rpc, plots_store_rpc=plots_store_rpc)
 
-pipeline = LeafPipeline(
+pipeline = Pipeline(
     name="leaf_pipeline",
     nodes=[shakespeare_eval, haiku_eval],
     loggers=logger
 )
 
-service = LeafPipelineServer(
+service = PipelineServer(
     name="leaf", 
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
+    remote_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger,
     uvicorn_access_log_config=LOGGING_CONFIG
 )

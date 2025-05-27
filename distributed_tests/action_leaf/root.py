@@ -8,8 +8,8 @@ from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
-from anacostia_pipeline.pipelines.root.pipeline import RootPipeline
-from anacostia_pipeline.pipelines.root.server import RootPipelineServer
+from anacostia_pipeline.pipelines.pipeline import Pipeline
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 from utils import *
 
@@ -74,6 +74,15 @@ LOGGING_CONFIG = {
 
 
 
+def save_model(filepath: str, content: str) -> None:
+    with locked_file(filepath, 'w') as f:
+        f.write(content)
+
+def load_model(filepath: str) -> None:
+    with locked_file(filepath, "r") as file:
+        return file.read()
+
+
 class MonitoringDataStoreNode(FilesystemStoreNode):
     def __init__(
         self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
@@ -81,31 +90,27 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     ) -> None:
         super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, init_state=init_state, max_old_samples=max_old_samples)
     
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
-    
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
+
 
 class ModelRegistryNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
-    def _save_artifact_hook(self, filepath: str, content: str) -> None:
-        with locked_file(filepath, 'w') as f:
-            f.write(content)
+    async def save_artifact(self, filepath: str, content: str, *args, **kwargs):
+        await super().save_artifact(filepath, save_fn=save_model, content=content, *args, **kwargs)
 
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
     
 
 class PlotsStoreNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, caller_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, caller_url=caller_url, monitoring=False)
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
+        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
     
-    def _load_artifact_hook(self, filepath) -> str:
-        with locked_file(filepath, "r") as file:
-            return file.read()
+    def load_artifact(self, filepath: str, *args, **kwargs):
+        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
     
 
 class ModelRetrainingNode(BaseActionNode):
@@ -179,19 +184,19 @@ plots_path = f"{output_path}/plots"
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
 )
 model_registry = ModelRegistryNode(
     name="model_registry", 
     resource_path=model_registry_path, 
     metadata_store=metadata_store,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
 )
 plots_store = PlotsStoreNode(
     name="plots_store", 
     resource_path=plots_path, 
     metadata_store=metadata_store,
-    caller_url=f"http://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
+    client_url=f"http://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
 )
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode(
@@ -203,10 +208,11 @@ retraining = ModelRetrainingNode(
     remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval", f"http://{args.leaf_host}:{args.leaf_port}/haiku_eval"]
 )
 
-pipeline = RootPipeline(
+pipeline = Pipeline(
+    name="root_pipeline", 
     nodes=[metadata_store, haiku_data_store, model_registry, plots_store, retraining], 
     loggers=logger
 )
 
-service = RootPipelineServer(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger, uvicorn_access_log_config=LOGGING_CONFIG)
+service = PipelineServer(name="root", pipeline=pipeline, host=args.root_host, port=args.root_port, logger=logger, uvicorn_access_log_config=LOGGING_CONFIG)
 service.run()

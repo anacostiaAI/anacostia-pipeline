@@ -7,7 +7,7 @@ import httpx
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.nodes.metadata.rpc import BaseMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.utils.constants import Result, Status
 
 
@@ -24,11 +24,11 @@ class BaseResourceNode(BaseNode, ABC):
         name: str, 
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
-        metadata_store_caller: BaseMetadataRPCCaller = None,
+        metadata_store_client: BaseMetadataStoreClient = None,
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
         wait_for_connection: bool = False,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None, 
         monitoring: bool = True
     ) -> None:
@@ -39,18 +39,18 @@ class BaseResourceNode(BaseNode, ABC):
             remote_predecessors=remote_predecessors, 
             remote_successors=remote_successors, 
             wait_for_connection=wait_for_connection,
-            caller_url=caller_url,
+            client_url=client_url,
             loggers=loggers
         )
 
         self.resource_path = resource_path
         self.monitoring = monitoring
 
-        if metadata_store is None and metadata_store_caller is None:
+        if metadata_store is None and metadata_store_client is None:
             raise ValueError("Either metadata_store or metadata_store_rpc must be provided")
 
         self.metadata_store = metadata_store
-        self.metadata_store_caller = metadata_store_caller
+        self.metadata_store_client = metadata_store_client
         self.resource_event = threading.Event()
 
     @abstractmethod
@@ -89,16 +89,16 @@ class BaseResourceNode(BaseNode, ABC):
             return self.metadata_store.entry_exists(self.name, filepath)
         
         if self.connection_event.is_set() is True:
-            if self.metadata_store_caller is not None:
+            if self.metadata_store_client is not None:
                 try:
-                    return await self.metadata_store_caller.entry_exists(self.name, filepath)
+                    return await self.metadata_store_client.entry_exists(self.name, filepath)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
                     # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
             
 
-    async def record_new(self, filepath: str) -> None:
+    async def record_new(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record a new artifact in the metadata store.
 
@@ -107,12 +107,12 @@ class BaseResourceNode(BaseNode, ABC):
         """
 
         if self.metadata_store is not None:
-            self.metadata_store.create_entry(self.name, filepath=filepath, state="new")
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
 
         if self.connection_event.is_set() is True:
-            if self.metadata_store_caller is not None:
+            if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_caller.create_entry(self.name, filepath=filepath, state="new")
+                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -124,7 +124,7 @@ class BaseResourceNode(BaseNode, ABC):
                     raise e
                                 
         
-    async def record_current(self, filepath: str) -> None:
+    async def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record an artifact produced in the current run metadata store.
 
@@ -133,11 +133,53 @@ class BaseResourceNode(BaseNode, ABC):
         """
 
         if self.metadata_store is not None:
-            self.metadata_store.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
         
-        if self.metadata_store_caller is not None:
-            await self.metadata_store_caller.create_entry(self.name, filepath=filepath, state="current", run_id=self.metadata_store.get_run_id())
-        
+    async def add_artifact(
+        self, filepath: str, hash: str, hash_algorithm: str, state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
+    ) -> None:
+        """
+        Record an artifact produced in the metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        """
+
+        if self.metadata_store is not None:
+            self.metadata_store.create_entry(
+                self.name, filepath=filepath, hash=hash, hash_algorithm=hash_algorithm, state=state, run_id=run_id, file_size=file_size, content_type=content_type
+            )
+
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    await self.metadata_store_client.create_entry(
+                        self.name, filepath=filepath, hash=hash, hash_algorithm=hash_algorithm, state=state, run_id=run_id, file_size=file_size, content_type=content_type
+                    )
+                except httpx.ConnectError as e:
+                    self.log(f"Resource node '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
+
     async def get_num_artifacts(self, state: str) -> int:
         """
         Get the number of artifacts in the specified state.
@@ -152,8 +194,8 @@ class BaseResourceNode(BaseNode, ABC):
         if self.metadata_store is not None:
             return self.metadata_store.get_num_entries(self.name, state)
         
-        if self.metadata_store_caller is not None:
-            return await self.metadata_store_caller.get_num_entries(self.name, state)
+        if self.metadata_store_client is not None:
+            return await self.metadata_store_client.get_num_entries(self.name, state)
 
     def get_artifact(self, id: int) -> Dict:
         """
@@ -184,8 +226,8 @@ class BaseResourceNode(BaseNode, ABC):
         if self.metadata_store is not None:
             entries = self.metadata_store.get_entries(self.name, state)
         
-        if self.metadata_store_caller is not None:
-            entries = await self.metadata_store_caller.get_entries(self.name, state)
+        if self.metadata_store_client is not None:
+            entries = await self.metadata_store_client.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
 
@@ -208,14 +250,10 @@ class BaseResourceNode(BaseNode, ABC):
                     self.metadata_store.log_trigger(node_name=self.name, message=message)
                 
                 if self.connection_event.is_set() is True:
-                    if self.metadata_store_caller is not None:
-                        await self.metadata_store_caller.log_trigger(node_name=self.name, message=message)
+                    if self.metadata_store_client is not None:
+                        await self.metadata_store_client.log_trigger(node_name=self.name, message=message)
             
             self.resource_event.set()
-
-    def leaf_setup(self):
-        self.status = Status.INITIALIZING
-        self.setup()
 
     async def run_async(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
@@ -231,9 +269,9 @@ class BaseResourceNode(BaseNode, ABC):
 
             self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
 
-        if self.metadata_store_caller is not None and self.metadata_store is not None and self.wait_for_connection is True:
+        if self.metadata_store_client is not None and self.metadata_store is not None and self.wait_for_connection is True:
             entries = self.metadata_store.get_entries(self.name)
-            await self.metadata_store_caller.merge_artifacts_table(self.name, entries)
+            await self.metadata_store_client.merge_artifacts_table(self.name, entries)
 
         while self.exit_event.is_set() is False:
             

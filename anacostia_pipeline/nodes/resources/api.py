@@ -5,13 +5,13 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 import httpx
 
-from anacostia_pipeline.nodes.rpc import BaseRPCCaller, BaseRPCCallee
+from anacostia_pipeline.nodes.api import BaseClient, BaseServer
 
 
 
-class BaseResourceRPCCallee(BaseRPCCallee):
-    def __init__(self, node, caller_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, caller_url, host, port, loggers, *args, **kwargs)
+class BaseResourceServer(BaseServer):
+    def __init__(self, node, client_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
+        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
 
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):
@@ -31,9 +31,9 @@ class BaseResourceRPCCallee(BaseRPCCallee):
 
 
 
-class BaseResourceRPCCaller(BaseRPCCaller):
-    def __init__(self, caller_name: str, caller_host = "127.0.0.1", caller_port = 8000, loggers = None, *args, **kwargs):
-        super().__init__(caller_name, caller_host, caller_port, loggers, *args, **kwargs)
+class BaseResourceClient(BaseClient):
+    def __init__(self, client_name: str, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
+        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
     
     async def get_num_artifacts(self, state: str = "all") -> int:
         """
@@ -43,7 +43,7 @@ class BaseResourceRPCCaller(BaseRPCCaller):
         """
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.get_callee_url()}/get_num_artifacts/?state={state}")
+                response = await client.get(f"{self.get_server_url()}/get_num_artifacts/?state={state}")
                 if response.status_code == 200:
                     return response.json()["num_artifacts"]
                 else:
@@ -61,7 +61,7 @@ class BaseResourceRPCCaller(BaseRPCCaller):
         """
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.get_callee_url()}/list_artifacts/?state={state}")
+                response = await client.get(f"{self.get_server_url()}/list_artifacts/?state={state}")
                 if response.status_code == 200:
                     return response.json()["artifacts"]
                 else:

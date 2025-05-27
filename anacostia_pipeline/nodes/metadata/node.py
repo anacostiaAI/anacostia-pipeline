@@ -24,11 +24,11 @@ class BaseMetadataStoreNode(BaseNode):
         name: str,
         uri: str,
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
     
-        super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, caller_url=caller_url, loggers=loggers)
+        super().__init__(name, predecessors=None, remote_predecessors=None, remote_successors=remote_successors, client_url=client_url, loggers=loggers)
         self.uri = uri
         self.run_id = 0
         self.trigger_event = Event()
@@ -152,7 +152,8 @@ class BaseMetadataStoreNode(BaseNode):
     def metadata_store_trigger(self) -> None:
         """
         The default trigger for the SqliteMetadataStoreNode. 
-        metadata_store_trigger does not check any metric, it just simply triggers the pipeline.
+        In the default trigger, the metadata_store_trigger does not check anything in the metadata store, it just simply triggers the pipeline.
+        Override metadata_store_trigger in order to implement your own metadata store trigger (e.g., metric-based triggers)
         """
         self.trigger()
     

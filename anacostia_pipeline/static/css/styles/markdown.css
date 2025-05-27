@@ -1,0 +1,36 @@
+.markdown-div {
+    font-family: sans-serif;
+    overflow-y: auto;
+    max-width: 50%;
+    max-height: 90vh;
+}
+
+pre {
+    background-color: #f5f5f5;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    padding: 1em;
+    overflow-x: auto;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.95em;
+    margin: 1em 0;
+}
+
+.page-border {
+    margin: 2em auto;
+    border: 2px solid gray;
+    border-radius: 10px;
+    padding: 2em;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    background-color: white;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    background-color: rgba(0, 0, 0, 0.5); /* 10% opacity black */
+}

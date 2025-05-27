@@ -26,11 +26,8 @@ class PipelineModel(BaseModel):
 
     nodes: List[NodeModel]
 
-    def add_node(self, node: NodeModel):
-        self.nodes.append(node)
 
-
-class RootPipeline:
+class Pipeline:
     """
     Pipeline is a class that is in charge of graph management and execution; this includes:
     1. Providing an API to interact with the nodes.
@@ -41,14 +38,10 @@ class RootPipeline:
     2. Ensuring the user built the graph correctly (i.e., ensuring the graph is a DAG)
     """
 
-    def __init__(
-        self, 
-        nodes: Iterable[BaseNode],
-        loggers: Union[Logger, List[Logger]] = None
-    ) -> None:
-
+    def __init__(self, name: str, nodes: Iterable[BaseNode], loggers: Union[Logger, List[Logger]] = None) -> None:
         self.node_dict = dict()
         self.graph = nx.DiGraph()
+        self.name = name
 
         # Add nodes into graph
         for node in nodes:
@@ -59,6 +52,11 @@ class RootPipeline:
         for node in nodes:
             for predecessor in node.predecessors:
                 self.graph.add_edge(predecessor, node)
+        
+        for node in nodes:
+            for successor in node.successors:
+                if successor not in nodes:
+                    raise ValueError(f"Node '{successor.name}' has not been registered with pipeline. Check the 'nodes' parameter in the Pipeline class")
         
         # Set logger for all nodes
         if loggers is not None:
@@ -86,12 +84,7 @@ class RootPipeline:
         for node in self.nodes:
             if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
                 raise InvalidNodeDependencyError("There can only be one metadata store node")
-        """
-                
-        # set metadata store node
-        self.metadata_store = self.nodes[0]
 
-        """
         # check 5: make sure all resource nodes are successors of the metadata store node
         for node in self.nodes:
             if isinstance(node, BaseResourceNode) is True:
@@ -117,18 +110,6 @@ class RootPipeline:
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
     
-    def set_pipeline_model(self, pipeline_model: PipelineModel):
-        """
-        Sets the pipeline model for the pipeline. This is used by the root service to create a pipeline model from all of the leaf pipeline models.
-        """
-        self.pipeline_model = pipeline_model
-
-    def model(self):
-        if self.pipeline_model is None:
-            return PipelineModel(nodes=[n.model() for n in self.nodes])
-        else:
-            return self.pipeline_model
-    
     def setup_nodes(self):
         """
         Sets up all the registered nodes in topological order.
@@ -142,7 +123,7 @@ class RootPipeline:
             threads: List[Thread] = []
             for node in nodes:
                 node.log(f"--------------------------- started setup phase of {node.name} at {datetime.now()}")
-                thread = Thread(target=node.root_setup)
+                thread = Thread(target=node.setup)
                 node.status = Status.INITIALIZING
                 thread.start()
                 threads.append(thread)
@@ -164,10 +145,12 @@ class RootPipeline:
         __setup_nodes(action_nodes)
 
         # add nodes to metadata store's node list
-        for metadata_store in metadata_stores:
-            for node in self.nodes:
-                metadata_store.add_node(node.name, type(node).__name__)
+        if len(metadata_stores) > 0:
+            for metadata_store in metadata_stores:
+                for node in self.nodes:
+                    metadata_store.add_node(node.name, type(node).__name__)
 
+    # consider renaming this method to start_pipeline
     def launch_nodes(self):
         """
         Lanches all the registered nodes in topological order.
@@ -178,6 +161,7 @@ class RootPipeline:
         for node in self.nodes:
             node.start()
 
+    # consider renaming this method to shutdown_pipeline
     def terminate_nodes(self) -> None:
         # terminating nodes need to be done in reverse order so that the successor nodes are terminated before the predecessor nodes
         # this is because the successor nodes will continue to listen for signals from the predecessor nodes,
@@ -191,6 +175,8 @@ class RootPipeline:
             node.join()
         print("All nodes terminated")
 
+    # Note: this run method is only here to run the pipeline without the webserver
+    # This method might be deprecated.
     def run(self) -> None:
         original_sigint_handler = signal.getsignal(signal.SIGINT)
 

@@ -5,11 +5,11 @@ from logging.config import dictConfig
 import argparse
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
-from anacostia_pipeline.pipelines.leaf.server import LeafPipelineServer
-from anacostia_pipeline.pipelines.leaf.pipeline import LeafPipeline
+from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.metadata.sql.rpc import SQLMetadataRPCCaller
+from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 
 
@@ -53,27 +53,27 @@ class EvalNode(BaseActionNode):
 
 
 metadata_store = SQLiteMetadataStoreNode(name="leaf_metadata_store", uri=metadata_store_path)
-metadata_store_caller = SQLMetadataRPCCaller(caller_name="metadata_store_rpc", loggers=logger)
+metadata_store_client = SQLMetadataStoreClient(client_name="metadata_store_rpc", loggers=logger)
 leaf_data_node = FilesystemStoreNode(
     name="leaf_data_node", 
     resource_path=shakespeare_input_path, 
     metadata_store=metadata_store, 
-    metadata_store_caller=metadata_store_caller, 
+    metadata_store_client=metadata_store_client, 
     wait_for_connection=True
 )
 shakespeare_eval = EvalNode(name="shakespeare_eval", leaf_data_node=leaf_data_node)
 
-pipeline = LeafPipeline(
+pipeline = Pipeline(
     name="leaf_pipeline",
     nodes=[metadata_store, leaf_data_node, shakespeare_eval], 
     loggers=logger
 )
-service = LeafPipelineServer(
+service = PipelineServer(
     name="leaf", 
     pipeline=pipeline, 
     host=args.host, 
     port=args.port, 
-    rpc_callers=[metadata_store_caller],
+    remote_clients=[metadata_store_client],
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],

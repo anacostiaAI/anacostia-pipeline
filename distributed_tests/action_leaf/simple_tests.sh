@@ -77,7 +77,7 @@ python setup.py
 echo "Done."
 
 echo "Starting leaf server on port $LEAF_PORT..."
-python3 $LEAF_SCRIPT "127.0.0.1" $LEAF_PORT > ./testing_artifacts/leaf_server_output.log 2>&1 &
+python3 $LEAF_SCRIPT "127.0.0.1" $LEAF_PORT &
 LEAF_PID=$!
 
 # Give the server time to start
@@ -90,7 +90,7 @@ if ! kill -0 $LEAF_PID 2>/dev/null; then
 fi
 
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT..."
-python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT > ./testing_artifacts/root_server_output.log 2>&1 &
+python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT &
 ROOT_PID=$!
 
 # Verify leaf server started successfully

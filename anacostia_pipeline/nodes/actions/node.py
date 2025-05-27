@@ -14,13 +14,13 @@ class BaseActionNode(BaseNode):
         predecessors: List[BaseNode], 
         remote_predecessors: List[str] = None, 
         remote_successors: List[str] = None,
-        caller_url: str = None,
+        client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
     ) -> None:
         super().__init__(
             name, predecessors, remote_predecessors=remote_predecessors, 
-            remote_successors=remote_successors, caller_url=caller_url, wait_for_connection=wait_for_connection, loggers=loggers
+            remote_successors=remote_successors, client_url=client_url, wait_for_connection=wait_for_connection, loggers=loggers
         )
 
     @BaseNode.log_exception
@@ -71,6 +71,15 @@ class BaseActionNode(BaseNode):
         pass
 
     async def run_async(self) -> None:
+        if self.wait_for_connection:
+            self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
+            
+            # this event is set by the LeafPipeline when all root predecessors are connected and after it adds to predecessors_events
+            self.connection_event.wait()
+            if self.exit_event.is_set(): return
+
+            self.log(f"'{self.name}' connected to root predecessors {list(self.predecessors_events.keys())}", level='INFO')
+
         while self.exit_event.is_set() is False:
             self.status = Status.QUEUED
             self.wait_for_predecessors()
