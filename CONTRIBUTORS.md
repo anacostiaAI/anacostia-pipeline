@@ -75,7 +75,7 @@ python3 graph_test.py
 ### Packaging and publishing to PyPI:
 1. Build the package:
 ```
-cd anacostia
+cd anacostia-pipeline
 python3 -m build
 ```
 you should see a folder created call `dist/`.
