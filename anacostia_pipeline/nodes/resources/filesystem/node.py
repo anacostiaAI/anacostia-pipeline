@@ -179,6 +179,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             save_fn(artifact_save_path, *args, **kwargs)
 
             hash = self.hash_file(artifact_save_path)
+
+            # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
             await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
