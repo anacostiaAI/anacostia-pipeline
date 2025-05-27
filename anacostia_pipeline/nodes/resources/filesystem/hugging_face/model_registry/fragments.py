@@ -32,7 +32,7 @@ def model_registry_home(update_endpoint: str, model_entries: List[Dict[str, str]
 
             <!-- Load MathJax config first -->
             <script src="/static/js/src/mathjax-config.js"></script>
-            <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+            <script type="text/javascript" id="MathJax-script" async src="/static/js/third_party/mathjax.js"></script>
 
             <!-- CSS for model registry home page -->
             <link rel="stylesheet" href="/static/css/styles/model_registry.css">

@@ -70,7 +70,7 @@ class TrainingNode(BaseActionNode):
             model_description="this model does this and that",
             developers="Nate Raw",
             repo="https://github.com/huggingface/huggingface_hub",
-            template_path="sample_model_card_template.md",
+            template_path="modelcard.md",
         )
 
         def save_model_fn(filepath: str, model: str) -> None:

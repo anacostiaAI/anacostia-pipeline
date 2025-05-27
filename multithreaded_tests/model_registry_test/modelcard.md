@@ -18,6 +18,14 @@
 
 {{ model_description | default("", true) }}
 
+Einstein’s equation is $E = mc^2$.
+
+The integral of $x^2$ from 0 to 1 is:
+
+$$
+\int_0^1 x^2 \, dx = \frac{1}{3}
+$$
+
 - **Developed by:** {{ developers | default("[More Information Needed]", true)}}
 - **Funded by [optional]:** {{ funded_by | default("[More Information Needed]", true)}}
 - **Shared by [optional]:** {{ shared_by | default("[More Information Needed]", true)}}
