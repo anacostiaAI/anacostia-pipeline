@@ -8,9 +8,6 @@ from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.r
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.gui import ModelRegistryGUI
 
 
-def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
-    card.save(filepath=model_card_path)
-    
 
 class HuggingFaceModelRegistryNode(FilesystemStoreNode):
     def __init__(
@@ -43,26 +40,19 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             monitoring=monitoring
         )
     
-    async def save_model(
-        self, 
-        save_model_fn: Callable[[str, Any], None], 
-        model: Any, 
-        model_path: str, 
-        model_card_path: str = None, 
-        card: ModelCard = None, 
-        *args, **kwargs
-    ):
+
+    async def save_model_card(self, model_card_path: str, card: ModelCard, *args, **kwargs):
+
+        def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
+            card.save(filepath=model_card_path)
+    
+        # TODO: create a tag to associate the path to the model with the model card
+        await self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
+
+
+    async def save_model(self, save_model_fn: Callable[[str, Any], None], model: Any, model_path: str, *args, **kwargs):
         await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model)
 
-        # save a model card for the model if given
-        if model_card_path is not None and card is not None:
-            await self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
-            
-        elif model_card_path is not None and card is None:
-            raise ValueError("You provided `model_card_path` but did not provide a `ModelCard` instance (`card`).")
-
-        elif model_card_path is None and card is not None:
-            raise ValueError("You provided a `ModelCard` instance (`card`) but did not provide `model_card_path` to save it.")
 
     def setup_node_GUI(self, host: str, port: int) -> ModelRegistryGUI:
         self.gui = ModelRegistryGUI(
@@ -73,4 +63,3 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             metadata_store_client=self.metadata_store_client
         )
         return self.gui
-    

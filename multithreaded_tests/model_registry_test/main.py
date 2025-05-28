@@ -81,6 +81,9 @@ class TrainingNode(BaseActionNode):
             save_model_fn=save_model_fn,
             model=f"model {num_artifacts}",
             model_path=model_name,
+        )
+
+        await self.model_registry.save_model_card(
             model_card_path=model_card_name,
             card=card
         )
