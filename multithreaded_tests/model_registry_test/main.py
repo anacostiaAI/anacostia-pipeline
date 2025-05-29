@@ -73,10 +73,15 @@ class TrainingNode(BaseActionNode):
             template_path="modelcard.md",
         )
 
+        @self.model_registry.save_file_decorator(state="current", content_type="text/plain")
         def save_model_fn(filepath: str, model: str) -> None:
             with locked_file(filepath, 'w') as f:
                 f.write(model)
 
+        # Save the model to the data store
+        save_model_fn(filepath=model_name, model=f"model {num_artifacts}")
+
+        """
         await self.model_registry.save_model(
             save_model_fn=save_model_fn,
             model=f"model {num_artifacts}",
@@ -84,6 +89,7 @@ class TrainingNode(BaseActionNode):
             model_card_path=model_card_name,
             card=card
         )
+        """
 
         return True
 
