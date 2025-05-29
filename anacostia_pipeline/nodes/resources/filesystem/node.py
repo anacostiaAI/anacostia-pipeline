@@ -144,52 +144,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         if num_new_artifacts > 0:
             await self.trigger(message=f"New files detected in {self.resource_path}")
     
-    async def save_file_decorator(self, state: str = "new", content_type: str = None):
-        def inner(func):
-
-            async def wrapper(*args, **kwargs):
-                sig = inspect.signature(func)
-                bound = sig.bind(*args, **kwargs)
-                bound.apply_defaults()
-                filepath = bound.arguments.get("filepath")
-
-                # as of right now, i am not going to allow monitoring resource nodes to be used for detecting new data,
-                # i haven't seen a use case where it's necessary to save a file while monitoring is enabled.
-                if self.monitoring is True:
-                    raise ValueError("Cannot save artifact while monitoring is enabled. Please disable monitoring before saving artifacts.")
-
-                # Ensure the root directory exists
-                folder_path = os.path.join(self.resource_path, os.path.dirname(filepath))
-                if os.path.exists(folder_path) is False:
-                    os.makedirs(folder_path)
-                
-                artifact_save_path = os.path.join(self.resource_path, filepath)
-                if os.path.exists(artifact_save_path) is True:
-                    raise FileExistsError(f"File '{artifact_save_path}' already exists. Please choose a different filename.")
-
-                try:
-                    # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
-                    # that way, the Observer can see the file is already logged and ignore it.
-                    # await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
-
-                    # write the file to artifact_save_path using the user-provided function save_fn
-
-                    func(artifact_save_path, *args, **kwargs)
-
-                    hash = self.hash_file(artifact_save_path)
-
-                    # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
-                    #await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
-                    await self.add_artifact(filepath=filepath, hash=hash, hash_algorithm="sha256", state=state, content_type=content_type)
-                    self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
-
-                except Exception as e:
-                    self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
-                    raise e
-
-            return wrapper
-        return inner
-    
     async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
