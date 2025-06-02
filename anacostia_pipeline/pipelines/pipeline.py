@@ -1,4 +1,4 @@
-from typing import List, Iterable, Union
+from typing import List, Iterable, Union, Tuple
 from threading import Thread
 from datetime import datetime
 from logging import Logger
@@ -62,6 +62,25 @@ class Pipeline:
         if loggers is not None:
             for node in nodes:
                 node.add_loggers(loggers)
+        
+        """
+        test for the following conditions:
+        1. The graph is a Directed Acyclic Graph (DAG).
+        2. The graph is not disconnected.
+        3. All the successors of metadata store nodes are resource nodes.
+        4. All the successors of resource nodes are action nodes.
+        Note: checks in the Pipeline class are to check the structure of the local graph.
+        Note: PipelineServer class collects graph information from the Pipeline class (via its PipelineModel)
+        as well as from the PipelineServer.frontend_json() method. json data will be converted to dictionary entries 
+        and converted to networkx DiGraph like so
+        >>> graph_data = PipelineServer.frontend_json()
+        >>> self.graph = nx.DiGraph(graph_data)
+        >>> self.verify_graph_structure(self.graph)
+        Note: in the future, PipelineServer will render BaseClient objects as disconnected nodes in the graph.
+        Note: BaseClient objects are not part of the PipelineModel, but they are part of the PipelineServer's frontend_json.
+        Note: look into nx.from_dict_of_lists() to convert a dictionary of lists to a networkx DiGraph.
+        Note: also look into nx.from_edge_list() to convert a list of edges to a networkx DiGraph.
+        """
 
         """
         # check 1: make sure graph is acyclic (i.e., check if graph is a DAG)
@@ -106,6 +125,9 @@ class Pipeline:
         """
 
         self.pipeline_model = PipelineModel(nodes=[n.model() for n in self.nodes])
+
+    def verify_graph_structure(self, edge_list: List[Tuple[str, str]]) -> None:
+        pass
 
     def __getitem__(self, key):
         return self.node_dict.get(key, None)
