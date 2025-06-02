@@ -93,7 +93,7 @@ class TrainingNode(BaseActionNode):
 
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
-model_registry = HuggingFaceModelRegistryNode("nro_model_registry", resource_path=model_registry_path, metadata_store=metadata_store, monitoring=False)
+model_registry = HuggingFaceModelRegistryNode("model_registry", resource_path=model_registry_path, metadata_store=metadata_store, monitoring=False)
 training_node = TrainingNode("training", model_registry=model_registry, data_store=data_store, predecessors=[data_store])
 
 # Create the pipeline

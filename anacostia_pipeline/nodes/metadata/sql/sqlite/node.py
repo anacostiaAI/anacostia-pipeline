@@ -2,7 +2,7 @@ from typing import List, Union
 from logging import Logger
 import os
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from anacostia_pipeline.nodes.metadata.sql.node import BaseSQLMetadataStoreNode
@@ -38,6 +38,14 @@ class SQLiteMetadataStoreNode(BaseSQLMetadataStoreNode):
             echo=False, 
             future=True
         )
+
+        # Enable Write-Ahead Logging (WAL) mode
+        # This is important for concurrent access to the SQLite database.
+        # WAL mode allows multiple readers and a single writer, 
+        # which is suitable for Anacostia where we have multiple threads that need to read from the database.
+        with engine.connect() as conn:
+            conn.execute(text("PRAGMA journal_mode=WAL"))
+            conn.commit()
 
         # Create all tables in the engine (this is equivalent to "Create Table" statements in raw SQL).
         Base.metadata.create_all(bind=engine)

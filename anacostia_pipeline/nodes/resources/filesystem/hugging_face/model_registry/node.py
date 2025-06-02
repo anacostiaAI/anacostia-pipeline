@@ -40,8 +40,15 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             monitoring=monitoring
         )
     
-
     async def save_model_card(self, model_card_path: str, card: ModelCard, *args, **kwargs):
+        """
+        Save a model card to the filesystem.
+        Args:
+            model_card_path (str): The path where the model card should be saved.
+            card (ModelCard): The model card to save.
+            *args: Additional arguments to pass to the save function.
+            **kwargs: Additional keyword arguments to pass to the save function.
+        """
 
         def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
             card.save(filepath=model_card_path)
@@ -51,8 +58,16 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
 
 
     async def save_model(self, save_model_fn: Callable[[str, Any], None], model: Any, model_path: str, *args, **kwargs):
-        await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model)
-
+        """
+        Save a model to the filesystem.
+        Args:
+            save_model_fn (Callable[[str, Any], None]): A function that takes a file path and a model to save.
+            model (Any): The model to save.
+            model_path (str): The path where the model should be saved.
+            *args: Additional arguments to pass to the save function.
+            **kwargs: Additional keyword arguments to pass to the save function.
+        """
+        await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model, *args, **kwargs)
 
     def setup_node_GUI(self, host: str, port: int) -> ModelRegistryGUI:
         self.gui = ModelRegistryGUI(
