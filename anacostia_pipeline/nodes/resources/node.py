@@ -282,11 +282,6 @@ class BaseResourceNode(BaseNode, ABC):
                 self.status = Status.WAITING_RESOURCE
                 self.resource_event.wait()
 
-                if self.exit_event.is_set(): return
-
-                self.resource_event.clear()
-                self.status = Status.TRIGGERED
-                
             # signal to metadata store node that the resource is ready to be used for the next run
             # i.e., tell the metadata store to create and start the next run
             # e.g., there is enough new data to trigger the next run
@@ -299,6 +294,12 @@ class BaseResourceNode(BaseNode, ABC):
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
 
+            # we clear the resource_event after the run has been created so that the trigger won't execute more than once on the same resource
+            # this is important so we don't trigger the same run multiple times if the resource is not changing
+            if self.monitoring is True:
+                self.resource_event.clear()
+                self.status = Status.TRIGGERED
+                
             # signalling to all successors that the resource is ready to be used for the current run
             # self.log(f"{self.name} signaling successors that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
