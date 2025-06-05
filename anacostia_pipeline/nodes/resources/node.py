@@ -148,6 +148,33 @@ class BaseResourceNode(BaseNode, ABC):
                 except Exception as e:
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
+    
+    async def tag_artifact(self, filepath: str, **kwargs) -> None:
+        """
+        Tag an artifact in the metadata store.
+        Args:
+            filepath: The path to the artifact file
+            **kwargs: tags to pass to the metadata store (example call: tag_artifact(node_name, location, customer="customer_name", tag="tag_name"))
+        """ 
+
+        if self.metadata_store is not None:
+            self.metadata_store.tag_artifact(node_name=self.name, location=filepath, **kwargs)
+        
+        # currently, the metadata store client does not support tagging artifacts so it doesn't work, 
+        # but we keep this method for consistency with the metadata store node interface
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    await self.metadata_store_client.tag_artifact(node_name=self.name, location=filepath, **kwargs)
+                except httpx.ConnectError as e:
+                    self.log(f"Resource node '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
         
     async def add_artifact(
         self, filepath: str, hash: str, hash_algorithm: str, state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None

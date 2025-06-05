@@ -7,12 +7,19 @@ import yaml
 
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.fragments import model_registry_home, model_entry_card, model_card_modal
+from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 
 class ModelRegistryGUI(BaseGUI):
-    def __init__(self, node, host: str, port: int, metadata_store = None, metadata_store_client = None, *args, **kwargs):
+    def __init__(
+        self, node, host: str, port: int, 
+        metadata_store: BaseMetadataStoreNode = None, 
+        metadata_store_client: BaseMetadataStoreClient = None, 
+        *args, **kwargs
+    ):
         super().__init__(node, host=host, port=port, use_default_router=False, *args, **kwargs)
 
         if metadata_store is None and metadata_store_client is None:
@@ -28,16 +35,16 @@ class ModelRegistryGUI(BaseGUI):
 
         def format_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             model_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is False]
-            model_card_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is True]
 
-            if len(model_card_entries) != len(model_entries):
-                print(model_entries)
-                print(model_card_entries)
-                raise ValueError("model card has not been produced yet")
-
-            for model_entry, model_card_entry in zip(model_entries, model_card_entries):
-                model_entry['modal_open_endpoint'] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_entry['location']}"
-                model_entry['location'] = f"{self.node.resource_path}/{model_entry['location']}"
+            for model_entry in model_entries:
+                model_path = model_entry['location']
+                tags = self.metadata_store.get_artifact_tags(location=model_path)
+                for tag in tags:
+                    if "model_card_path" in tag.keys():
+                        model_card_path = tag["model_card_path"]
+                        model_entry['modal_open_endpoint'] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_path}"
+                        model_entry['location'] = f"{self.node.resource_path}/{model_path}"
+                        break
 
             return model_entries
         

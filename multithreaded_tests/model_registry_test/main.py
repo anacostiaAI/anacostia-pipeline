@@ -84,6 +84,7 @@ class TrainingNode(BaseActionNode):
         )
 
         await self.model_registry.save_model_card(
+            model_path=model_name,
             model_card_path=model_card_name,
             card=card
         )

@@ -508,3 +508,16 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                 }
                 for row in result
             ]
+    
+    def get_artifact_tags(self, location: str) -> List[Dict]:
+        with self.get_session() as session:
+            artifact = (
+                session.query(Artifact)
+                .filter(Artifact.location == location)
+                .first()
+            )
+
+            if not artifact:
+                raise ValueError(f"Artifact with location '{location}' does not exist.")
+
+            return [{ "id": tag.id, tag.tag_name: tag.tag_value } for tag in artifact.tags]

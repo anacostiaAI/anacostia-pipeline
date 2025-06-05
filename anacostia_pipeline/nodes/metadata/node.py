@@ -79,6 +79,13 @@ class BaseMetadataStoreNode(BaseNode):
     def tag_artifact(self, node_name: str, location: str, **kwargs) -> None:
         pass
 
+    def get_artifact_tags(self, location: str) -> List[Dict]:
+        """
+        Override to specify how to get the tags of an artifact from the metadata store.
+        E.g., get the tags of an artifact from MLFlow, get the tags of an artifact from Neptune, etc.
+        """
+        pass
+
     def set_tags(self, node_name: str, **kwargs) -> None:
         pass
 
