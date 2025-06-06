@@ -36,17 +36,24 @@ class ModelRegistryGUI(BaseGUI):
         def format_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             model_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is False]
 
+            entries_to_render = []
+
             for model_entry in model_entries:
                 model_path = model_entry['location']
                 tags = self.metadata_store.get_artifact_tags(location=model_path)
+                
+                if len(tags) == 0:
+                    continue
+
                 for tag in tags:
                     if "model_card_path" in tag.keys():
                         model_card_path = tag["model_card_path"]
                         model_entry['modal_open_endpoint'] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_path}"
                         model_entry['location'] = f"{self.node.resource_path}/{model_path}"
+                        entries_to_render.append(model_entry)
                         break
 
-            return model_entries
+            return entries_to_render
         
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
