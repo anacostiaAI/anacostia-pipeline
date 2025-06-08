@@ -266,7 +266,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             return query.count()
 
     #def get_entries(self, resource_node_name: str = None, location: str = None, state: str = "all") -> List[Dict]:
-    def get_entries(self, resource_node_name: str = None, state: str = "all") -> List[Dict]:
+    def get_entries(self, resource_node_name: str = None, state: str = "all", run_id: int = None) -> List[Dict]:
         with self.get_session() as session:
             stmt = (
                 select(
@@ -292,6 +292,11 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             """
             if state != "all":
                 stmt = stmt.where(Artifact.state == state)
+            
+            if run_id is not None:
+                if run_id < 0:
+                    raise ValueError("Run ID must be a positive integer.")
+                stmt = stmt.where(Artifact.run_id == run_id)
 
             result = session.execute(stmt).all()
 

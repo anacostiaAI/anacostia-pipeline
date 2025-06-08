@@ -58,7 +58,7 @@ class BaseMetadataStoreNode(BaseNode):
     def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]) -> None:
         pass
 
-    def get_entries(self, resource_node_name: str, state: str) -> List[dict]:
+    def get_entries(self, resource_node_name: str = None, state: str = "all", run_id: int = None) -> List[dict]:
         pass
 
     def update_entry(self, resource_node_name: str, entry_id: int, **kwargs) -> None:
