@@ -5,7 +5,7 @@ from anacostia_pipeline.pipelines.fragments import head_template
 
 newline = "\n"
 
-def model_entry_card(model_entry: Dict[str, str]):
+def model_entry_card(model_entry: Dict[str, str], modal_open_endpoint: str = None):
     return f"""
     <div class="model-entry-card">
         <h1>{ model_entry["location"].split("/")[-1] } Metadata</h1>
@@ -16,14 +16,20 @@ def model_entry_card(model_entry: Dict[str, str]):
             <div class="item"><span class="label">Created At:</span> { model_entry["created_at"] }</div>
         </div>
         <p><span class="label">Model Path:</span> { model_entry["location"] }</p>
-        <button class="open-model-card-modal-btn" 
-            hx-get="{ model_entry["modal_open_endpoint"] }" hx-trigger="click" hx-target="#modal-container" hx-swap="innerHTML">
-            Show Model Card
-        </button>
+
+        {
+            f'''
+            <button class="open-model-card-modal-btn" 
+                hx-get="{ modal_open_endpoint }" hx-trigger="click" hx-target="#modal-container" hx-swap="innerHTML">
+                Show Model Card
+            </button>
+            '''
+            if modal_open_endpoint is not None else "" 
+        }
     </div>
     """
 
-def model_registry_home(update_endpoint: str, model_entries: List[Dict[str, str]]):
+def model_registry_home(update_endpoint: str, model_entries: List[str]):
     return f"""
         {head_template(
             '''
@@ -44,9 +50,7 @@ def model_registry_home(update_endpoint: str, model_entries: List[Dict[str, str]
         <div id="modal-container"></div>
         <div id="model-entries-container" hx-get="{update_endpoint}" hx-trigger="every 1s" hx-target="this" hx-swap="innerHTML">
             { 
-                newline.join([
-                    model_entry_card(model_entry) for model_entry in model_entries
-                ]) 
+                newline.join(model_entries) 
             }
         </div>
         <script src="/static/js/src/mathjax-reload.js"></script>

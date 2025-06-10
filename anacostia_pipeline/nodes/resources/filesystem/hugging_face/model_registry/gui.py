@@ -1,7 +1,6 @@
 from fastapi import Request
-from fastapi.responses import HTMLResponse, StreamingResponse
-import asyncio
-from typing import List, Dict, Tuple, Union
+from fastapi.responses import HTMLResponse
+from typing import List, Dict, Union
 import markdown
 import yaml
 
@@ -9,7 +8,6 @@ from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.fragments import model_registry_home, model_entry_card, model_card_modal
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
-from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 
@@ -28,12 +26,7 @@ class ModelRegistryGUI(BaseGUI):
         self.metadata_store = metadata_store
         self.metadata_store_client = metadata_store_client
 
-        self.event_source = f"{self.get_gui_url()}/table_update_events"
-        self.event_name = "TableUpdate"
-
-        self.displayed_file_entries = None
-
-        def format_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
+        def render_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             model_entries = [entry for entry in file_entries if entry["location"].endswith(".md") is False]
 
             entries_to_render = []
@@ -42,17 +35,18 @@ class ModelRegistryGUI(BaseGUI):
                 model_path = model_entry['location']
                 tags = self.metadata_store.get_artifact_tags(location=model_path)
                 
-                if len(tags) == 0:
-                    continue
-
-                for tag in tags:
-                    if "model_card_path" in tag.keys():
+                if any("model_card_path" in tag.keys() for tag in tags) is False:
+                    entries_to_render.append(model_entry_card(model_entry))
+                else:
+                    for tag in tags:
                         model_card_path = tag["model_card_path"]
-                        model_entry['modal_open_endpoint'] = f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_path}"
-                        model_entry['location'] = f"{self.node.resource_path}/{model_path}"
-                        entries_to_render.append(model_entry)
-                        break
-
+                        entries_to_render.append(
+                            model_entry_card(
+                                model_entry, 
+                                modal_open_endpoint=f"{self.get_gui_url()}/modal/?action=open&card_path={model_card_path}"
+                            )
+                        )
+                
             return entries_to_render
         
         @self.get("/home", response_class=HTMLResponse)
@@ -63,9 +57,8 @@ class ModelRegistryGUI(BaseGUI):
                 if self.metadata_store_client is not None:
                     file_entries = await self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
-            self.displayed_file_entries = file_entries
             file_entries.reverse()
-            model_entries = format_file_entries(file_entries)
+            model_entries = render_file_entries(file_entries)
 
             return model_registry_home(
                 update_endpoint=f"{self.get_gui_url()}/update_home_page",
@@ -80,14 +73,9 @@ class ModelRegistryGUI(BaseGUI):
                 if self.metadata_store_client is not None:
                     file_entries = await self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
-            self.displayed_file_entries = file_entries
             file_entries.reverse()
-            model_entries = format_file_entries(file_entries)
-
-            model_entries_str = "\n".join([
-                model_entry_card(model_entry) for model_entry in model_entries
-            ]) 
-
+            model_entries = render_file_entries(file_entries)
+            model_entries_str = "\n".join(model_entries) 
             return model_entries_str
         
         @self.get("/modal/", response_class=HTMLResponse)

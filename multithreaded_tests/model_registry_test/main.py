@@ -1,6 +1,5 @@
 import os
 import shutil
-from typing import List
 import logging
 
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
@@ -83,11 +82,12 @@ class TrainingNode(BaseActionNode):
             model_path=model_name,
         )
 
-        await self.model_registry.save_model_card(
-            model_path=model_name,
-            model_card_path=model_card_name,
-            card=card
-        )
+        if num_artifacts % 3 == 0:
+            await self.model_registry.save_model_card(
+                model_path=model_name,
+                model_card_path=model_card_name,
+                card=card
+            )
 
         return True
 
