@@ -33,9 +33,6 @@ def model_registry_home(update_endpoint: str, model_entries: List[str]):
     return f"""
         {head_template(
             '''
-            <!-- CSS for filesystem store node -->
-            <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
-
             <!-- Load MathJax config first -->
             <script src="/static/js/src/mathjax-config.js"></script>
             <script type="text/javascript" id="MathJax-script" async src="/static/js/third_party/mathjax.js"></script>
