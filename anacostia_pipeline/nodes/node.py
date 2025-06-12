@@ -11,7 +11,7 @@ import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.utils.models import NodeModel
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer

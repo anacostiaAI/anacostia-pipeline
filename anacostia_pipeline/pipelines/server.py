@@ -281,6 +281,7 @@ class PipelineServer(FastAPI):
                     for node_data in response_data["nodes"]:
                         node_name = node_data["name"]
                         node_type = node_data["type"]
+                        #base_type = node_data["base_type"]
                 
                         if self.metadata_store.node_exists(node_name=node_name) is False:
                             self.metadata_store.add_node(node_name=node_name, node_type=node_type)
@@ -292,7 +293,8 @@ class PipelineServer(FastAPI):
                     connection_mode = {
                         "node_url": f"http://{self.host}:{self.port}/{node.name}",
                         "node_name": node.name,
-                        "node_type": type(node).__name__
+                        "node_type": type(node).__name__,
+                        #"base_type": node.base_type
                     }
                     task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
 
@@ -315,7 +317,8 @@ class PipelineServer(FastAPI):
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
-        edges = []
+        edges = [{"source": predecessor, "target": successor} for predecessor, successor in model["edges"]]
+
         for node_model, node in zip(model["nodes"], self.pipeline.nodes):
             subapp = node.get_node_gui()
             node_model["id"] = node_model["name"]
@@ -330,13 +333,7 @@ class PipelineServer(FastAPI):
             for remote_successor_url in node.remote_successors:
                 parsed = urlparse(remote_successor_url)
                 successor_name = parsed.path.split("/")[-1]
-                node_model["successors"].append(successor_name)
-
-            # add the edges from the node to its successors
-            edges_from_node = [
-                {"source": node_model["id"], "target": successor} for successor in node_model["successors"]
-            ]
-            edges.extend(edges_from_node)
+                edges.append({"source": node_model["id"], "target": successor_name})
 
         # add the leaf nodes to the model
         for leaf_graph_model in self.leaf_models:

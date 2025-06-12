@@ -7,7 +7,7 @@ import time
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
-from anacostia_pipeline.utils.models import NodeModel
+from anacostia_pipeline.nodes.utils import NodeModel
 
 
 

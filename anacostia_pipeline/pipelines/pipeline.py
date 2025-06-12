@@ -23,8 +23,8 @@ class PipelineModel(BaseModel):
     A Pydantic Model for validation and serialization of a Pipeline
     '''
     model_config = ConfigDict(from_attributes=True)
-
     nodes: List[NodeModel]
+    edges: List[Tuple[str, str]]
 
 
 class Pipeline:
@@ -65,8 +65,8 @@ class Pipeline:
         
         """
         test for the following conditions:
-        1. The graph is a Directed Acyclic Graph (DAG).
-        2. The graph is not disconnected.
+        1. The overall graph is a Directed Acyclic Graph (DAG).
+        2. The overall graph is not disconnected.
         3. All the successors of metadata store nodes are resource nodes.
         4. All the successors of resource nodes are action nodes.
         Note: checks in the Pipeline class are to check the structure of the local graph.
@@ -103,7 +103,10 @@ class Pipeline:
                     if isinstance(successor, BaseActionNode) is False:
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
 
-        self.pipeline_model = PipelineModel(nodes=[n.model() for n in self.nodes])
+        self.pipeline_model = PipelineModel(
+            nodes=[n.model() for n in self.nodes],
+            edges=[(str(predecessor.name), str(successor.name)) for predecessor, successor in self.graph.edges()]
+        )
 
     def verify_graph_structure(self, edge_list: List[Tuple[str, str]]) -> None:
         pass
