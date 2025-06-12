@@ -7,6 +7,7 @@ import time
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
+from anacostia_pipeline.utils.models import NodeModel
 
 
 
@@ -33,6 +34,15 @@ class BaseMetadataStoreNode(BaseNode):
         self.run_id = 0
         self.trigger_event = Event()
     
+    def model(self) -> NodeModel:
+        return NodeModel(
+            name = self.name,
+            type = type(self).__name__,
+            base_type = "BaseMetadataStoreNode",
+            predecessors = [n.name for n in self.predecessors],
+            successors = [n.name for n in self.successors]
+        )
+
     def get_run_id(self) -> int:
         return self.run_id
     

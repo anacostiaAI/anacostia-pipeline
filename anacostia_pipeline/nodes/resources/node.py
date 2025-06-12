@@ -9,6 +9,7 @@ from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.utils.constants import Result, Status
+from anacostia_pipeline.utils.models import NodeModel
 
 
 
@@ -52,6 +53,15 @@ class BaseResourceNode(BaseNode, ABC):
         self.metadata_store = metadata_store
         self.metadata_store_client = metadata_store_client
         self.resource_event = threading.Event()
+
+    def model(self) -> NodeModel:
+        return NodeModel(
+            name = self.name,
+            type = type(self).__name__,
+            base_type = "BaseResourceNode",
+            predecessors = [n.name for n in self.predecessors],
+            successors = [n.name for n in self.successors]
+        )
 
     @abstractmethod
     def start_monitoring(self) -> None:

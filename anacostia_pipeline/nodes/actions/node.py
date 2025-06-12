@@ -4,6 +4,7 @@ import traceback
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
+from anacostia_pipeline.utils.models import NodeModel
 
 
 
@@ -21,6 +22,15 @@ class BaseActionNode(BaseNode):
         super().__init__(
             name, predecessors, remote_predecessors=remote_predecessors, 
             remote_successors=remote_successors, client_url=client_url, wait_for_connection=wait_for_connection, loggers=loggers
+        )
+
+    def model(self) -> NodeModel:
+        return NodeModel(
+            name = self.name,
+            type = type(self).__name__,
+            base_type = "BaseResourceNode",
+            predecessors = [n.name for n in self.predecessors],
+            successors = [n.name for n in self.successors]
         )
 
     @BaseNode.log_exception

@@ -1,33 +1,20 @@
 from __future__ import annotations
 from threading import Thread, Lock, Event
 from queue import Queue
-from typing import List, Union, Optional, Dict
+from typing import List, Union, Dict
 from logging import Logger
 from datetime import datetime
 from functools import wraps
 import traceback
-from pydantic import BaseModel, ConfigDict
 import json
 import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
+from anacostia_pipeline.utils.models import NodeModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer
-
-
-
-class NodeModel(BaseModel):
-    '''
-    A Pydantic Model for validation and serialization of a BaseNode
-    '''
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str
-    type: Optional[str]
-    predecessors: List[str]
-    successors: List[str]
 
 
 
@@ -119,13 +106,8 @@ class BaseNode(Thread):
     def __repr__(self) -> str:
         return f"'Node(name: {self.name})'"
     
-    def model(self):
-        return NodeModel(
-            name = self.name,
-            type = type(self).__name__,
-            predecessors = [n.name for n in self.predecessors],
-            successors = [n.name for n in self.successors]
-        )
+    def model(self) -> NodeModel:
+        pass
 
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
