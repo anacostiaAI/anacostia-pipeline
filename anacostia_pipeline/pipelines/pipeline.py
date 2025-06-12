@@ -82,47 +82,26 @@ class Pipeline:
         Note: also look into nx.from_edge_list() to convert a list of edges to a networkx DiGraph.
         """
 
-        """
+        # Perform checks on the local graph structure
         # check 1: make sure graph is acyclic (i.e., check if graph is a DAG)
         if not nx.is_directed_acyclic_graph(self.graph):
             raise InvalidNodeDependencyError("Node Dependencies do not form a Directed Acyclic Graph")
-        """
         
         self.nodes: List[BaseNode] = list(nx.topological_sort(self.graph))
 
-        """
-        # check 2: make sure graph is not disconnected
-        if not nx.is_weakly_connected(self.graph):
-            raise InvalidNodeDependencyError(f"Node '{node.name}' is disconnected from graph")
-
-        # check 3: make sure root node is a metadata store node
-        if isinstance(self.nodes[0], BaseMetadataStoreNode) is not True:
-            raise InvalidNodeDependencyError(f"Root node \'{self.nodes[0].name}\' must be a metadata store node. Got: {type(self.nodes[0]).__name__}")
-        
-        # check 4: make sure there is only one metadata store node
+        # check 2: make sure all successors of metadata store nodes are resource nodes.
         for node in self.nodes:
-            if (node != self.nodes[0]) and (isinstance(nodes, BaseMetadataStoreNode) is True):
-                raise InvalidNodeDependencyError("There can only be one metadata store node")
+            if isinstance(node, BaseMetadataStoreNode) is True:
+                for successor in list(self.graph.successors(node)):
+                    if isinstance(successor, BaseResourceNode) is False:
+                        raise InvalidNodeDependencyError("All successors of a metadata store node must be resource nodes")
 
-        # check 5: make sure all resource nodes are successors of the metadata store node
-        for node in self.nodes:
-            if isinstance(node, BaseResourceNode) is True:
-                if node not in list(self.graph.successors(self.metadata_store)):
-                    raise InvalidNodeDependencyError("All resource nodes must be successors of the metadata store node")
-
-        # check 6: make sure all resource nodes have at least one successor
-        for node in self.nodes:
-            if isinstance(node, BaseResourceNode) is True:
-                if len(list(self.graph.successors(node))) == 0:
-                    raise InvalidNodeDependencyError("All resource nodes must have at least one successor")
-
-        # check 7: make sure all successors of a resource node are action nodes 
+        # check 3: make sure all successors of a resource node are action nodes 
         for node in self.nodes:
             if isinstance(node, BaseResourceNode) is True:
                 for successor in list(self.graph.successors(node)):
-                    if (isinstance(successor, BaseMetadataStoreNode) is True) or (isinstance(successor, BaseResourceNode) is True):
+                    if isinstance(successor, BaseActionNode) is False:
                         raise InvalidNodeDependencyError("All successors of a resource node must be action nodes")
-        """
 
         self.pipeline_model = PipelineModel(nodes=[n.model() for n in self.nodes])
 
