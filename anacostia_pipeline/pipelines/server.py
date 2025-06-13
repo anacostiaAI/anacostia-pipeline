@@ -19,11 +19,12 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
-from anacostia_pipeline.pipelines.pipeline import Pipeline
+from anacostia_pipeline.pipelines.pipeline import Pipeline, InvalidPipelineError, InvalidNodeDependencyError
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseClient
 from anacostia_pipeline.nodes.api import BaseServer
+from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
@@ -31,7 +32,6 @@ from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_ope
 class PipelineConnectionModel(BaseModel):
     predecessor_host: str
     predecessor_port: int
-
 
 class EventModel(BaseModel):
     event: str
@@ -56,6 +56,11 @@ class PipelineServer(FastAPI):
         allow_headers: List[str] = ["*"],
         *args, **kwargs
     ):
+        if remote_clients is not None:
+            num_metadata_clients = len([client for client in remote_clients if isinstance(client, BaseMetadataStoreClient)])
+            if num_metadata_clients > 1:
+                raise InvalidPipelineError("Only one BaseMetadataStoreClient is allowed in the pipeline. Found multiple metadata store nodes.")
+
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: PipelineServer):
@@ -299,10 +304,14 @@ class PipelineServer(FastAPI):
 
                     # based on the remote_successors information, check if the connection is valid
                     if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
-                        raise ValueError(f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'")
+                        raise InvalidNodeDependencyError(
+                            f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
+                        )
                     
                     if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
-                        raise ValueError(f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'")
+                        raise InvalidNodeDependencyError(
+                            f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
+                        )
             # ------------------------------------------------------------------
 
             # Connect each node to its remote successors

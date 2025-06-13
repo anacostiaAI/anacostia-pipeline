@@ -18,6 +18,9 @@ from anacostia_pipeline.utils.constants import Status
 class InvalidNodeDependencyError(Exception):
     pass
 
+class InvalidPipelineError(Exception):
+    pass
+
 
 class PipelineModel(BaseModel):
     '''
@@ -139,6 +142,8 @@ class Pipeline:
 
         # set up metadata store nodes
         metadata_stores: List[BaseMetadataStoreNode] = [node for node in self.nodes if isinstance(node, BaseMetadataStoreNode) is True]
+        if len(metadata_stores) > 1:
+            raise InvalidPipelineError("Only one metadata store node is allowed in the pipeline.")
         __setup_nodes(metadata_stores)
 
         # set up resource nodes
