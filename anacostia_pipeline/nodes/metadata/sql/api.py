@@ -18,7 +18,7 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
         @self.post("/add_node/")
         async def add_node(request: Request):
             data = await request.json()
-            self.metadata_store.add_node(node_name=data["node_name"], node_type=data["node_type"])
+            self.metadata_store.add_node(node_name=data["node_name"], node_type=data["node_type"], base_type=data["base_type"])
 
         @self.get("/get_run_id/")
         async def get_run_id():
@@ -113,10 +113,13 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
     def __init__(self, client_name, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
         super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
     
-    async def add_node(self, node_name: str, node_type: str):
+    async def add_node(self, node_name: str, node_type: str, base_type: str):
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(f"{self.get_server_url()}/add_node/", json={"node_name": node_name, "node_type": node_type})
+                response = await client.post(
+                    f"{self.get_server_url()}/add_node/", 
+                    json={"node_name": node_name, "node_type": node_type, "base_type": base_type}
+                )
                 if response.status_code != 200:
                     raise Exception(f"Failed to add node: {response.status_code}, {response.text}")
             except Exception as e:

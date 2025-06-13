@@ -153,7 +153,8 @@ class Pipeline:
         if len(metadata_stores) > 0:
             for metadata_store in metadata_stores:
                 for node in self.nodes:
-                    metadata_store.add_node(node.name, type(node).__name__)
+                    node_model: NodeModel = node.model()
+                    metadata_store.add_node(node_model.name, node_model.node_type, node_model.base_type)
 
     # consider renaming this method to start_pipeline
     def launch_nodes(self):

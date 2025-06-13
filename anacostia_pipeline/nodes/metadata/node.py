@@ -56,7 +56,7 @@ class BaseMetadataStoreNode(BaseNode):
     def node_exists(self, node_name: str) -> bool:
         pass
 
-    def add_node(self, node_name: str, node_type: str) -> None:
+    def add_node(self, node_name: str, node_type: str, base_type: str) -> None:
         pass
     
     def get_nodes_info(self, node_id: int = None, node_name: str = None) -> List[Dict]:

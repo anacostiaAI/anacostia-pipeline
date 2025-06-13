@@ -287,7 +287,7 @@ class PipelineServer(FastAPI):
                         base_type = node_data.base_type
                 
                         if self.metadata_store.node_exists(node_name=node_name) is False:
-                            self.metadata_store.add_node(node_name=node_name, node_type=node_type)
+                            self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
 
             # Connect each node to its remote successors
             task = []

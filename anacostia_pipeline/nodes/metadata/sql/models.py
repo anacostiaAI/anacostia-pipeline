@@ -27,6 +27,7 @@ class Node(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_name = Column(String)
     node_type = Column(String)
+    base_type = Column(String)
     init_time = Column(DateTime)
 
     # Optional relationships

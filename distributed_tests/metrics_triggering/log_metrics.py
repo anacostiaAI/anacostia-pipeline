@@ -24,7 +24,7 @@ metadata_store_client = SQLMetadataStoreClient(
 # In an actual implementation, you could use the metadata_store_client to interact with the metadata store from anywhere, 
 # i.e., from inside a FastAPI server where your model is running.
 async def run_test():
-    await metadata_store_client.add_node(node_name=node_name, node_type="metadata_store_client")
+    await metadata_store_client.add_node(node_name=node_name, node_type="metadata_store_client", base_type="BaseMetadataStoreClient")
     logger.info(f"Added node {node_name} to metadata store client")
 
     for i in range(10):

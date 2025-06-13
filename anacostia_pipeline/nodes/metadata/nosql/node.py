@@ -26,11 +26,12 @@ class BaseNoSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
     # ---- Required Implementations from BaseMetadataStoreNode ---- #
 
-    def add_node(self, node_name: str, node_type: str) -> None:
+    def add_node(self, node_name: str, node_type: str, base_type: str) -> None:
         self.insert({
             "type": "node",
             "node_name": node_name,
             "node_type": node_type,
+            "base_type": base_type,
             "init_time": datetime.utcnow()
         })
 
