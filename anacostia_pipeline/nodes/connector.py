@@ -1,5 +1,4 @@
 from fastapi import FastAPI, status
-from pydantic import BaseModel
 from anacostia_pipeline.nodes.utils import ConnectionModel
 
 
