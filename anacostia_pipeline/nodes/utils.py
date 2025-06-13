@@ -15,7 +15,7 @@ class NodeModel(BaseModel):
     successors: List[str]
 
 
-class ConnectionModel(NodeModel):
+class NodeConnectionModel(NodeModel):
     """
     A Pydantic Model for validation and serialization of a BaseNode that is used to connect to a remote service.
     """

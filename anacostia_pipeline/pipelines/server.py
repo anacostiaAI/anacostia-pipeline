@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from anacostia_pipeline.nodes.utils import ConnectionModel, NodeModel
+from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
@@ -28,7 +28,7 @@ from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
-class PipelineServerModel(BaseModel):
+class PipelineConnectionModel(BaseModel):
     predecessor_host: str
     predecessor_port: int
 
@@ -151,7 +151,7 @@ class PipelineServer(FastAPI):
         self.predecessor_host = None
         self.predecessor_port = None
         @self.post("/connect", status_code=status.HTTP_200_OK)
-        async def connect(connection: PipelineServerModel):
+        async def connect(connection: PipelineConnectionModel):
             self.predecessor_host = connection.predecessor_host
             self.predecessor_port = connection.predecessor_port
             self.logger.info(f"Leaf server {self.name} connected to root server at {self.predecessor_host}:{self.predecessor_port}")
@@ -268,7 +268,7 @@ class PipelineServer(FastAPI):
             # Connect to leaf pipeline
             task = []
             for leaf_ip_address in self.successor_ip_addresses:
-                pipeline_server_model = PipelineServerModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
+                pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
                 task.append(client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
 
             responses = await asyncio.gather(*task)
@@ -294,7 +294,7 @@ class PipelineServer(FastAPI):
             for node in self.pipeline.nodes:
                 for connection in node.remote_successors:
                     node_model = node.model()
-                    connection_mode = ConnectionModel(
+                    connection_mode = NodeConnectionModel(
                         **node_model.model_dump(),
                         node_url=f"http://{self.host}:{self.port}/{node.name}"
                     )

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, status
-from anacostia_pipeline.nodes.utils import ConnectionModel
+from anacostia_pipeline.nodes.utils import NodeConnectionModel
 
 
 
@@ -11,21 +11,21 @@ class Connector(FastAPI):
         self.port = port
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
-        async def connect(root: ConnectionModel) -> ConnectionModel:
+        async def connect(root: NodeConnectionModel) -> NodeConnectionModel:
             self.node.add_remote_predecessor(root.node_url)
             node_model = self.node.model()
-            return ConnectionModel(
+            return NodeConnectionModel(
                 **node_model.model_dump(),
                 node_url=f"http://{self.host}:{self.port}{self.get_connector_prefix()}", 
             )
         
         @self.post("/forward_signal", status_code=status.HTTP_200_OK)
-        async def forward_signal(root: ConnectionModel):
+        async def forward_signal(root: NodeConnectionModel):
             self.node.predecessors_events[root.node_url].set()
             return {"message": "Signalled predecessors"}
 
         @self.post("/backward_signal", status_code=status.HTTP_200_OK)
-        async def backward_signal(leaf: ConnectionModel):
+        async def backward_signal(leaf: NodeConnectionModel):
             self.node.successor_events[leaf.node_url].set()
             return {"message": "Signalled predecessors"}
     

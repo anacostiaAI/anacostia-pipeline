@@ -11,7 +11,7 @@ import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.nodes.utils import NodeModel, ConnectionModel
+from anacostia_pipeline.nodes.utils import NodeModel, NodeConnectionModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer
@@ -194,7 +194,7 @@ class BaseNode(Thread):
                     tasks = []
                     for predecessor_url in self.remote_predecessors:
                         node_model = self.model()
-                        connection_mode = ConnectionModel(
+                        connection_mode = NodeConnectionModel(
                             **node_model.model_dump(),
                             node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
                         )
@@ -214,7 +214,7 @@ class BaseNode(Thread):
                     tasks = []
                     for successor_url in self.remote_successors:
                         node_model = self.model()
-                        connection_mode = ConnectionModel(
+                        connection_mode = NodeConnectionModel(
                             **node_model.model_dump(),
                             node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
                         )
