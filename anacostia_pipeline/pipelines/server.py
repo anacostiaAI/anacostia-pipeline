@@ -136,7 +136,6 @@ class PipelineServer(FastAPI):
 
             node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
-            node.set_queue(self.queue)                                      # set the queue for the node
         
             server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
             self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
@@ -288,6 +287,23 @@ class PipelineServer(FastAPI):
                 
                         if self.metadata_store.node_exists(node_name=node_name) is False:
                             self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
+
+            # ------ Check graph structure of when pipelines before they are connected ------
+            for node in self.pipeline.nodes:
+                node_base_type = node.model().base_type
+
+                for connection in node.remote_successors:
+                    remote_node_name = connection.split("/")[-1]
+                    node_info = self.metadata_store.get_nodes_info(node_name=remote_node_name)
+                    remote_node_base_type = node_info[0]["base_type"]
+
+                    # based on the remote_successors information, check if the connection is valid
+                    if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
+                        raise ValueError(f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'")
+                    
+                    if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
+                        raise ValueError(f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'")
+            # ------------------------------------------------------------------
 
             # Connect each node to its remote successors
             task = []

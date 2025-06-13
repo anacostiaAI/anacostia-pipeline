@@ -192,6 +192,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
                     "id": node.id,
                     "node_name": node.node_name,
                     "node_type": node.node_type,
+                    "base_type": node.base_type,
                     "init_time": node.init_time,
                 }
                 for node in result
