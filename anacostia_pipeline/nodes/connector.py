@@ -1,12 +1,6 @@
 from fastapi import FastAPI, status
 from pydantic import BaseModel
-
-
-
-class ConnectionModel(BaseModel):
-    node_url: str
-    node_name: str
-    node_type: str
+from anacostia_pipeline.nodes.utils import ConnectionModel
 
 
 
@@ -20,10 +14,10 @@ class Connector(FastAPI):
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(root: ConnectionModel) -> ConnectionModel:
             self.node.add_remote_predecessor(root.node_url)
+            node_model = self.node.model()
             return ConnectionModel(
+                **node_model.model_dump(),
                 node_url=f"http://{self.host}:{self.port}{self.get_connector_prefix()}", 
-                node_name=self.node.name, 
-                node_type=type(self.node).__name__
             )
         
         @self.post("/forward_signal", status_code=status.HTTP_200_OK)

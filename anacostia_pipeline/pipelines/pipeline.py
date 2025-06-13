@@ -7,7 +7,8 @@ import signal
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
 
-from anacostia_pipeline.nodes.node import BaseNode, NodeModel
+from anacostia_pipeline.nodes.node import BaseNode
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode

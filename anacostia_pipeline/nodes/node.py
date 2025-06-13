@@ -11,7 +11,7 @@ import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.nodes.utils import NodeModel
+from anacostia_pipeline.nodes.utils import NodeModel, ConnectionModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer
@@ -193,11 +193,12 @@ class BaseNode(Thread):
                 async with httpx.AsyncClient() as client:
                     tasks = []
                     for predecessor_url in self.remote_predecessors:
-                        json = {
-                            "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
-                            "node_name": self.name,
-                            "node_type": type(self).__name__
-                        }
+                        node_model = self.model()
+                        connection_mode = ConnectionModel(
+                            **node_model.model_dump(),
+                            node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                        )
+                        json = connection_mode.model_dump()
                         tasks.append(client.post(f"{predecessor_url}/connector/backward_signal", json=json))
 
                     await asyncio.gather(*tasks)
@@ -212,11 +213,12 @@ class BaseNode(Thread):
                 async with httpx.AsyncClient() as client:
                     tasks = []
                     for successor_url in self.remote_successors:
-                        json = {
-                            "node_url": f"http://{self.connector.host}:{self.connector.port}/{self.name}",
-                            "node_name": self.name,
-                            "node_type": type(self).__name__
-                        }
+                        node_model = self.model()
+                        connection_mode = ConnectionModel(
+                            **node_model.model_dump(),
+                            node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
+                        )
+                        json = connection_mode.model_dump()
                         tasks.append(client.post(f"{successor_url}/connector/forward_signal", json=json))
                     
                     await asyncio.gather(*tasks)

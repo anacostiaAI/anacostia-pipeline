@@ -57,7 +57,7 @@ class BaseResourceNode(BaseNode, ABC):
     def model(self) -> NodeModel:
         return NodeModel(
             name = self.name,
-            type = type(self).__name__,
+            node_type = type(self).__name__,
             base_type = "BaseResourceNode",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]

@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from anacostia_pipeline.nodes.utils import ConnectionModel, NodeModel
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
@@ -279,9 +280,10 @@ class PipelineServer(FastAPI):
                 # Extract the node name and type from the responses and add them to the metadata store
                 if self.metadata_store is not None:
                     for node_data in response_data["nodes"]:
-                        node_name = node_data["name"]
-                        node_type = node_data["type"]
-                        #base_type = node_data["base_type"]
+                        node_data = NodeModel.model_validate(node_data)
+                        node_name = node_data.name
+                        node_type = node_data.node_type
+                        base_type = node_data.base_type
                 
                         if self.metadata_store.node_exists(node_name=node_name) is False:
                             self.metadata_store.add_node(node_name=node_name, node_type=node_type)
@@ -290,13 +292,13 @@ class PipelineServer(FastAPI):
             task = []
             for node in self.pipeline.nodes:
                 for connection in node.remote_successors:
-                    connection_mode = {
-                        "node_url": f"http://{self.host}:{self.port}/{node.name}",
-                        "node_name": node.name,
-                        "node_type": type(node).__name__,
-                        #"base_type": node.base_type
-                    }
-                    task.append(client.post(f"{connection}/connector/connect", json=connection_mode))
+                    node_model = node.model()
+                    connection_mode = ConnectionModel(
+                        **node_model.model_dump(),
+                        node_url=f"http://{self.host}:{self.port}/{node.name}"
+                    )
+                    json = connection_mode.model_dump()
+                    task.append(client.post(f"{connection}/connector/connect", json=json))
 
             await asyncio.gather(*task)
 

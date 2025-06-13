@@ -9,7 +9,7 @@ class NodeModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     name: str
-    type: str
+    node_type: str
     base_type: str
     predecessors: List[str]
     successors: List[str]

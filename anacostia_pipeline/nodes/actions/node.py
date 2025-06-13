@@ -27,8 +27,8 @@ class BaseActionNode(BaseNode):
     def model(self) -> NodeModel:
         return NodeModel(
             name = self.name,
-            type = type(self).__name__,
-            base_type = "BaseResourceNode",
+            node_type = type(self).__name__,
+            base_type = "BaseActionNode",
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )
