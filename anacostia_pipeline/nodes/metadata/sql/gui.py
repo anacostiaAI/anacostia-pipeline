@@ -11,7 +11,7 @@ class SQLMetadataStoreGUI(BaseGUI):
         # Create backend server for node by inheriting the BaseNodeApp (i.e., overriding the default router).
         # IMPORTANT: set use_default_router=False to prevent the default /home route from being used
         # after the super().__init__() call inside the constructor
-        super().__init__(node, host, port, use_default_router=False, *args, **kwargs)
+        super().__init__(node, host, port, *args, **kwargs)
 
         self.data_options = {
             "runs": f"{self.get_node_prefix()}/runs",

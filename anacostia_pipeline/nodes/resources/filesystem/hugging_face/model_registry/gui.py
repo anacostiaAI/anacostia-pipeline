@@ -18,7 +18,7 @@ class ModelRegistryGUI(BaseGUI):
         metadata_store_client: BaseMetadataStoreClient = None, 
         *args, **kwargs
     ):
-        super().__init__(node, host=host, port=port, use_default_router=False, *args, **kwargs)
+        super().__init__(node, host=host, port=port, *args, **kwargs)
 
         if metadata_store is None and metadata_store_client is None:
             raise ValueError("Either metadata_store or metadata_store_rpc must be provided")
