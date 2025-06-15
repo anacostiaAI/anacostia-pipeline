@@ -94,20 +94,45 @@ render(inner, g);
 const node_container = inner.selectAll(".node");
 
 // apply HTMX attributes to the entire node container
-node_container.attr("hx-get", (v) => { return g.node(v).endpoint; })
-              .attr("hx-trigger", "click")
-              .attr("hx-target", "#page_content")
-              .attr("hx-swap", "innerHTML");
+node_container.each(function(v) {
+    const endpoint = g.node(v).endpoint;
+
+    if (endpoint !== '') {
+        d3.select(this)
+          .attr("hx-get", endpoint)
+          .attr("hx-trigger", "click")
+          .attr("hx-target", "#page_content")
+          .attr("hx-swap", "innerHTML");
+    }
+});
+
 
 // apply SVG attributes to the rect element
 const rect = inner.selectAll("rect");
-rect.attr("rx", 10);
-rect.attr("ry", 10);
-rect.attr("fill", "white");
-rect.attr("stroke", "black");
-rect.attr("stroke-width", "1.5");
-rect.attr("cursor", "pointer");
-rect.attr("class", "outer-rect");
+
+rect.each(function(v) {
+    const endpoint = g.node(v).endpoint;
+
+    if (endpoint !== '') {
+        d3.select(this)
+          .attr("rx", 10)
+          .attr("ry", 10)
+          .attr("fill", "white")
+          .attr("stroke", "black")
+          .attr("stroke-width", "1.5")
+          .attr("cursor", "pointer")
+          .attr("class", "outer-rect");
+    } else {
+        d3.select(this)
+          .attr("rx", 10)
+          .attr("ry", 10)
+          .attr("fill", "#EAEAEA") // Light gray for nodes without an endpoint
+          .attr("stroke", "black")
+          .attr("stroke-width", "1.5")
+          .attr("cursor", "not-allowed")
+          .attr("class", "outer-rect");
+    }
+});
 
 // drawing the "pill" that provides the background for the status text of the node
 let labels = inner.selectAll(".node .label");

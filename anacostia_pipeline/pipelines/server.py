@@ -93,7 +93,7 @@ class PipelineServer(FastAPI):
         self.host = host
         self.port = port
         self.logger = logger
-        self.leaf_models = []
+        self.successor_pipeline_models = []
         self.queue = Queue()
         self.background_task = None
 
@@ -277,21 +277,27 @@ class PipelineServer(FastAPI):
 
             responses = await asyncio.gather(*task)
 
+            successor_node_models: List[NodeModel] = []
+
             for response in responses:
                 # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
                 response_data = response.json()
-                self.leaf_models.append(response_data)
+                self.successor_pipeline_models.append(response_data)
 
-                # Extract the node name and type from the responses and add them to the metadata store
-                if self.metadata_store is not None:
-                    for node_data in response_data["nodes"]:
-                        node_data = NodeModel.model_validate(node_data)
-                        node_name = node_data.name
-                        node_type = node_data.node_type
-                        base_type = node_data.base_type
-                
-                        if self.metadata_store.node_exists(node_name=node_name) is False:
-                            self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
+                # Validate the response data and extract node models
+                for node_data in response_data["nodes"]:
+                    node_data = NodeModel.model_validate(node_data)
+                    successor_node_models.append(node_data)
+
+            # Extract the node name and type from the responses and add them to the metadata store
+            if self.metadata_store is not None:
+                for node_model in successor_node_models:
+                    node_name = node_data.name
+                    node_type = node_data.node_type
+                    base_type = node_data.base_type
+            
+                    if self.metadata_store.node_exists(node_name=node_name) is False:
+                        self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
 
             # ------ Check graph structure of when pipelines before they are connected ------
             for node in self.pipeline.nodes:
@@ -299,19 +305,21 @@ class PipelineServer(FastAPI):
 
                 for connection in node.remote_successors:
                     remote_node_name = connection.split("/")[-1]
-                    node_info = self.metadata_store.get_nodes_info(node_name=remote_node_name)
-                    remote_node_base_type = node_info[0]["base_type"]
 
-                    # based on the remote_successors information, check if the connection is valid
-                    if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
-                        raise InvalidNodeDependencyError(
-                            f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
-                        )
-                    
-                    if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
-                        raise InvalidNodeDependencyError(
-                            f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
-                        )
+                    for node_model in successor_node_models:
+                        if node_model.name == remote_node_name:
+                            remote_node_base_type = node_data.base_type
+                            
+                            # based on the remote_successors information, check if the connection is valid
+                            if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
+                                raise InvalidNodeDependencyError(
+                                    f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
+                                )
+                            
+                            if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
+                                raise InvalidNodeDependencyError(
+                                    f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
+                                )
             # ------------------------------------------------------------------
 
             # Connect each node to its remote successors
@@ -353,7 +361,12 @@ class PipelineServer(FastAPI):
             node_model["label"] = node_model["name"]
             node_model["origin_url"] = f"http://{self.host}:{self.port}"
             node_model["type"] = type(node).__name__
-            node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
+            
+            if subapp.use_default_router is False:
+                node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp.get_endpoint()}"
+            else:
+                node_model["endpoint"] = ''
+            
             node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
@@ -364,7 +377,7 @@ class PipelineServer(FastAPI):
                 edges.append({"source": node_model["id"], "target": successor_name})
 
         # add the leaf nodes to the model
-        for leaf_graph_model in self.leaf_models:
+        for leaf_graph_model in self.successor_pipeline_models:
             for leaf_node_model in leaf_graph_model["nodes"]:
                 leaf_node_model["header_bar_endpoint"] = f'/header_bar/?node_id={leaf_node_model["id"]}'
 

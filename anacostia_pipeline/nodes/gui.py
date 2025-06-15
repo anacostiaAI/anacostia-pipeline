@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.routing import APIRoute
 import httpx
 
 from anacostia_pipeline.nodes.fragments import default_node_page
@@ -12,17 +13,13 @@ class BaseGUI(FastAPI):
         self.node = node
         self.host = host
         self.port = port
+        self.use_default_router = use_default_router
 
         self.client = httpx.AsyncClient()
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint():
             return f'''{repr(self.node.status)}'''
-        
-        if use_default_router is True:
-            @self.get("/home", response_class=HTMLResponse)
-            async def endpoint():
-                return default_node_page()
 
     def get_node_prefix(self):
         return f"/{self.node.name}/hypermedia"
