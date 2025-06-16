@@ -77,6 +77,34 @@ var svg = d3.select("svg");
 svg.attr("width", graph_bounds.width * 0.9);
 svg.attr("height", graph_bounds.height);
 
+// create a legend for the node types
+var legend_info = {
+    "Metadata Store Node (GUI Available)": "#F69C9E",  // Light red
+    "Metadata Store Node (GUI Unvailable)": "#d04427", // Darker red
+    "Resource Node (GUI Available)": "#A8D5B1",       // Light green
+    "Resource Node (GUI Unvailable)": "#89BE90",   // Darker green
+    "Action Node (GUI Available)": "#CBDDE9",          // Light blue
+    "Action Node (GUI Unvailable)": "#809CC8"       // Darker blue
+};
+
+for (const [text, color] of Object.entries(legend_info)) {
+    svg.append("rect")
+        .attr("x", 10)
+        .attr("y", 40 + Object.keys(legend_info).indexOf(text) * 30)
+        .attr("width", 30)
+        .attr("height", 20)
+        .attr("fill", color)
+        .attr("rx", 3)
+        .attr("ry", 3)
+        .attr("stroke", "black")
+        .attr("stroke-width", "1.5");
+
+    svg.append("text")
+        .attr("x", 50)
+        .attr("y", 55 + Object.keys(legend_info).indexOf(text) * 30)
+        .text(text);
+}
+
 var inner = svg.select("g");
 
 // Set up zoom support
