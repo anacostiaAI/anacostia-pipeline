@@ -54,7 +54,8 @@ nodes.forEach((node) => {
             width: 150, 
             height: 100, 
             endpoint: node.endpoint,
-            status_endpoint: node.status_endpoint
+            status_endpoint: node.status_endpoint,
+            base_type: node.base_type
         }
     );
 });
@@ -112,25 +113,36 @@ const rect = inner.selectAll("rect");
 
 rect.each(function(v) {
     const endpoint = g.node(v).endpoint;
+    const base_type = g.node(v).base_type;
+    var rect_element = d3.select(this)
+                         .attr("rx", 10)
+                         .attr("ry", 10)
+                         .attr("stroke", "black")
+                         .attr("stroke-width", "1.5")
+                         .attr("class", "outer-rect");
 
-    if (endpoint !== '') {
-        d3.select(this)
-          .attr("rx", 10)
-          .attr("ry", 10)
-          .attr("fill", "white")
-          .attr("stroke", "black")
-          .attr("stroke-width", "1.5")
-          .attr("cursor", "pointer")
-          .attr("class", "outer-rect");
-    } else {
-        d3.select(this)
-          .attr("rx", 10)
-          .attr("ry", 10)
-          .attr("fill", "#EAEAEA") // Light gray for nodes without an endpoint
-          .attr("stroke", "black")
-          .attr("stroke-width", "1.5")
-          .attr("cursor", "not-allowed")
-          .attr("class", "outer-rect");
+    if (endpoint !== '' && base_type === 'BaseMetadataStoreNode') {
+        rect_element.attr("fill", "#F69C9E")
+                    .attr("cursor", "pointer");
+    } else if (endpoint === '' && base_type === 'BaseMetadataStoreNode') {
+        rect_element.attr("fill", "#d04427")
+                    .attr("cursor", "not-allowed");
+
+    } else if (endpoint !== '' && base_type === 'BaseResourceNode') {
+        rect_element.attr("fill", "#A8D5B1")
+                    .attr("cursor", "pointer");
+
+    } else if (endpoint === '' && base_type === 'BaseResourceNode') {
+        rect_element.attr("fill", "#89BE90")
+                    .attr("cursor", "not-allowed");
+
+    } else if (endpoint !== '' && base_type === 'BaseActionNode') {
+        rect_element.attr("fill", "#CBDDE9")
+                    .attr("cursor", "pointer");
+
+    } else if (endpoint === '' && base_type === 'BaseActionNode') {
+        rect_element.attr("fill", "#809CC8")
+                    .attr("cursor", "not-allowed");
     }
 });
 
