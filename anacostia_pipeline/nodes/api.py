@@ -91,8 +91,8 @@ class BaseClient(FastAPI):
         self.client_port = client_port
         self.client_name = client_name
 
-        # if you set server_url, you must not run the client as a FastAPI app using uvicorn. 
-        # this capability to enable developers to directly communicate with a node server to do things like logging.
+        # if you set server_url, you should not run the client as a FastAPI app using uvicorn. 
+        # this capability is here to enable developers to directly communicate with a node server to do things like logging.
         # this capability is useful for use cases where developers want to log metrics from a deployment environment
         self.server_url = server_url
 

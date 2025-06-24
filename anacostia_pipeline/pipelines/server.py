@@ -33,6 +33,7 @@ class PipelineConnectionModel(BaseModel):
     predecessor_host: str
     predecessor_port: int
 
+
 class EventModel(BaseModel):
     event: str
     data: str
@@ -47,7 +48,8 @@ class PipelineServer(FastAPI):
         host: str = "127.0.0.1", 
         port: int = 8000, 
         ssl_keyfile: str = None, 
-        ssl_certfile: str =None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None,
         logger: Logger = None, 
         uvicorn_access_log_config: Dict[str, Any] = None,
         allow_origins: List[str] = ["*"],
@@ -113,7 +115,15 @@ class PipelineServer(FastAPI):
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
 
-        config = uvicorn.Config(self, host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, log_config=uvicorn_access_log_config)
+        config = uvicorn.Config(
+            self, 
+            host=self.host, 
+            port=self.port, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs,
+            log_config=uvicorn_access_log_config
+        )
         self.server = uvicorn.Server(config)
         self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 

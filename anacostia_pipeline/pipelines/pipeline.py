@@ -189,6 +189,8 @@ class Pipeline:
     # Note: this run method is only here to run the pipeline without the webserver
     # This method might be deprecated.
     def run(self) -> None:
+        # Note: set the connection_event for all nodes
+
         original_sigint_handler = signal.getsignal(signal.SIGINT)
 
         def _kill_webserver(sig, frame):
