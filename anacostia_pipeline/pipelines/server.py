@@ -46,6 +46,7 @@ class PipelineServer(FastAPI):
         pipeline: Pipeline, 
         remote_clients: List[BaseClient] = None,
         host: str = "127.0.0.1", 
+        bind_host: str = "0.0.0.0",  # Bind host for the webserver when running in a Docker container
         port: int = 8000, 
         ssl_keyfile: str = None, 
         ssl_certfile: str = None, 
@@ -117,7 +118,7 @@ class PipelineServer(FastAPI):
 
         config = uvicorn.Config(
             self, 
-            host=self.host, 
+            host=bind_host, 
             port=self.port, 
             ssl_keyfile=ssl_keyfile, 
             ssl_certfile=ssl_certfile, 
@@ -302,9 +303,9 @@ class PipelineServer(FastAPI):
             # Extract the node name and type from the responses and add them to the metadata store
             if self.metadata_store is not None:
                 for node_model in successor_node_models:
-                    node_name = node_data.name
-                    node_type = node_data.node_type
-                    base_type = node_data.base_type
+                    node_name = node_model.name
+                    node_type = node_model.node_type
+                    base_type = node_model.base_type
             
                     if self.metadata_store.node_exists(node_name=node_name) is False:
                         self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)

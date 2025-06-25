@@ -23,8 +23,8 @@ class BaseNode(Thread):
         self, 
         name: str, 
         predecessors: List[BaseNode] = None, 
-        remote_predecessors: List[str] = None, 
-        remote_successors: List[str] = None, 
+        remote_predecessors: List[Dict[str, str]] = None, 
+        remote_successors: List[Dict[str, str]] = None, 
         client_url: str = None,
         wait_for_connection: bool = False,
         loggers: Union[Logger, List[Logger]] = None
@@ -35,8 +35,24 @@ class BaseNode(Thread):
         Args:
             name (str): Name of the node.
             predecessors (List[BaseNode], optional): List of predecessor nodes. Defaults to None.
-            remote_predecessors (List[str], optional): List of remote predecessor URLs. Defaults to None.
-            remote_successors (List[str], optional): List of remote successor URLs. Defaults to None.
+            remote_predecessors (List[Dict[str, str]], optional): List of dictionaries containing information on certs.
+                ```
+                [
+                    {
+                        "node_url": "https://localhost:8000/node1", 
+                        "ssl_keyfile": "path/to/keyfile.pem", 
+                        "ssl_certfile": "path/to/certfile.pem", 
+                        "ssl_ca_certs": "path/to/ca_certs.pem"
+                    },
+                    {
+                        "node_url": "https://localhost:8001/node2", 
+                        "ssl_keyfile": "path/to/keyfile.pem", 
+                        "ssl_certfile": "path/to/certfile.pem", 
+                        "ssl_ca_certs": "path/to/ca_certs.pem"
+                    }
+                ]
+                ```
+            remote_successors (List[Dict[str, str]], optional): Same as in remote_predecessors, but for remote successors.
             client_url (str, optional): URL of the BaseClient for the BaseServer of this node to connect to. Defaults to None.
             wait_for_connection (bool, optional): Whether to wait for connection. Defaults to False.
             loggers (Union[Logger, List[Logger]], optional): Logger or list of loggers for logging. Defaults to None.
