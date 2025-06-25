@@ -1,7 +1,5 @@
+from typing import List, Coroutine
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
-import urllib
-
 import httpx
 from fastapi import FastAPI, status
 from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
@@ -9,27 +7,41 @@ from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
 
 
 class Connector(FastAPI):
-    def __init__(self, node, host: str, port: int, *args, **kwargs):
+    def __init__(
+        self, 
+        node, 
+        host: str, 
+        port: int,
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.node = node
         self.host = host
         self.port = port
 
-        self._client = httpx.AsyncClient()
+        self._client = httpx.AsyncClient(
+            verify = ssl_ca_certs if ssl_ca_certs is not None else True,
+            cert = (ssl_certfile, ssl_keyfile) if ssl_certfile and ssl_keyfile else None
+        )
+
+        self.scheme = "https" if ssl_certfile and ssl_keyfile else "http"
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(root: NodeConnectionModel) -> NodeConnectionModel:
             self.node.add_remote_predecessor(root.node_url)
-            node_model = self.node.model()
+            node_model: NodeModel = self.node.model()
             return NodeConnectionModel(
                 **node_model.model_dump(),
-                node_url=f"http://{self.host}:{self.port}{self.get_connector_prefix()}", 
+                node_url=f"{self.scheme}://{self.host}:{self.port}{self.get_connector_prefix()}", 
             )
         
         @self.post("/forward_signal", status_code=status.HTTP_200_OK)
         async def forward_signal(root: NodeConnectionModel):
             self.node.predecessors_events[root.node_url].set()
-            return {"message": "Signalled predecessors"}
+            return {"message": "Signalled successors"}
 
         @self.post("/backward_signal", status_code=status.HTTP_200_OK)
         async def backward_signal(leaf: NodeConnectionModel):
@@ -52,17 +64,23 @@ class Connector(FastAPI):
     
     def get_connect_url(self):
         # sample output: http://localhost:8000/metadata/connector/connect
-        return f"http://{self.host}:{self.port}{self.get_connector_prefix()}/connect"
+        return f"{self.scheme}://{self.host}:{self.port}{self.get_connector_prefix()}/connect"
 
-    def get_forward_signal_url(self):
+    def send_forward_signal(self):
         # sample output: http://localhost:8000/metadata/connector/forward_signal
-        return f"http://{self.host}:{self.port}{self.get_connector_prefix()}/forward_signal"
+        return f"{self.scheme}://{self.host}:{self.port}{self.get_connector_prefix()}/forward_signal"
     
-    def get_backward_signal_url(self):
+    def send_backward_signal(self):
         # sample output: http://localhost:8000/metadata/connector/backward_signal
-        return f"http://{self.host}:{self.port}{self.get_connector_prefix()}/backward_signal"
+        return f"{self.scheme}://{self.host}:{self.port}{self.get_connector_prefix()}/backward_signal"
     
-    async def connect(self):
+    async def connect(self) -> List[Coroutine]:
+
+        async def connect_to_successor(connection_url: str, json: dict):
+            async with self.client_context() as client:
+                return await client.post(connection_url, json=json)
+
+        tasks = []
         for connection in self.node.remote_successors:
             node_model: NodeModel = self.node.model()
             connection_mode = NodeConnectionModel(
@@ -70,8 +88,7 @@ class Connector(FastAPI):
                 node_url=f"http://{self.host}:{self.port}/{self.node.name}"
             )
             json = connection_mode.model_dump()
-
-            async with self.client_context() as client:
-                response = await client.post(f"{connection}/connector/connect", json=json)
-                if response.status_code != status.HTTP_200_OK:
-                    raise Exception(f"Failed to connect to {self.node.name} node")
+            tasks.append(
+                connect_to_successor(connection_url=f"{connection}/connector/connect", json=json)
+            )
+        return tasks
