@@ -203,52 +203,17 @@ class BaseNode(Thread):
                 successor.predecessors_events[self.name].set()
             # self.log(f"'{self.name}' finished signalling local successors", level="INFO")
     
-    async def __signal_remote_predecessors(self):
-        if len(self.remote_predecessors) > 0:
-            try:
-                async with httpx.AsyncClient() as client:
-                    tasks = []
-                    for predecessor_url in self.remote_predecessors:
-                        node_model = self.model()
-                        connection_mode = NodeConnectionModel(
-                            **node_model.model_dump(),
-                            node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
-                        )
-                        json = connection_mode.model_dump()
-                        tasks.append(client.post(f"{predecessor_url}/connector/backward_signal", json=json))
-
-                    await asyncio.gather(*tasks)
-                    self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
-            except httpx.ConnectError:
-                self.log(f"'{self.name}' failed to signal predecessors", level="ERROR")
-                self.exit()
-    
-    async def __signal_remote_successors(self):
-        if len(self.remote_successors) > 0:
-            try:
-                async with httpx.AsyncClient() as client:
-                    tasks = []
-                    for successor_url in self.remote_successors:
-                        node_model = self.model()
-                        connection_mode = NodeConnectionModel(
-                            **node_model.model_dump(),
-                            node_url=f"http://{self.connector.host}:{self.connector.port}/{self.name}",
-                        )
-                        json = connection_mode.model_dump()
-                        tasks.append(client.post(f"{successor_url}/connector/forward_signal", json=json))
-                    
-                    await asyncio.gather(*tasks)
-                    self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
-            except httpx.ConnectError:
-                self.log(f"'{self.name}' failed to signal successors from {self.name}", level="ERROR")
-                self.exit()
-    
     async def signal_successors(self, result: Result):
         # self.log(f"'{self.name}' signaling local successors", level="INFO")
         self.__signal_local_successors()
 
         # self.log(f"'{self.name}' signaling remote successors", level="INFO")
-        await self.__signal_remote_successors()
+        try:
+            await self.connector.signal_remote_successors(result)
+            self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
+        except httpx.ConnectError:
+            self.log(f"'{self.name}' failed to signal successors from {self.name}", level="ERROR")
+            self.exit()
 
     def wait_for_successors(self):
         # self.log(f"'{self.name}' waiting for successors", level="INFO")
@@ -264,7 +229,12 @@ class BaseNode(Thread):
         self.__signal_local_predecessors()
         
         # self.log(f"'{self.name}' signaling remote predecessors", level="INFO")
-        await self.__signal_remote_predecessors()
+        try:
+            await self.connector.signal_remote_predecessors(result)
+            self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
+        except httpx.ConnectError:
+            self.log(f"'{self.name}' failed to signal predecessors from {self.name}", level="ERROR")
+            self.exit()
 
     def wait_for_predecessors(self):
         # self.log(f"'{self.name}' waiting for predecessors", level="INFO")
