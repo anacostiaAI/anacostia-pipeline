@@ -284,6 +284,6 @@ class BaseNode(Thread):
         raise NotImplementedError
     
     def run(self) -> None:
-        if len(self.remote_predecessors) > 0 or len(self.remote_successors) > 0 or self.wait_for_connection:
+        if self.connector is not None:
             self.connector.setup_client()
         asyncio.run(self.run_async())
