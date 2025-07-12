@@ -28,8 +28,8 @@ mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
 mkcert_ca = str(mkcert_ca)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_root.pem")
-ssl_keyfile = os.path.join(BASE_DIR, "certs/private_root.key")
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 class ShakespeareEvalNode(BaseActionNode):

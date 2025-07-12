@@ -195,21 +195,11 @@ class BaseNode(Thread):
                 return
         return log_exception_wrapper
     
-    def __signal_local_predecessors(self):
-        if len(self.predecessors) > 0:
-            for predecessor in self.predecessors:
-                predecessor.successor_events[self.name].set()
-            # self.log(f"'{self.name}' finished signalling local predecessors", level="INFO")
-    
-    def __signal_local_successors(self):
+    async def signal_successors(self, result: Result):
+        # self.log(f"'{self.name}' signaling local successors", level="INFO")
         if len(self.successors) > 0:
             for successor in self.successors:
                 successor.predecessors_events[self.name].set()
-            # self.log(f"'{self.name}' finished signalling local successors", level="INFO")
-    
-    async def signal_successors(self, result: Result):
-        # self.log(f"'{self.name}' signaling local successors", level="INFO")
-        self.__signal_local_successors()
 
         # self.log(f"'{self.name}' signaling remote successors", level="INFO")
         try:
@@ -230,7 +220,9 @@ class BaseNode(Thread):
     
     async def signal_predecessors(self, result: Result):
         # self.log(f"'{self.name}' signaling local predecessors", level="INFO")
-        self.__signal_local_predecessors()
+        if len(self.predecessors) > 0:
+            for predecessor in self.predecessors:
+                predecessor.successor_events[self.name].set()
         
         # self.log(f"'{self.name}' signaling remote predecessors", level="INFO")
         try:

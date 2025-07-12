@@ -105,10 +105,12 @@ class PipelineServer(FastAPI):
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
             self.client = httpx.AsyncClient()
+            self.scheme = "http"
         else:
             # If SSL certificates are provided, use them to create the client
             try:
                 self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.scheme = "https"
             except httpx.ConnectError as e:
                 raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
@@ -273,7 +275,7 @@ class PipelineServer(FastAPI):
                     
                     try:
                         if self.predecessor_host is not None and self.predecessor_port is not None:
-                            await client.post(f"http://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
+                            await client.post(f"{self.scheme}://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
                     
                     except httpx.ConnectError as e:
                         self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
@@ -375,13 +377,13 @@ class PipelineServer(FastAPI):
             subapp = node.get_node_gui()
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model["name"]
-            node_model["origin_url"] = f"http://{self.host}:{self.port}"
+            node_model["origin_url"] = f"{self.scheme}://{self.host}:{self.port}"
             node_model["type"] = type(node).__name__
             
             subapp_home_endpoint = subapp.get_home_endpoint()
-            node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp_home_endpoint}" if subapp_home_endpoint else ''
+            node_model["endpoint"] = f"{self.scheme}://{self.host}:{self.port}{subapp_home_endpoint}" if subapp_home_endpoint else ''
             
-            node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
+            node_model["status_endpoint"] = f"{self.scheme}://{self.host}:{self.port}{subapp.get_status_endpoint()}"
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
             # add the remote successors to the node model
