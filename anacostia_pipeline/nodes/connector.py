@@ -96,7 +96,7 @@ class Connector(FastAPI):
             node_model: NodeModel = self.node.model()
             connection_mode = NodeConnectionModel(
                 **node_model.model_dump(),
-                node_url=f"http://{self.host}:{self.port}/{self.node.name}"
+                node_url=self.get_node_url(),
             )
             json = connection_mode.model_dump()
             task.append(client.post(f"{connection}/connector/connect", json=json))
