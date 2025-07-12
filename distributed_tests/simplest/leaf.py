@@ -54,8 +54,8 @@ webserver = PipelineServer(
     host=args.host, 
     port=args.port,
     logger=logger, uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG,
-    #ssl_ca_certs=mkcert_ca,
-    #ssl_certfile=ssl_certfile,
-    #ssl_keyfile=ssl_keyfile
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile
 )
 webserver.run()

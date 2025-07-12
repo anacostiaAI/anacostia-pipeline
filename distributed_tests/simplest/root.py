@@ -55,7 +55,7 @@ data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_pat
 printing_node = PrintingNode(
     "logging_node", 
     predecessors=[data_store], 
-    remote_successors=[f"http://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
+    remote_successors=[f"https://{args.leaf_host}:{args.leaf_port}/shakespeare_eval"]
 )
 
 # Create the pipeline
@@ -67,9 +67,9 @@ webserver = PipelineServer(
     pipeline=pipeline, 
     host=args.root_host, 
     port=args.root_port,
-    #ssl_ca_certs=mkcert_ca,
-    #ssl_certfile=ssl_certfile,
-    #ssl_keyfile=ssl_keyfile,
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
     logger=logger,
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
