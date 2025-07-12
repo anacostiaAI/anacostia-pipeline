@@ -46,7 +46,6 @@ class PipelineServer(FastAPI):
         pipeline: Pipeline, 
         remote_clients: List[BaseClient] = None,
         host: str = "127.0.0.1", 
-        bind_host: str = "0.0.0.0",  # Bind host for the webserver when running in a Docker container
         port: int = 8000, 
         ssl_keyfile: str = None, 
         ssl_certfile: str = None, 
@@ -99,6 +98,19 @@ class PipelineServer(FastAPI):
         self.successor_pipeline_models = []
         self.queue = Queue()
         self.background_task = None
+        self.ssl_ca_certs = ssl_ca_certs
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_certfile = ssl_certfile
+
+        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+            # If no SSL certificates are provided, create a client without them
+            self.client = httpx.AsyncClient()
+        else:
+            # If SSL certificates are provided, use them to create the client
+            try:
+                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+            except httpx.ConnectError as e:
+                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
         if allow_credentials is True and allow_origins == ["*"]:
             raise ValueError("allow_origins cannot be [\"*\"] when allow_credentials = True")
@@ -118,7 +130,7 @@ class PipelineServer(FastAPI):
 
         config = uvicorn.Config(
             self, 
-            host=bind_host, 
+            host="0.0.0.0", 
             port=self.port, 
             ssl_keyfile=ssl_keyfile, 
             ssl_certfile=ssl_certfile, 
@@ -146,9 +158,13 @@ class PipelineServer(FastAPI):
                 break
 
         # Mount the apps and connectors to the webserver
+        self.connectors: List[Connector] = []
         for node in self.pipeline.nodes:
-            connector: Connector = node.setup_connector(host=self.host, port=self.port)
-            self.mount(connector.get_connector_prefix(), connector)          
+            connector: Connector = node.setup_connector(
+                host=self.host, port=self.port, ssl_ca_certs=ssl_ca_certs, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile
+            )
+            self.mount(connector.get_connector_prefix(), connector)
+            self.connectors.append(connector)
 
             node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
@@ -279,88 +295,77 @@ class PipelineServer(FastAPI):
                     break 
 
     async def connect(self):
-        async with httpx.AsyncClient() as client:
-            # Connect to leaf pipeline
-            task = []
-            for leaf_ip_address in self.successor_ip_addresses:
-                pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
-                task.append(client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
+        # Connect to leaf pipeline
+        task = []
+        for leaf_ip_address in self.successor_ip_addresses:
+            pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
+            task.append(self.client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
 
-            responses = await asyncio.gather(*task)
+        responses = await asyncio.gather(*task)
 
-            successor_node_models: List[NodeModel] = []
+        successor_node_models: List[NodeModel] = []
 
-            for response in responses:
-                # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
-                response_data = response.json()
-                self.successor_pipeline_models.append(response_data)
+        for response in responses:
+            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
+            response_data = response.json()
+            self.successor_pipeline_models.append(response_data)
 
-                # Validate the response data and extract node models
-                for node_data in response_data["nodes"]:
-                    node_data = NodeModel.model_validate(node_data)
-                    successor_node_models.append(node_data)
+            # Validate the response data and extract node models
+            for node_data in response_data["nodes"]:
+                node_data = NodeModel.model_validate(node_data)
+                successor_node_models.append(node_data)
 
-            # Extract the node name and type from the responses and add them to the metadata store
-            if self.metadata_store is not None:
+        # Extract the node name and type from the responses and add them to the metadata store
+        if self.metadata_store is not None:
+            for node_model in successor_node_models:
+                node_name = node_model.name
+                node_type = node_model.node_type
+                base_type = node_model.base_type
+        
+                if self.metadata_store.node_exists(node_name=node_name) is False:
+                    self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
+
+        # ------ Check graph structure of when pipelines before they are connected ------
+        for node in self.pipeline.nodes:
+            node_base_type = node.model().base_type
+
+            for connection in node.remote_successors:
+                remote_node_name = connection.split("/")[-1]
+
                 for node_model in successor_node_models:
-                    node_name = node_model.name
-                    node_type = node_model.node_type
-                    base_type = node_model.base_type
-            
-                    if self.metadata_store.node_exists(node_name=node_name) is False:
-                        self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
+                    if node_model.name == remote_node_name:
+                        remote_node_base_type = node_data.base_type
+                        
+                        # based on the remote_successors information, check if the connection is valid
+                        if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
+                            raise InvalidNodeDependencyError(
+                                f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
+                            )
+                        
+                        if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
+                            raise InvalidNodeDependencyError(
+                                f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
+                            )
+        # ------------------------------------------------------------------
 
-            # ------ Check graph structure of when pipelines before they are connected ------
-            for node in self.pipeline.nodes:
-                node_base_type = node.model().base_type
+        # Connect each node to its remote successors
+        for connector in self.connectors:
+            await connector.connect(client=self.client)
 
-                for connection in node.remote_successors:
-                    remote_node_name = connection.split("/")[-1]
+        # Connect RPC servers to RPC clients
+        task = []
+        for node in self.pipeline.nodes:
+            task.append(node.node_server.connect())
 
-                    for node_model in successor_node_models:
-                        if node_model.name == remote_node_name:
-                            remote_node_base_type = node_data.base_type
-                            
-                            # based on the remote_successors information, check if the connection is valid
-                            if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
-                                raise InvalidNodeDependencyError(
-                                    f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
-                                )
-                            
-                            if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
-                                raise InvalidNodeDependencyError(
-                                    f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
-                                )
-            # ------------------------------------------------------------------
+        await asyncio.gather(*task)
 
-            # Connect each node to its remote successors
-            task = []
-            for node in self.pipeline.nodes:
-                for connection in node.remote_successors:
-                    node_model = node.model()
-                    connection_mode = NodeConnectionModel(
-                        **node_model.model_dump(),
-                        node_url=f"http://{self.host}:{self.port}/{node.name}"
-                    )
-                    json = connection_mode.model_dump()
-                    task.append(client.post(f"{connection}/connector/connect", json=json))
+        # Finish the connection process for each leaf pipeline
+        # Leaf pipeline will set the connection event for each node
+        task = []
+        for leaf_ip_address in self.successor_ip_addresses:
+            task.append(self.client.post(f"{leaf_ip_address}/finish_connect"))
 
-            await asyncio.gather(*task)
-
-            # Connect RPC servers to RPC clients
-            task = []
-            for node in self.pipeline.nodes:
-                task.append(node.node_server.connect())
-
-            await asyncio.gather(*task)
-
-            # Finish the connection process for each leaf pipeline
-            # Leaf pipeline will set the connection event for each node
-            task = []
-            for leaf_ip_address in self.successor_ip_addresses:
-                task.append(client.post(f"{leaf_ip_address}/finish_connect"))
-
-            await asyncio.gather(*task)
+        await asyncio.gather(*task)
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
