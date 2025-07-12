@@ -56,10 +56,6 @@ class Connector(FastAPI):
     def get_node_url(self) -> str:
         return f"{self.scheme}://{self.host}:{self.port}/{self.node.name}"
 
-    def get_connect_url(self):
-        # sample output: http://localhost:8000/metadata/connector/connect
-        return f"{self.scheme}://{self.host}:{self.port}{self.get_connector_prefix()}/connect"
-
     async def close_client(self) -> None:
         await self.client.aclose()
     
