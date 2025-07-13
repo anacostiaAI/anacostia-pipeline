@@ -107,8 +107,8 @@ class BaseNode(Thread):
         )
         return self.connector
 
-    def setup_node_GUI(self, host: str, port: int):
-        self.gui = BaseGUI(node=self, host=host, port=port)
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
+        self.gui = BaseGUI(node=self, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs)
         return self.gui
     
     def get_node_gui(self):

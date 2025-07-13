@@ -71,12 +71,15 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         """
         await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model, *args, **kwargs)
 
-    def setup_node_GUI(self, host: str, port: int) -> ModelRegistryGUI:
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> ModelRegistryGUI:
         self.gui = ModelRegistryGUI(
             node=self, 
             host=host,
             port=port,
             metadata_store=self.metadata_store, 
-            metadata_store_client=self.metadata_store_client
+            metadata_store_client=self.metadata_store_client,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
+            ssl_ca_certs=ssl_ca_certs
         )
         return self.gui

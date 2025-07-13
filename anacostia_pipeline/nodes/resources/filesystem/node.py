@@ -66,13 +66,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             monitoring=monitoring
         )
     
-    def setup_node_GUI(self, host: str, port: int) -> FilesystemStoreGUI:
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> FilesystemStoreGUI:
         self.gui = FilesystemStoreGUI(
             node=self, 
             host=host,
             port=port,
             metadata_store=self.metadata_store, 
-            metadata_store_client=self.metadata_store_client
+            metadata_store_client=self.metadata_store_client,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
+            ssl_ca_certs=ssl_ca_certs
         )
         return self.gui
     

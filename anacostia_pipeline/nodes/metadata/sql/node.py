@@ -47,9 +47,9 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         """
         raise NotImplementedError("The setup method must be overridden in the child class.") 
     
-    def setup_node_GUI(self, host: str, port: int):
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
         """Override to setup the node GUI."""
-        self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port)
+        self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs)
         return self.gui
 
     def setup_node_server(self, host: str, port: int):

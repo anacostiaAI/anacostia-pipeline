@@ -168,7 +168,9 @@ class PipelineServer(FastAPI):
             self.mount(connector.get_connector_prefix(), connector)
             self.connectors.append(connector)
 
-            node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
+            node_gui: BaseGUI = node.setup_node_GUI(
+                host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+            )
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
         
             server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
