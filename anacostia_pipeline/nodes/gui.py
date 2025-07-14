@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRoute
-import httpx
 
 
 
@@ -20,15 +19,7 @@ class BaseGUI(FastAPI):
         self.node = node
         self.host = host
         self.port = port
-
-        if ssl_ca_certs and ssl_certfile and ssl_keyfile:
-            # If SSL certificates are provided, use them to create the client
-            self.scheme = "https"
-            self.client = httpx.AsyncClient(verify=ssl_ca_certs, cert=(ssl_certfile, ssl_keyfile))
-        else:
-            # Otherwise, use HTTP
-            self.scheme = "http"
-            self.client = httpx.AsyncClient()
+        self.scheme = "https" if ssl_ca_certs and ssl_certfile and ssl_keyfile else "http"
 
         @self.get("/status", response_class=HTMLResponse)
         async def status_endpoint():
