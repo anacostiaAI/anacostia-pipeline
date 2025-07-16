@@ -270,33 +270,32 @@ class PipelineServer(FastAPI):
             response.headers["HX-Redirect"] = "/"
 
     async def process_queue(self):
-        async with httpx.AsyncClient() as client:
-            while True:
-                if self.queue.empty() is False and self.connected is True:
-                    message = self.queue.get()
-                    
-                    try:
-                        if self.predecessor_host is not None and self.predecessor_port is not None:
-                            await client.post(f"{self.scheme}://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
-                    
-                    except httpx.ConnectError as e:
-                        self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
-                        self.queue.put(message)
-                        self.connected = False
-
-                    except Exception as e:
-                        self.logger.error(f"Error forwarding message: {str(e)}")
-                        self.queue.put(message)
-                        self.connected = False
-                    
-                    finally:
-                        self.queue.task_done()
+        while True:
+            if self.queue.empty() is False and self.connected is True:
+                message = self.queue.get()
                 
                 try:
-                    await asyncio.sleep(0.1)
-                except asyncio.CancelledError:
-                    self.logger.info("Background task cancelled; breaking out of queue processing loop")
-                    break 
+                    if self.predecessor_host is not None and self.predecessor_port is not None:
+                        await self.client.post(f"{self.scheme}://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
+                
+                except httpx.ConnectError as e:
+                    self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
+                    self.queue.put(message)
+                    self.connected = False
+
+                except Exception as e:
+                    self.logger.error(f"Error forwarding message from queue: {str(e)}")
+                    self.queue.put(message)
+                    self.connected = False
+                
+                finally:
+                    self.queue.task_done()
+            
+            try:
+                await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                self.logger.info("Background task cancelled; breaking out of queue processing loop")
+                break 
 
     async def connect(self):
         # Connect to leaf pipeline
