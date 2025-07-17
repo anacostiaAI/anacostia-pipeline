@@ -59,7 +59,7 @@ class Connector(FastAPI):
     async def close_client(self) -> None:
         await self.client.aclose()
     
-    def setup_client(self) -> None:
+    def setup_http_client(self) -> None:
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
             self.client = httpx.AsyncClient()

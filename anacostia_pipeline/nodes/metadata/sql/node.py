@@ -52,9 +52,11 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
         self.gui = SQLMetadataStoreGUI(node=self, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs)
         return self.gui
 
-    def setup_node_server(self, host: str, port: int):
+    def setup_node_server(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
         """Override to setup the RPC server."""
-        self.node_server = SQLMetadataStoreServer(self, self.client_url, host, port, loggers=self.loggers)
+        self.node_server = SQLMetadataStoreServer(
+            self, self.client_url, host, port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, loggers=self.loggers
+        )
         return self.node_server
 
     def init_scoped_session(self, session_factory: sessionmaker):

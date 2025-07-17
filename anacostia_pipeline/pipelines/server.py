@@ -172,8 +172,10 @@ class PipelineServer(FastAPI):
                 host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
             )
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
-        
-            server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
+
+            server: BaseServer = node.setup_node_server(
+                host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+            )
             self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
 
         if remote_clients is not None:
@@ -358,7 +360,7 @@ class PipelineServer(FastAPI):
         # Connect RPC servers to RPC clients
         task = []
         for node in self.pipeline.nodes:
-            task.append(node.node_server.connect())
+            task.append(node.node_server.connect(client=self.client))
 
         await asyncio.gather(*task)
 

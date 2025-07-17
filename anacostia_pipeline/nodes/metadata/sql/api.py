@@ -11,8 +11,29 @@ from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreServer, BaseM
 
 
 class SQLMetadataStoreServer(BaseMetadataStoreServer):
-    def __init__(self, metadata_store, client_url, host = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
-        super().__init__(metadata_store, client_url, host, port, loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        metadata_store, 
+        client_url, 
+        host: str = "127.0.0.1", 
+        port: int = 8000, 
+        loggers: Union[Logger, List[Logger]] = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            metadata_store=metadata_store,
+            client_url=client_url, 
+            host=host, 
+            port=port, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
         self.metadata_store = metadata_store
 
         @self.post("/add_node/")
@@ -110,9 +131,30 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
 
 
 class SQLMetadataStoreClient(BaseMetadataStoreClient):
-    def __init__(self, client_name, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
-    
+    def __init__(
+        self, 
+        client_name, 
+        client_host = "127.0.0.1", 
+        client_port = 8000, 
+        server_url = None, 
+        loggers = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            client_name=client_name, 
+            client_host=client_host, 
+            client_port=client_port, 
+            server_url=server_url, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
+
     async def add_node(self, node_name: str, node_type: str, base_type: str):
         async with httpx.AsyncClient() as client:
             try:

@@ -19,12 +19,27 @@ class NetworkConnectionNotEstablished(Exception):
 # provides endpoints for client to call to execute remote procedure calls
 # endpoints call methods on the node
 class BaseServer(FastAPI):
-    def __init__(self, node, client_url: str, host: str = "127.0.0.1", port: int = 8000, loggers: Union[Logger, List[Logger]] = None, *args, **kwargs):
+    def __init__(
+        self, 
+        node, 
+        client_url: str, 
+        host: str = "127.0.0.1", 
+        port: int = 8000, 
+        loggers: Union[Logger, List[Logger]] = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.node = node
         self.host = host
         self.port = port
         self.client_url = client_url
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_certfile = ssl_certfile
+        self.ssl_ca_certs = ssl_ca_certs
+        self.scheme = "https" if self.ssl_ca_certs and self.ssl_certfile and self.ssl_keyfile else "http"
 
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -63,14 +78,31 @@ class BaseServer(FastAPI):
     
     def get_server_url(self):
         # sample output: http://127.0.0.1:8000/metadata/api/server
-        return f"http://{self.host}:{self.port}{self.get_node_prefix()}"
+        return f"{self.scheme}://{self.host}:{self.port}{self.get_node_prefix()}"
     
-    async def connect(self):
+    async def connect(self, client: httpx.AsyncClient) -> None:
         if self.client_url is not None:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(f"{self.client_url}/api/client/connect", json={"url": self.get_server_url()})
-                message = response.json()["message"]
-                self.log(message, level="INFO")
+            response = await client.post(f"{self.client_url}/api/client/connect", json={"url": self.get_server_url()})
+            message = response.json()["message"]
+            self.log(message, level="INFO")
+
+    def setup_http_client(self) -> None:
+        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+            # If no SSL certificates are provided, create a client without them
+            self.client = httpx.AsyncClient()
+        else:
+            # If SSL certificates are provided, use them to create the client
+            try:
+                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+
+                # Validate that client_url is using HTTPS if SSL certificates are provided
+                if self.client_url:
+                    parsed_url = httpx.URL(self.client_url)
+                    if parsed_url.scheme != "https":
+                        raise ValueError(f"Invalid client URL scheme: {self.client_url}. Must be 'https' when SSL certificates are provided.")
+                
+            except httpx.ConnectError as e:
+                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
 
 
@@ -83,6 +115,9 @@ class BaseClient(FastAPI):
         client_host: str = "127.0.0.1", 
         client_port: int = 8000, 
         server_url: str = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
         loggers: Union[Logger, List[Logger]] = None, 
         *args, **kwargs
     ):
@@ -90,6 +125,11 @@ class BaseClient(FastAPI):
         self.client_host = client_host      # currently client_host and client_port are only used for logging
         self.client_port = client_port
         self.client_name = client_name
+
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_certfile = ssl_certfile
+        self.ssl_ca_certs = ssl_ca_certs
+        self.scheme = "https" if self.ssl_ca_certs and self.ssl_certfile and self.ssl_keyfile else "http"
 
         # if you set server_url, you should not run the client as a FastAPI app using uvicorn. 
         # this capability is here to enable developers to directly communicate with a node server to do things like logging.
@@ -145,4 +185,22 @@ class BaseClient(FastAPI):
     
     def get_client_url(self):
         # sample output: http://127.0.0.1:8000/metadata/api/client
-        return f"http://{self.client_host}:{self.client_port}{self.get_client_prefix()}"
+        return f"{self.scheme}://{self.client_host}:{self.client_port}{self.get_client_prefix()}"
+    
+    def setup_http_client(self) -> None:
+        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+            # If no SSL certificates are provided, create a client without them
+            self.client = httpx.AsyncClient()
+        else:
+            # If SSL certificates are provided, use them to create the client
+            try:
+                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+
+                # Validate that server_url is using HTTPS if SSL certificates are provided
+                if self.server_url:
+                    parsed_url = httpx.URL(self.server_url)
+                    if parsed_url.scheme != "https":
+                        raise ValueError(f"Invalid server URL scheme: {self.server_url}. Must be 'https' when SSL certificates are provided.")
+
+            except httpx.ConnectError as e:
+                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")

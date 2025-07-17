@@ -10,8 +10,29 @@ from anacostia_pipeline.nodes.api import BaseClient, BaseServer
 
 
 class BaseResourceServer(BaseServer):
-    def __init__(self, node, client_url, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        node, 
+        client_url, 
+        host = "127.0.0.1", 
+        port = 8000, 
+        loggers: Union[Logger, List[Logger]]  = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            node=node,
+            client_url=client_url,
+            host=host,
+            port=port,
+            loggers=loggers,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
 
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):
@@ -32,9 +53,30 @@ class BaseResourceServer(BaseServer):
 
 
 class BaseResourceClient(BaseClient):
-    def __init__(self, client_name: str, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
-    
+    def __init__(
+        self, 
+        client_name: str, 
+        client_host = "127.0.0.1", 
+        client_port = 8000, 
+        server_url = None, 
+        loggers = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            client_name=client_name, 
+            client_host=client_host, 
+            client_port=client_port, 
+            server_url=server_url, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs,
+            *args, **kwargs
+        )
+
     async def get_num_artifacts(self, state: str = "all") -> int:
         """
         Get the number of artifacts in the storage directory.

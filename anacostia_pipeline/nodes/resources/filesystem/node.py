@@ -78,9 +78,11 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             ssl_ca_certs=ssl_ca_certs
         )
         return self.gui
-    
-    def setup_node_server(self, host: str, port: int):
-        self.node_server = FilesystemStoreServer(self, self.client_url, host, port, loggers=self.loggers)
+
+    def setup_node_server(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> FilesystemStoreServer:
+        self.node_server = FilesystemStoreServer(
+            self, self.client_url, host, port, loggers=self.loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+        )
         return self.node_server
 
     def start_monitoring(self) -> None:

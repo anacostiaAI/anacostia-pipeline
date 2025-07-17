@@ -12,8 +12,21 @@ from anacostia_pipeline.nodes.resources.api import BaseResourceServer, BaseResou
 
 
 class FilesystemStoreServer(BaseResourceServer):
-    def __init__(self, node, client_url: str, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        node, 
+        client_url: str, 
+        host = "127.0.0.1", 
+        port = 8000, 
+        loggers: Union[Logger, List[Logger]]  = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            node, client_url, host, port, loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs
+        )
         self.resource_path: str = node.resource_path
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
@@ -105,8 +118,30 @@ class FilesystemStoreServer(BaseResourceServer):
 
 
 class FilesystemStoreClient(BaseResourceClient):
-    def __init__(self, storage_directory: str, client_name: str, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        storage_directory: str, 
+        client_name: str, 
+        client_host = "127.0.0.1", 
+        client_port = 8000, 
+        server_url = None, 
+        loggers = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            client_name=client_name, 
+            client_host=client_host, 
+            client_port=client_port, 
+            server_url=server_url, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
 
         self.storage_directory = f"{storage_directory}/{client_name}"
     

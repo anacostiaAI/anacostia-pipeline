@@ -116,8 +116,11 @@ class BaseNode(Thread):
             raise ValueError("Node GUI not set up")
         return self.gui
     
-    def setup_node_server(self, host: str, port: int):
-        self.node_server = BaseServer(self, client_url=self.client_url, host=host, port=port, loggers=self.loggers)
+    def setup_node_server(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
+        self.node_server = BaseServer(
+            self, client_url=self.client_url, host=host, port=port, loggers=self.loggers, 
+            ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+        )
         return self.node_server
 
     def __hash__(self) -> int:
@@ -285,5 +288,9 @@ class BaseNode(Thread):
     
     def run(self) -> None:
         if self.connector is not None:
-            self.connector.setup_client()
+            self.connector.setup_http_client()
+        
+        if self.node_server is not None:
+            self.node_server.setup_http_client()
+        
         asyncio.run(self.run_async())
