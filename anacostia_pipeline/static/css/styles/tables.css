@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@400;600&display=swap');
+
+/* General table styling scoped to node content */
+#page_content table {
+    font-family: 'Rethink Sans', 'Helvetica Neue', Arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    line-height: 1.45;
+    border: 1px solid #E2E6F0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+#page_content thead {
+    background-color: #F5F6FF;
+    font-weight: 600;
+}
+
+#page_content thead th {
+    padding: 10px 12px;
+    text-align: left;
+}
+
+#page_content tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid #E2E6F0;
+}
+
+/* Alternating row colours */
+#page_content tbody tr:nth-child(even) {
+    background-color: #F7F8FF;
+}
+
+/* Row hover effect */
+#page_content tbody tr:hover {
+    background-color: #EEF1FF;
+    transform: translateX(2px);
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+/* Numeric columns alignment (add class="num" to td/ths) */
+#page_content td.num, #page_content th.num {
+    text-align: right;
+    font-feature-settings: 'tnum';
+}
+
+/* Sticky header for long tables */
+#page_content thead th {
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(6px);
+    background: rgba(245, 246, 255, 0.9);
+    z-index: 2;
+}

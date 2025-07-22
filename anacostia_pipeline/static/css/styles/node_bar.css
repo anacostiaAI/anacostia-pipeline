@@ -1,10 +1,55 @@
 #node_header_bar {
-    width: 100%;
-    position: relative;
-    color: #5c62d6;
-    padding: 10px;
-    font-family: Arial, Helvetica, sans-serif;
+    background-color: #273349; /* slightly lighter navy */
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(240px,1fr));
+    gap: 12px;
+    font-family: 'Rethink Sans', Arial, Helvetica, sans-serif;
+    color: #F1F5F9;
+    font-size: 14px;
+    /* Removed accent border */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+#node_header_bar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+#node_header_bar div {
+    font-weight: 500;
+}
+
+#node_header_bar div:first-child {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+/* Status pill inside header */
+#node_header_bar div span.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #1e293b;
+    background-color: #7ED957; /* default success */
+    font-weight: 600;
+}
+
+@media (max-width: 500px) {
+    #node_header_bar {
+        grid-template-columns: 1fr;
+        font-size: 13px;
+    }
+    #node_header_bar div:first-child {
+        font-size: 16px;
+    }
+}
+
+/* Existing collapse button tweaks */
 
 /* Style for the collapse button */
 .collapse-btn {
