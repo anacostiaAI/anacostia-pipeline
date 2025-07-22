@@ -79,12 +79,12 @@ svg.attr("height", graph_bounds.height);
 
 // create a legend for the node types
 var legend_info = {
-    "Metadata Store Node (GUI Available)": "#F69C9E",  // Light red
-    "Metadata Store Node (GUI Unvailable)": "#d04427", // Darker red
-    "Resource Node (GUI Available)": "#A8D5B1",       // Light green
-    "Resource Node (GUI Unvailable)": "#89BE90",   // Darker green
-    "Action Node (GUI Available)": "#CBDDE9",          // Light blue
-    "Action Node (GUI Unvailable)": "#809CC8"       // Darker blue
+    "Metadata Store Node (GUI Available)": "#FF6F61",  // Vivid coral
+    "Metadata Store Node (GUI Unvailable)": "#D4573F", // Coral red
+    "Resource Node (GUI Available)": "#7ED957",       // Fresh lime
+    "Resource Node (GUI Unvailable)": "#5CB84C",   // Rich green
+    "Action Node (GUI Available)": "#8EC9FF",          // Bright sky
+    "Action Node (GUI Unvailable)": "#5C8DD6"       // Bold blue
 };
 
 for (const [text, color] of Object.entries(legend_info)) {
@@ -94,8 +94,8 @@ for (const [text, color] of Object.entries(legend_info)) {
         .attr("width", 30)
         .attr("height", 20)
         .attr("fill", color)
-        .attr("rx", 3)
-        .attr("ry", 3)
+        .attr("rx", 8)
+        .attr("ry", 8)
         .attr("stroke", "black")
         .attr("stroke-width", "1.5");
 
@@ -150,26 +150,26 @@ rect.each(function(v) {
                          .attr("class", "outer-rect");
 
     if (endpoint !== '' && base_type === 'BaseMetadataStoreNode') {
-        rect_element.attr("fill", "#F69C9E")
+        rect_element.attr("fill", "#FF6F61")
                     .attr("cursor", "pointer");
     } else if (endpoint === '' && base_type === 'BaseMetadataStoreNode') {
-        rect_element.attr("fill", "#d04427")
+        rect_element.attr("fill", "#D4573F")
                     .attr("cursor", "not-allowed");
 
     } else if (endpoint !== '' && base_type === 'BaseResourceNode') {
-        rect_element.attr("fill", "#A8D5B1")
+        rect_element.attr("fill", "#7ED957")
                     .attr("cursor", "pointer");
 
     } else if (endpoint === '' && base_type === 'BaseResourceNode') {
-        rect_element.attr("fill", "#89BE90")
+        rect_element.attr("fill", "#5CB84C")
                     .attr("cursor", "not-allowed");
 
     } else if (endpoint !== '' && base_type === 'BaseActionNode') {
-        rect_element.attr("fill", "#CBDDE9")
+        rect_element.attr("fill", "#8EC9FF")
                     .attr("cursor", "pointer");
 
     } else if (endpoint === '' && base_type === 'BaseActionNode') {
-        rect_element.attr("fill", "#809CC8")
+        rect_element.attr("fill", "#5C8DD6")
                     .attr("cursor", "not-allowed");
     }
 });
@@ -181,7 +181,9 @@ labels.insert("rect", ":first-child")
       .attr("class", "status-rect")
       .attr("opacity", "1.0")
       .attr("rx", 10)
-      .attr("height", "15")
+      .attr("height", 22)
+      .attr("width", 60)
+      
       .attr("id", (v) => { return `${g.node(v).id}-pill` });
 
 let node_text = inner.selectAll(".node .label g");
@@ -197,7 +199,7 @@ status_rect.attr("transform", function(d, i) {
 const text = inner.selectAll(".node .label g text");
 text.append("tspan")
     .attr("space", "preserve")
-    .attr("dy", "14")
+    .attr("dy", "15")
     .attr("x", "5")
     .attr("font-size", "11")
     .attr("fill", "white")
@@ -228,7 +230,8 @@ document.body.addEventListener('htmx:sseOpen', (event) => {
 
             const status_pill = document.getElementById(`${data.id}-pill`);
             status_pill.setAttribute("fill", status_gui_info[data.status]["color"]);
-            status_pill.setAttribute("width", status_gui_info[data.status]["width"]);
+            const text_len = status_text.getComputedTextLength();
+            status_pill.setAttribute("width", text_len + 14);
         });
     }
 });

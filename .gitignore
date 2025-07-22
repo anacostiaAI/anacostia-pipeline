@@ -16,3 +16,6 @@ dist/
 **/output_artifacts/
 *.pem
 *.key
+
+create_files.py
+test.py
