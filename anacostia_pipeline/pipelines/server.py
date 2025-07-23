@@ -389,10 +389,8 @@ class PipelineServer(FastAPI):
             node_model["origin_url"] = f"{self.scheme}://{self.host}:{self.port}"
             node_model["type"] = type(node).__name__
             
-            subapp_home_endpoint = subapp.get_home_endpoint()
-            node_model["endpoint"] = f"{self.scheme}://{self.host}:{self.port}{subapp_home_endpoint}" if subapp_home_endpoint else ''
-            
-            node_model["status_endpoint"] = f"{self.scheme}://{self.host}:{self.port}{subapp.get_status_endpoint()}"
+            node_model["endpoint"] = subapp.get_home_endpoint()
+            node_model["status_endpoint"] = subapp.get_status_endpoint()
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
             # add the remote successors to the node model
