@@ -206,7 +206,7 @@ class BaseNode(Thread):
 
         # self.log(f"'{self.name}' signaling remote successors", level="INFO")
         try:
-            await self.connector.signal_remote_successors()
+            self.connector.signal_remote_successors()
             self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
         except httpx.ConnectError:
             self.log(f"'{self.name}' failed to signal successors from {self.name}", level="ERROR")
@@ -229,7 +229,7 @@ class BaseNode(Thread):
         
         # self.log(f"'{self.name}' signaling remote predecessors", level="INFO")
         try:
-            await self.connector.signal_remote_predecessors()
+            self.connector.signal_remote_predecessors()
             self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
         except httpx.ConnectError:
             self.log(f"'{self.name}' failed to signal remote predecessors", level="ERROR")
@@ -287,10 +287,4 @@ class BaseNode(Thread):
         raise NotImplementedError
     
     def run(self) -> None:
-        if self.connector is not None:
-            self.connector.setup_http_client()
-        
-        if self.node_server is not None:
-            self.node_server.setup_http_client()
-        
         asyncio.run(self.run_async())

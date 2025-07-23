@@ -27,8 +27,30 @@ class Connector(FastAPI):
         self.ssl_certfile = ssl_certfile
         self.ssl_ca_certs = ssl_ca_certs
 
-        # If SSL certificates are provided, use them to create the client
-        self.client: httpx.AsyncClient = None
+        # Note: the client will be bound to the PipelineServer's event loop;
+        # this happens when the Connector is initialized when PipelineServer call node.setup_connector()
+        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+            # If no SSL certificates are provided, create a client without them
+            self.client = httpx.AsyncClient()
+            self.scheme = "http"
+        else:
+            # If SSL certificates are provided, use them to create the client
+            try:
+                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.scheme = "https"
+
+                for predecessor_url in self.node.remote_predecessors:
+                    parsed_url = urlparse(predecessor_url)
+                    if parsed_url.scheme != "https":
+                        raise ValueError(f"Invalid URL scheme for remote predecessor: {predecessor_url}. Must be 'https'.")
+
+                for successor_url in self.node.remote_successors:
+                    parsed_url = urlparse(successor_url)
+                    if parsed_url.scheme != "https":
+                        raise ValueError(f"Invalid URL scheme for remote successor: {successor_url}. Must be 'https'.")
+
+            except httpx.ConnectError as e:
+                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
         @self.post("/connect", status_code=status.HTTP_200_OK)
         async def connect(root: NodeConnectionModel) -> NodeConnectionModel:
@@ -56,32 +78,11 @@ class Connector(FastAPI):
     def get_node_url(self) -> str:
         return f"{self.scheme}://{self.host}:{self.port}/{self.node.name}"
 
-    async def close_client(self) -> None:
-        await self.client.aclose()
-    
-    def setup_http_client(self) -> None:
-        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
-            # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient()
-            self.scheme = "http"
-        else:
-            # If SSL certificates are provided, use them to create the client
-            try:
-                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
-                self.scheme = "https"
-                
-                for predecessor_url in self.node.remote_predecessors:
-                    parsed_url = urlparse(predecessor_url)
-                    if parsed_url.scheme != "https":
-                        raise ValueError(f"Invalid URL scheme for remote predecessor: {predecessor_url}. Must be 'https'.")
-
-                for successor_url in self.node.remote_successors:
-                    parsed_url = urlparse(successor_url)
-                    if parsed_url.scheme != "https":
-                        raise ValueError(f"Invalid URL scheme for remote successor: {successor_url}. Must be 'https'.")
-
-            except httpx.ConnectError as e:
-                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
+    def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """
+        Set the event loop for the connector. This is done to ensure the connector uses the same event loop as the server.
+        """
+        self.loop = loop
 
     async def connect(self, client: httpx.AsyncClient) -> List[Coroutine]:
         """
@@ -100,30 +101,56 @@ class Connector(FastAPI):
 
         await asyncio.gather(*task)
     
-    async def signal_remote_predecessors(self):
-        if len(self.node.remote_predecessors) > 0:
-            tasks = []
-            for predecessor_url in self.node.remote_predecessors:
-                node_model: NodeModel = self.node.model()
-                connection_mode = NodeConnectionModel(
-                    **node_model.model_dump(),
-                    node_url=self.get_node_url(),
-                )
-                json = connection_mode.model_dump()
-                tasks.append(self.client.post(f"{predecessor_url}/connector/backward_signal", json=json))
+    def signal_remote_predecessors(self) -> List[Coroutine]:
+        """
+        Signal all remote predecessors that the node has finished processing.
+        Returns a list of coroutines that can be awaited to perform the signaling.
+        """
 
-            await asyncio.gather(*tasks)
-    
-    async def signal_remote_successors(self):
-        if len(self.node.remote_successors) > 0:
-            tasks = []
-            for successor_url in self.node.remote_successors:
-                node_model: NodeModel = self.node.model()
-                connection_mode = NodeConnectionModel(
-                    **node_model.model_dump(),
-                    node_url=self.get_node_url(),
-                )
-                json = connection_mode.model_dump()
-                tasks.append(self.client.post(f"{successor_url}/connector/forward_signal", json=json))
+        async def _signal_remote_predecessors():
+            if len(self.node.remote_predecessors) > 0:
+                tasks = []
+                for predecessor_url in self.node.remote_predecessors:
+                    node_model: NodeModel = self.node.model()
+                    connection_mode = NodeConnectionModel(
+                        **node_model.model_dump(),
+                        node_url=self.get_node_url(),
+                    )
+                    json = connection_mode.model_dump()
+                    tasks.append(self.client.post(f"{predecessor_url}/connector/backward_signal", json=json))
 
-            await asyncio.gather(*tasks)
+                responses = await asyncio.gather(*tasks)
+                return responses
+        
+        if self.loop.is_running():
+            response = asyncio.run_coroutine_threadsafe(_signal_remote_predecessors(), self.loop)
+            return response.result()
+        else:
+            raise RuntimeError("Event loop is not running. Cannot signal remote predecessors.")
+
+    def signal_remote_successors(self) -> List[Coroutine]:
+        """
+        Signal all remote successors that the node has finished processing.
+        Returns a list of coroutines that can be awaited to perform the signaling.
+        """
+
+        async def _signal_remote_successors():
+            if len(self.node.remote_successors) > 0:
+                tasks = []
+                for successor_url in self.node.remote_successors:
+                    node_model: NodeModel = self.node.model()
+                    connection_mode = NodeConnectionModel(
+                        **node_model.model_dump(),
+                        node_url=self.get_node_url(),
+                    )
+                    json = connection_mode.model_dump()
+                    tasks.append(self.client.post(f"{successor_url}/connector/forward_signal", json=json))
+
+                responses = await asyncio.gather(*tasks)
+                return responses
+
+        if self.loop.is_running():
+            response = asyncio.run_coroutine_threadsafe(_signal_remote_successors(), self.loop)
+            return response.result()
+        else:
+            raise RuntimeError("Event loop is not running. Cannot signal remote successors.")

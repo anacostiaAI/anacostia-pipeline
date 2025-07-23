@@ -10,6 +10,7 @@ import sys
 import os
 import json
 from urllib.parse import urlparse
+import asyncio
 
 import uvicorn
 import httpx
@@ -66,6 +67,8 @@ class PipelineServer(FastAPI):
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
         async def lifespan(app: PipelineServer):
+            app.loop = asyncio.get_event_loop()     # Get the event loop of the FastAPI app
+
             if app.logger is not None:
                 app.logger.info(f"Pipeline server '{app.name}' started")
 
@@ -101,6 +104,8 @@ class PipelineServer(FastAPI):
         self.ssl_ca_certs = ssl_ca_certs
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
+
+        self.loop: asyncio.AbstractEventLoop = None
 
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
@@ -355,6 +360,7 @@ class PipelineServer(FastAPI):
 
         # Connect each node to its remote successors
         for connector in self.connectors:
+            connector.set_event_loop(self.loop)  # Set the event loop for the connector
             await connector.connect(client=self.client)
 
         # Connect RPC servers to RPC clients
