@@ -3,6 +3,7 @@ import httpx
 from fastapi import FastAPI, status
 from pydantic import BaseModel
 from typing import List, Union
+import asyncio
 
 
 
@@ -39,7 +40,30 @@ class BaseServer(FastAPI):
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
         self.ssl_ca_certs = ssl_ca_certs
-        self.scheme = "https" if self.ssl_ca_certs and self.ssl_certfile and self.ssl_keyfile else "http"
+
+        if self.client_url is not None:
+            if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+                # If no SSL certificates are provided, create a client without them
+                self.client = httpx.AsyncClient(base_url=self.client_url)
+                self.scheme = "http"
+            else:
+                # If SSL certificates are provided, use them to create the client
+                try:
+                    self.client = httpx.AsyncClient(
+                        base_url=self.client_url, 
+                        verify=self.ssl_ca_certs, 
+                        cert=(self.ssl_certfile, self.ssl_keyfile)
+                    )
+                    self.scheme = "https"
+
+                    # Validate that client_url is using HTTPS if SSL certificates are provided
+                    if self.client_url:
+                        parsed_url = httpx.URL(self.client_url)
+                        if parsed_url.scheme != "https":
+                            raise ValueError(f"Invalid client URL scheme: {self.client_url}. Must be 'https' when SSL certificates are provided.")
+                    
+                except httpx.ConnectError as e:
+                    raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
         if loggers is None:
             self.loggers: List[Logger] = list()
@@ -80,29 +104,17 @@ class BaseServer(FastAPI):
         # sample output: http://127.0.0.1:8000/metadata/api/server
         return f"{self.scheme}://{self.host}:{self.port}{self.get_node_prefix()}"
     
-    async def connect(self, client: httpx.AsyncClient) -> None:
+    def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """
+        Set the event loop for the server. This is done to ensure the server uses the same event loop as the connector.
+        """
+        self.loop = loop
+
+    async def connect(self) -> None:
         if self.client_url is not None:
-            response = await client.post(f"{self.client_url}/api/client/connect", json={"url": self.get_server_url()})
+            response = await self.client.post("/api/client/connect", json={"url": self.get_server_url()})
             message = response.json()["message"]
             self.log(message, level="INFO")
-
-    def setup_http_client(self) -> None:
-        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
-            # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient()
-        else:
-            # If SSL certificates are provided, use them to create the client
-            try:
-                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
-
-                # Validate that client_url is using HTTPS if SSL certificates are provided
-                if self.client_url:
-                    parsed_url = httpx.URL(self.client_url)
-                    if parsed_url.scheme != "https":
-                        raise ValueError(f"Invalid client URL scheme: {self.client_url}. Must be 'https' when SSL certificates are provided.")
-                
-            except httpx.ConnectError as e:
-                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
 
 
@@ -147,10 +159,21 @@ class BaseClient(FastAPI):
         if self.server_url is None:
             @self.post("/connect", status_code=status.HTTP_200_OK)
             async def connect(server: RPCConnectionModel):
-                self.log(f"server '{server.url}' connected to client at 'http://{self.client_host}:{self.client_port}/{self.client_name}'", level="INFO")
+                self.log(f"server '{server.url}' connected to client at '{self.get_client_url()}'", level="INFO")
                 self.server_url = server.url
-                return {"message": f"client 'http://{self.client_host}:{self.client_port}/{self.client_name}' connected to server at '{server.url}'"}
-    
+                self.setup_http_client()
+                return {"message": f"client '{self.get_client_url()}' connected to server at '{server.url}'"}
+
+    def set_credentials(self, host: str, port: int, ssl_keyfile: str, ssl_certfile: str, ssl_ca_certs: str) -> None:
+        self.host = host
+        self.port = port
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_certfile = ssl_certfile
+        self.ssl_ca_certs = ssl_ca_certs
+
+        if self.server_url is not None:
+            self.setup_http_client()
+
     def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
         if isinstance(loggers, Logger):
             self.loggers.append(loggers)
@@ -190,11 +213,15 @@ class BaseClient(FastAPI):
     def setup_http_client(self) -> None:
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient()
+            self.client = httpx.AsyncClient(base_url=self.server_url)
         else:
             # If SSL certificates are provided, use them to create the client
             try:
-                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.client = httpx.AsyncClient(
+                    base_url=self.server_url, 
+                    verify=self.ssl_ca_certs, 
+                    cert=(self.ssl_certfile, self.ssl_keyfile)
+                )
 
                 # Validate that server_url is using HTTPS if SSL certificates are provided
                 if self.server_url:

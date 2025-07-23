@@ -166,6 +166,7 @@ class PipelineServer(FastAPI):
 
         # Mount the apps and connectors to the webserver
         self.connectors: List[Connector] = []
+        self.node_servers: List[BaseServer] = []
         for node in self.pipeline.nodes:
             connector: Connector = node.setup_connector(
                 host=self.host, port=self.port, ssl_ca_certs=ssl_ca_certs, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile
@@ -182,6 +183,7 @@ class PipelineServer(FastAPI):
                 host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
             )
             self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
+            self.node_servers.append(server)                                # add the server to the list of node servers
 
         if remote_clients is not None:
             for rpc_client in remote_clients:
@@ -359,24 +361,27 @@ class PipelineServer(FastAPI):
         # ------------------------------------------------------------------
 
         # Connect each node to its remote successors
+        tasks = []
         for connector in self.connectors:
             connector.set_event_loop(self.loop)  # Set the event loop for the connector
-            await connector.connect(client=self.client)
+            tasks.extend(await connector.connect())
+        await asyncio.gather(*tasks)
 
         # Connect RPC servers to RPC clients
-        task = []
-        for node in self.pipeline.nodes:
-            task.append(node.node_server.connect(client=self.client))
+        tasks = []
+        for node_server in self.node_servers:
+            node_server.set_event_loop(self.loop)  # Set the event loop for the node server
+            tasks.append(node_server.connect())
 
-        await asyncio.gather(*task)
+        await asyncio.gather(*tasks)
 
         # Finish the connection process for each leaf pipeline
         # Leaf pipeline will set the connection event for each node
-        task = []
+        tasks = []
         for leaf_ip_address in self.successor_ip_addresses:
-            task.append(self.client.post(f"{leaf_ip_address}/finish_connect"))
+            tasks.append(self.client.post(f"{leaf_ip_address}/finish_connect"))
 
-        await asyncio.gather(*task)
+        await asyncio.gather(*tasks)
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()

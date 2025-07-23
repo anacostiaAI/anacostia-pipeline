@@ -84,12 +84,12 @@ class Connector(FastAPI):
         """
         self.loop = loop
 
-    async def connect(self, client: httpx.AsyncClient) -> List[Coroutine]:
+    async def connect(self) -> List[Coroutine]:
         """
         Connect to all remote predecessors and successors.
         Returns a list of coroutines that can be awaited to perform the connection.
         """
-        task = []
+        tasks = []
         for connection in self.node.remote_successors:
             node_model: NodeModel = self.node.model()
             connection_mode = NodeConnectionModel(
@@ -97,10 +97,11 @@ class Connector(FastAPI):
                 node_url=self.get_node_url(),
             )
             json = connection_mode.model_dump()
-            task.append(client.post(f"{connection}/connector/connect", json=json))
+            tasks.append(
+                self.client.post(f"{connection}/connector/connect", json=json)
+            )
+        return tasks
 
-        await asyncio.gather(*task)
-    
     def signal_remote_predecessors(self) -> List[Coroutine]:
         """
         Signal all remote predecessors that the node has finished processing.
