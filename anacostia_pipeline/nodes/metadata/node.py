@@ -208,7 +208,7 @@ class BaseMetadataStoreNode(BaseNode):
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             # self.log(f"{self.name} signaling successors that the run has been created", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)
 
             # waiting for all resource nodes to signal they are done using the current state
             # self.log(f"{self.name} waiting for resource nodes to signal they are done using the current state", level='INFO')
@@ -225,4 +225,4 @@ class BaseMetadataStoreNode(BaseNode):
             # signal to all successors that the run has ended; i.e., end pipeline execution
             # self.log(f"{self.name} signaling successors that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)

@@ -324,7 +324,7 @@ class BaseResourceNode(BaseNode, ABC):
             # e.g., there is enough new data to trigger the next run
             # self.log(f"{self.name} signaling metadata store that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_predecessors(Result.SUCCESS)
+            self.signal_predecessors(Result.SUCCESS)
 
             # wait for metadata store node to finish creating the run 
             # self.log(f"{self.name} waiting for metadata store to finish creating the run", level='INFO')
@@ -340,7 +340,7 @@ class BaseResourceNode(BaseNode, ABC):
             # signalling to all successors that the resource is ready to be used for the current run
             # self.log(f"{self.name} signaling successors that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)
 
             # waiting for all successors to finish using the the resource for the current run
             # self.log(f"{self.name} waiting for successors to finish using the resource", level='INFO')
@@ -350,7 +350,7 @@ class BaseResourceNode(BaseNode, ABC):
             # signal the metadata store node that the action nodes have finish using the resource for the current run
             # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_predecessors(Result.SUCCESS)
+            self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
             # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')

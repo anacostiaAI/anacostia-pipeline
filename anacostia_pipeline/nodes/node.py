@@ -198,7 +198,7 @@ class BaseNode(Thread):
                 return
         return log_exception_wrapper
     
-    async def signal_successors(self, result: Result):
+    def signal_successors(self, result: Result):
         # self.log(f"'{self.name}' signaling local successors", level="INFO")
         if len(self.successors) > 0:
             for successor in self.successors:
@@ -221,7 +221,7 @@ class BaseNode(Thread):
         for event in self.successor_events.values():
             event.clear()
     
-    async def signal_predecessors(self, result: Result):
+    def signal_predecessors(self, result: Result):
         # self.log(f"'{self.name}' signaling local predecessors", level="INFO")
         if len(self.predecessors) > 0:
             for predecessor in self.predecessors:
