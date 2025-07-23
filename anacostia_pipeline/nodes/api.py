@@ -148,6 +148,8 @@ class BaseClient(FastAPI):
         # this capability is useful for use cases where developers want to log metrics from a deployment environment
         self.server_url = server_url
 
+        self.loop: asyncio.AbstractEventLoop = None
+
         if loggers is None:
             self.loggers: List[Logger] = list()
         else:
@@ -163,6 +165,12 @@ class BaseClient(FastAPI):
                 self.server_url = server.url
                 self.setup_http_client()
                 return {"message": f"client '{self.get_client_url()}' connected to server at '{server.url}'"}
+
+    def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """
+        Set the event loop for the client. This is done to ensure the client uses the same event loop as the server.
+        """
+        self.loop = loop
 
     def set_credentials(self, host: str, port: int, ssl_keyfile: str, ssl_certfile: str, ssl_ca_certs: str) -> None:
         self.host = host

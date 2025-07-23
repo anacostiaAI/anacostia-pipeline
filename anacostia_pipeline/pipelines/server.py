@@ -63,6 +63,8 @@ class PipelineServer(FastAPI):
             num_metadata_clients = len([client for client in remote_clients if isinstance(client, BaseMetadataStoreClient)])
             if num_metadata_clients > 1:
                 raise InvalidPipelineError("Only one BaseMetadataStoreClient is allowed in the pipeline. Found multiple metadata store nodes.")
+        
+        self.remote_clients = remote_clients if remote_clients is not None else []
 
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
@@ -372,8 +374,11 @@ class PipelineServer(FastAPI):
         for node_server in self.node_servers:
             node_server.set_event_loop(self.loop)  # Set the event loop for the node server
             tasks.append(node_server.connect())
-
         await asyncio.gather(*tasks)
+
+        # Set the event loop for each remote client
+        for remote_client in self.remote_clients:
+            remote_client.set_event_loop(self.loop)
 
         # Finish the connection process for each leaf pipeline
         # Leaf pipeline will set the connection event for each node
