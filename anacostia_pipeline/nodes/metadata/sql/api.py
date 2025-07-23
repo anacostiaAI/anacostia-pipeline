@@ -2,8 +2,9 @@ from typing import List, Union, Dict
 from logging import Logger
 import json
 from datetime import datetime
+import asyncio
 
-from fastapi import Request
+from fastapi import Request, status
 import httpx
 
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreServer, BaseMetadataStoreClient
@@ -217,10 +218,23 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             num_entries = response.json()["num_entries"]
             return num_entries
 
-    async def log_metrics(self, node_name: str, **kwargs):
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/log_metrics/?node_name={node_name}", json=kwargs)
-    
+    def log_metrics(self, node_name: str, **kwargs):
+        """
+        Log metrics for a specific node.
+        This method sends a POST request to the server to log metrics.
+        """
+        async def _log_metrics(node_name: str, **kwargs):
+            try:
+                response = await self.client.post(f"/log_metrics/?node_name={node_name}", json=kwargs)
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log metrics failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error logging metrics: {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_log_metrics(node_name, **kwargs), self.loop)
+        return task.result()
+
     async def log_params(self, node_name: str, **kwargs):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_server_url()}/log_params/?node_name={node_name}", json=kwargs)

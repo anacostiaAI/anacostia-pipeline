@@ -44,12 +44,10 @@ class ShakespeareEvalNode(BaseActionNode):
 
     async def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        """
         try:
-            await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
+            self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
-        """
         return True
 
 

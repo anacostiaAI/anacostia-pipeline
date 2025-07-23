@@ -190,8 +190,13 @@ class PipelineServer(FastAPI):
         if remote_clients is not None:
             for rpc_client in remote_clients:
                 rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
-                rpc_client.client_host = self.host
-                rpc_client.client_port = self.port
+                rpc_client.set_credentials(
+                    host=self.host, 
+                    port=self.port, 
+                    ssl_keyfile=ssl_keyfile, 
+                    ssl_certfile=ssl_certfile, 
+                    ssl_ca_certs=ssl_ca_certs
+                )
                 self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
         
         self.predecessor_host = None

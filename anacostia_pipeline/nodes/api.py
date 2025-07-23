@@ -211,7 +211,9 @@ class BaseClient(FastAPI):
     
     def get_server_url(self):
         if self.server_url is None:
-            raise NetworkConnectionNotEstablished(f"server_url = None, this is likely due to client {self.client_name} has not been connected to a server yet.")
+            raise NetworkConnectionNotEstablished(
+                f"server_url = None, this is likely because the client '{self.client_name}' has not been connected to a server yet."
+            )
         return self.server_url
     
     def get_client_url(self):
