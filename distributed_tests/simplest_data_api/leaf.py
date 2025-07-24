@@ -1,5 +1,4 @@
 import os
-import shutil
 from typing import List
 from pathlib import Path
 
@@ -61,7 +60,7 @@ webserver = PipelineServer(
     pipeline=pipeline,
     host=args.host, 
     port=args.port,
-    remote_clients=[metadata_store_rpc,], 
+    remote_clients=[metadata_store_rpc], 
     ssl_ca_certs=mkcert_ca,
     ssl_certfile=ssl_certfile,
     ssl_keyfile=ssl_keyfile,
