@@ -292,7 +292,7 @@ class BaseResourceNode(BaseNode, ABC):
             
             self.resource_event.set()
 
-    async def run_async(self) -> None:
+    def run(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
             self.start_monitoring()
@@ -308,7 +308,7 @@ class BaseResourceNode(BaseNode, ABC):
 
         if self.metadata_store_client is not None and self.metadata_store is not None and self.wait_for_connection is True:
             entries = self.metadata_store.get_entries(self.name)
-            await self.metadata_store_client.merge_artifacts_table(self.name, entries)
+            self.metadata_store_client.merge_artifacts_table(self.name, entries)
 
         while self.exit_event.is_set() is False:
             

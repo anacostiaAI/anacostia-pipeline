@@ -199,12 +199,27 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_server_url()}/create_entry/", json=data)
     
-    async def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
-        async with httpx.AsyncClient() as client:
+    def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
+        """
+        Merge artifacts table with the provided entries.
+        This method sends a POST request to the server to merge the artifacts table.
+        """
+
+        async def _merge_artifacts_table(resource_node_name: str, entries: List[Dict]):
             for entry in entries:
                 entry["created_at"] = entry["created_at"].isoformat()
             json_data = json.dumps(entries, indent=4)
-            response = await client.post(f"{self.get_server_url()}/merge_artifacts_table/?resource_node_name={resource_node_name}", json=json_data)
+        
+            try:
+                response = await self.client.post(f"/merge_artifacts_table/?resource_node_name={resource_node_name}", json=json_data)
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Merge artifacts table failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error merging artifacts table: {e}", level="ERROR")
+                raise e
+        
+        task = asyncio.run_coroutine_threadsafe(_merge_artifacts_table(resource_node_name, entries), self.loop)
+        return task.result()
     
     async def entry_exists(self, resource_node_name: str, location: str):
         async with httpx.AsyncClient() as client:
@@ -223,6 +238,7 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         Log metrics for a specific node.
         This method sends a POST request to the server to log metrics.
         """
+
         async def _log_metrics(node_name: str, **kwargs):
             try:
                 response = await self.client.post(f"/log_metrics/?node_name={node_name}", json=kwargs)
