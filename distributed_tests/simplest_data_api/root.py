@@ -45,7 +45,7 @@ class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, remote_successors: List[str] = None) -> None:
         super().__init__(name=name, predecessors=predecessors, remote_successors=remote_successors)
 
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Logging node executed", level="INFO")
         return True
 

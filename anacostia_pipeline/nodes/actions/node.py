@@ -50,7 +50,7 @@ class BaseActionNode(BaseNode):
         pass
 
     @BaseNode.log_exception
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         """
         the logic for a particular stage in your MLOps pipeline
         """
@@ -80,7 +80,7 @@ class BaseActionNode(BaseNode):
         """
         pass
 
-    async def run_async(self) -> None:
+    def run(self) -> None:
         if self.wait_for_connection:
             self.log(f"'{self.name}' waiting for root predecessors to connect", level='INFO')
             
@@ -104,7 +104,7 @@ class BaseActionNode(BaseNode):
             try:
                 if self.exit_event.is_set(): return
                 self.status = Status.EXECUTING
-                ret = await self.execute()
+                ret = self.execute()
                 
                 if self.exit_event.is_set(): return
                 

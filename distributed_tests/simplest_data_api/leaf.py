@@ -42,7 +42,7 @@ class ShakespeareEvalNode(BaseActionNode):
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
         self.metadata_store_rpc = metadata_store_rpc
 
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         try:
             self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
