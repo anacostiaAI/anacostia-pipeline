@@ -35,7 +35,7 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
 
         # note: make sure the node_name is the same as the name of the node in the client, 
         # essentially we are showing how to get the metrics logged by the client, and the client can be anywhere
-        node_name = "edge_deployment"
+        node_name = "edge_deployment_client"
         metrics = self.get_metrics(node_name=node_name, run_id=run_id)
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
         highest_accuracy = max(accuracy_scores)

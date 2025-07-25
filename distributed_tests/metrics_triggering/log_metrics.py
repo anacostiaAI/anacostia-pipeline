@@ -18,9 +18,9 @@ asyncio.set_event_loop(loop)
 
 # make sure metadata_store_name is the same as the name of the metadata store in the pipeline
 metadata_store_name = "metadata_store"
-node_name = "edge_deployment"
+node_name = "edge_deployment_client"
 metadata_store_client = SQLMetadataStoreClient(
-    client_name="metadata_store_client", 
+    client_name=node_name, 
     server_url=f"http://127.0.0.1:8000/{metadata_store_name}/api/server",
     loggers=logger
 )
@@ -31,7 +31,7 @@ metadata_store_client.set_event_loop(loop)      # register the event loop with t
 # In an actual implementation, you could use the metadata_store_client to interact with the metadata store from anywhere, 
 # i.e., from inside a FastAPI server where your model is running.
 def run_test():
-    logger.info(f"Added node {node_name} to metadata store client")
+    logger.info(f"Register remote client '{node_name}' with metadata store '{metadata_store_name}'")
     metadata_store_client.add_node(
         node_name=node_name, 
         node_type=type(metadata_store_client).__name__, 
