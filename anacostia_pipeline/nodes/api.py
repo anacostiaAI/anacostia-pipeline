@@ -172,6 +172,9 @@ class BaseClient(FastAPI):
                 self.server_url = server.url
                 self.setup_http_client()
                 return {"message": f"client '{self.get_client_url()}' connected to server at '{server.url}'"}
+        else:
+            self.setup_http_client()
+            self.log(f"Client '{self.get_client_url()}' initialized, connected to {self.server_url}", level="INFO")
 
     def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """
@@ -231,6 +234,12 @@ class BaseClient(FastAPI):
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
             self.client = httpx.AsyncClient(base_url=self.server_url)
+
+            # Validate that server_url is using HTTPS if SSL certificates are provided
+            if self.server_url:
+                parsed_url = httpx.URL(self.server_url)
+                if parsed_url.scheme != "http":
+                    raise ValueError(f"Invalid server URL scheme: {self.server_url}. Must be 'http' when SSL certificates are not provided.")
         else:
             # If SSL certificates are provided, use them to create the client
             try:

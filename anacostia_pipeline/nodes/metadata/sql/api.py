@@ -156,11 +156,15 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             *args, **kwargs
         )
 
-    async def add_node(self, node_name: str, node_type: str, base_type: str):
-        async with httpx.AsyncClient() as client:
+    def add_node(self, node_name: str, node_type: str, base_type: str):
+        """
+        Register node with metadata store on root pipeline.
+        """
+
+        async def _add_node(node_name: str, node_type: str, base_type: str):
             try:
-                response = await client.post(
-                    f"{self.get_server_url()}/add_node/", 
+                response = await self.client.post(
+                    url="/add_node/", 
                     json={"node_name": node_name, "node_type": node_type, "base_type": base_type}
                 )
                 if response.status_code != 200:
@@ -168,6 +172,9 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             except Exception as e:
                 self.log(f"Error adding node: {e}", level="ERROR")
                 raise e
+        
+        task = asyncio.run_coroutine_threadsafe(_add_node(node_name, node_type, base_type), self.loop)
+        return task.result()
 
     async def get_run_id(self):
         async with httpx.AsyncClient() as client:

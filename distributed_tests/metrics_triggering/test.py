@@ -51,7 +51,7 @@ class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None) -> None:
         super().__init__(name=name, predecessors=predecessors)
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Logging node executed", level="INFO")
         return True
 
@@ -68,5 +68,12 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+webserver = PipelineServer(
+    name="test_pipeline", 
+    pipeline=pipeline, 
+    host="127.0.0.1", 
+    port=8000, 
+    logger=logger, 
+    uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
+)
 webserver.run()
