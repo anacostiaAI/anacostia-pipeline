@@ -31,7 +31,7 @@ metadata_store_client.set_event_loop(loop)      # register the event loop with t
 # In an actual implementation, you could use the metadata_store_client to interact with the metadata store from anywhere, 
 # i.e., from inside a FastAPI server where your model is running.
 def run_test():
-    logger.info(f"Register remote client '{node_name}' with metadata store '{metadata_store_name}'")
+    logger.info(f"Registered remote client '{node_name}' with metadata store '{metadata_store_name}'")
     metadata_store_client.add_node(
         node_name=node_name, 
         node_type=type(metadata_store_client).__name__, 
