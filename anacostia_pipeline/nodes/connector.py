@@ -109,25 +109,25 @@ class Connector(FastAPI):
         """
 
         async def _signal_remote_predecessors():
-            if len(self.node.remote_predecessors) > 0:
-                tasks = []
-                for predecessor_url in self.node.remote_predecessors:
-                    node_model: NodeModel = self.node.model()
-                    connection_mode = NodeConnectionModel(
-                        **node_model.model_dump(),
-                        node_url=self.get_node_url(),
-                    )
-                    json = connection_mode.model_dump()
-                    tasks.append(self.client.post(f"{predecessor_url}/connector/backward_signal", json=json))
+            tasks = []
+            for predecessor_url in self.node.remote_predecessors:
+                node_model: NodeModel = self.node.model()
+                connection_mode = NodeConnectionModel(
+                    **node_model.model_dump(),
+                    node_url=self.get_node_url(),
+                )
+                json = connection_mode.model_dump()
+                tasks.append(self.client.post(f"{predecessor_url}/connector/backward_signal", json=json))
 
-                responses = await asyncio.gather(*tasks)
-                return responses
+            responses = await asyncio.gather(*tasks)
+            return responses
         
-        if self.loop.is_running():
-            response = asyncio.run_coroutine_threadsafe(_signal_remote_predecessors(), self.loop)
-            return response.result()
-        else:
-            raise RuntimeError("Event loop is not running. Cannot signal remote predecessors.")
+        if len(self.node.remote_predecessors) > 0:
+            if self.loop.is_running():
+                response = asyncio.run_coroutine_threadsafe(_signal_remote_predecessors(), self.loop)
+                return response.result()
+            else:
+                raise RuntimeError("Event loop is not running. Cannot signal remote predecessors.")
 
     def signal_remote_successors(self) -> List[Coroutine]:
         """
@@ -136,22 +136,22 @@ class Connector(FastAPI):
         """
 
         async def _signal_remote_successors():
-            if len(self.node.remote_successors) > 0:
-                tasks = []
-                for successor_url in self.node.remote_successors:
-                    node_model: NodeModel = self.node.model()
-                    connection_mode = NodeConnectionModel(
-                        **node_model.model_dump(),
-                        node_url=self.get_node_url(),
-                    )
-                    json = connection_mode.model_dump()
-                    tasks.append(self.client.post(f"{successor_url}/connector/forward_signal", json=json))
+            tasks = []
+            for successor_url in self.node.remote_successors:
+                node_model: NodeModel = self.node.model()
+                connection_mode = NodeConnectionModel(
+                    **node_model.model_dump(),
+                    node_url=self.get_node_url(),
+                )
+                json = connection_mode.model_dump()
+                tasks.append(self.client.post(f"{successor_url}/connector/forward_signal", json=json))
 
-                responses = await asyncio.gather(*tasks)
-                return responses
+            responses = await asyncio.gather(*tasks)
+            return responses
 
-        if self.loop.is_running():
-            response = asyncio.run_coroutine_threadsafe(_signal_remote_successors(), self.loop)
-            return response.result()
-        else:
-            raise RuntimeError("Event loop is not running. Cannot signal remote successors.")
+        if len(self.node.remote_successors) > 0:
+            if self.loop.is_running():
+                response = asyncio.run_coroutine_threadsafe(_signal_remote_successors(), self.loop)
+                return response.result()
+            else:
+                raise RuntimeError("Event loop is not running. Cannot signal remote successors.")
