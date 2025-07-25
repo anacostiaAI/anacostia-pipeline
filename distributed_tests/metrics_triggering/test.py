@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 from logging.config import dictConfig
 from typing import List
 
@@ -22,6 +23,13 @@ data_store_path = f"{tests_path}/data_store"
 
 dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("root_anacostia")
+
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 
@@ -74,6 +82,9 @@ webserver = PipelineServer(
     host="127.0.0.1", 
     port=8000, 
     logger=logger, 
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
 webserver.run()
