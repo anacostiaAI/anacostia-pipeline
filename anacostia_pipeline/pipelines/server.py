@@ -80,6 +80,7 @@ class PipelineServer(FastAPI):
 
             app.background_task = asyncio.create_task(app.process_queue())
 
+            app.pipeline.launch_nodes()   # Launch the nodes in the pipeline
             await app.connect()     # Connect to the leaf services
 
             yield
@@ -90,6 +91,9 @@ class PipelineServer(FastAPI):
                 await app.background_task
             except asyncio.CancelledError:
                 pass
+
+            app.pipeline.terminate_nodes()  # Terminate the root pipeline
+            await app.disconnect()  # Disconnect from the leaf services
 
             if app.logger is not None:
                 app.logger.info(f"Pipeline server '{app.name}' shut down")
@@ -425,44 +429,13 @@ class PipelineServer(FastAPI):
         model["edges"] = edges
         return model
 
+    async def disconnect(self):
+        await self.client.aclose()
+        for connector in self.connectors:
+            await connector.client.aclose()
+
     def run(self):
-        # Store original signal handlers
-        original_sigint_handler = signal.getsignal(signal.SIGINT)
-        original_sigterm_handler = signal.getsignal(signal.SIGTERM)
-
-        def _kill_webserver(sig, frame):
-
-            # Stop the server
-            print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
-            self.server.should_exit = True
-            self.fastapi_thread.join()
-            print(f"Anacostia leaf webserver {self.name} Killed...")
-
-            # Terminate the pipeline
-            print("Killing leaf pipeline...")
-            self.pipeline.terminate_nodes()
-            print("Leaf pipeline Killed.")
-
-            # register the original default kill handler once the pipeline is killed
-            signal.signal(signal.SIGINT, original_sigint_handler)
-            signal.signal(signal.SIGTERM, original_sigterm_handler)
-
-            # If this was SIGTERM, we might want to exit the process
-            if sig == signal.SIGTERM:
-                sys.exit(0)
-
-        # register the kill handler for the webserver
-        signal.signal(signal.SIGINT, _kill_webserver)
-        signal.signal(signal.SIGTERM, _kill_webserver)
-
-        # Start the webserver
-        self.fastapi_thread.start()
-
-        self.pipeline.launch_nodes()
-
-        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
-        # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9
-        for thread in threading.enumerate():
-            if thread.daemon or thread is threading.current_thread():
-                continue
-            thread.join()
+        try:
+            self.server.run()       # start the server
+        except (KeyboardInterrupt, SystemExit):
+            pass
