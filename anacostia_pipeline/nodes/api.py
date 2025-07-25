@@ -17,9 +17,13 @@ class NetworkConnectionNotEstablished(Exception):
         super().__init__(message)
 
 
-# provides endpoints for client to call to execute remote procedure calls
-# endpoints call methods on the node
 class BaseServer(FastAPI):
+    """
+    BaseServer is a FastAPI application that acts as a server to handle remote procedure calls from clients.
+    Pipelines can use BaseServer to expose endpoints for clients on other pipelines to request data, models, metrics, and more.
+    Pipelines can also use BaseServer to connect to clients on other pipelines.
+    """
+    
     def __init__(
         self, 
         node, 
@@ -118,9 +122,12 @@ class BaseServer(FastAPI):
 
 
 
-# sends a connection request to the server
-# provides methods for pipeline to call to do a remote procedure call on the node attached to the server
 class BaseClient(FastAPI):
+    """
+    BaseClient is a FastAPI application that acts as a client to connect to a BaseServer.
+    Pipelines can use BaseClient to connect to a server and perform remote procedure calls to retrieve data, models, metrics, and more.
+    """
+
     def __init__(
         self, 
         client_name: str, 
