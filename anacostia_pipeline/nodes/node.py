@@ -7,11 +7,10 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import json
-import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.nodes.utils import NodeModel, NodeConnectionModel
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer
@@ -280,11 +279,5 @@ class BaseNode(Thread):
         """
         pass
     
-    async def run_async(self) -> None:
-        """
-        override to specify the logic of the node.
-        """
-        raise NotImplementedError
-    
     def run(self) -> None:
-        asyncio.run(self.run_async())
+        raise NotImplementedError("run() method is to be implemented in BaseMetadataStoreNode, BaseResourceNode, and BaseActionNode.")
