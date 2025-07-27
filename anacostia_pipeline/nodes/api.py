@@ -4,6 +4,7 @@ from fastapi import FastAPI, status
 from pydantic import BaseModel
 from typing import List, Union
 import asyncio
+import threading
 
 
 
@@ -175,6 +176,19 @@ class BaseClient(FastAPI):
         else:
             self.setup_http_client()
             self.log(f"Client '{self.get_client_url()}' initialized, connected to {self.server_url}", level="INFO")
+            
+            # Function to start and run the event loop in a separate thread
+            def start_loop(loop: asyncio.AbstractEventLoop):
+                asyncio.set_event_loop(loop)
+                loop.run_forever()
+
+            # Create and start the event loop thread
+            self.loop = asyncio.new_event_loop()
+            self.loop_thread = threading.Thread(target=start_loop, args=(self.loop,), daemon=True)
+
+            # Note: when the client is given a server_url, we assume it is not being mounted into PipelineServer.
+            # Instead, it is being run independently, so we create an event loop for it, and run it in a separate thread.
+            # Therefore, all of the client methods that interact with the server will be submitted to this event loop.
 
     def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """
@@ -257,3 +271,19 @@ class BaseClient(FastAPI):
 
             except httpx.ConnectError as e:
                 raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
+
+    def start_client(self) -> None:
+        """
+        Start the client by starting its event loop in a separate thread.
+        This is useful for running the client without a PipelineServer,
+        allowing it to run independently and handle requests asynchronously.
+        """
+
+        try:
+            self.loop_thread.start()
+            self.log("Event loop started in a separate thread", level="INFO")
+
+        except (KeyboardInterrupt, SystemExit):
+            self.log("Event loop stopped by user", level="INFO")
+            self.loop.call_soon_threadsafe(self.loop.stop)
+            self.loop_thread.join()
