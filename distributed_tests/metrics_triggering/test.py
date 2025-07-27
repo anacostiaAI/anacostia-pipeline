@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from logging.config import dictConfig
 from typing import List
+import signal
 
 from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
@@ -76,7 +77,7 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = PipelineServer(
+server = PipelineServer(
     name="test_pipeline", 
     pipeline=pipeline, 
     host="127.0.0.1", 
@@ -87,4 +88,4 @@ webserver = PipelineServer(
     ssl_keyfile=ssl_keyfile,
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
-webserver.run()
+server.run()

@@ -65,6 +65,7 @@ class PipelineServer(FastAPI):
                 raise InvalidPipelineError("Only one BaseMetadataStoreClient is allowed in the pipeline. Found multiple metadata store nodes.")
         
         self.remote_clients = remote_clients if remote_clients is not None else []
+        self.uvicorn_access_log_config = uvicorn_access_log_config
 
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
@@ -140,18 +141,6 @@ class PipelineServer(FastAPI):
         DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
-
-        config = uvicorn.Config(
-            self, 
-            host="0.0.0.0", 
-            port=self.port, 
-            ssl_keyfile=ssl_keyfile, 
-            ssl_certfile=ssl_certfile, 
-            ssl_ca_certs=ssl_ca_certs,
-            log_config=uvicorn_access_log_config
-        )
-        self.server = uvicorn.Server(config)
-        self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
         # get the successor ip addresses
         self.successor_ip_addresses = []
@@ -435,7 +424,50 @@ class PipelineServer(FastAPI):
             await connector.client.aclose()
 
     def run(self):
-        try:
-            self.server.run()       # start the server
-        except (KeyboardInterrupt, SystemExit):
-            pass
+        # Store original signal handlers
+        original_sigint_handler = signal.getsignal(signal.SIGINT)
+        original_sigterm_handler = signal.getsignal(signal.SIGTERM)
+
+        config = uvicorn.Config(
+            app=self, 
+            host="0.0.0.0", 
+            port=self.port, 
+            ssl_keyfile=self.ssl_keyfile, 
+            ssl_certfile=self.ssl_certfile, 
+            ssl_ca_certs=self.ssl_ca_certs,
+            log_config=self.uvicorn_access_log_config
+        )
+        server = uvicorn.Server(config)
+        fastapi_thread = threading.Thread(target=server.run, name=self.name)
+
+        def _kill_webserver(sig, frame):
+
+            # Stop the server
+            print(f"\nCTRL+C Caught!; Killing pipeline server '{self.name}', this might take a few minutes...")
+            self.logger.info(f"CTRL+C Caught!; Killing pipeline server '{self.name}'...")
+            server.should_exit = True
+            fastapi_thread.join()
+            print(f"Pipeline server '{self.name}' Killed...")
+            self.logger.info(f"Pipeline server '{self.name}' Killed...")
+
+            # register the original default kill handler once the pipeline is killed
+            signal.signal(signal.SIGINT, original_sigint_handler)
+            signal.signal(signal.SIGTERM, original_sigterm_handler)
+
+            # If this was SIGTERM, we exit the process
+            if sig == signal.SIGTERM:
+                sys.exit(0)
+
+        # register the kill handler for the webserver
+        signal.signal(signal.SIGINT, _kill_webserver)
+        signal.signal(signal.SIGTERM, _kill_webserver)
+
+        # Start the webserver
+        fastapi_thread.start()
+
+        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
+        # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9
+        for thread in threading.enumerate():
+            if thread.daemon or thread is threading.current_thread():
+                continue
+            thread.join()
