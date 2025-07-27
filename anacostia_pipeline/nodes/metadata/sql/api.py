@@ -156,6 +156,10 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             *args, **kwargs
         )
 
+        if server_url is not None:
+            self.start_client()  # Start the client to connect to the metadata store server
+            self.add_node(node_name=client_name, node_type=type(self).__name__, base_type="BaseMetadataStoreClient")
+
     def add_node(self, node_name: str, node_type: str, base_type: str):
         """
         Register node with metadata store on root pipeline.

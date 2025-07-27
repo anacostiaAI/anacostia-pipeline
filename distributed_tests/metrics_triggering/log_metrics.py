@@ -31,19 +31,10 @@ metadata_store_client = SQLMetadataStoreClient(
     ssl_keyfile=ssl_keyfile,
     loggers=logger
 )
-metadata_store_client.start_client()    # Start the client to connect to the metadata store server
-
 
 # Note: This is a simplified example of how you might log metrics to the metadata store via the metadata store client.
 # In an actual implementation, you could use the metadata_store_client to interact with the metadata store from anywhere, 
 # i.e., from inside a FastAPI server where your model is running.
-logger.info(f"Registered remote client '{node_name}' with metadata store '{metadata_store_name}'")
-metadata_store_client.add_node(
-    node_name=node_name, 
-    node_type=type(metadata_store_client).__name__, 
-    base_type="BaseMetadataStoreClient"
-)
-
 for i in range(10):
     percent_accuracy = i / 10
     metadata_store_client.log_metrics(node_name=node_name, percent_accuracy=percent_accuracy)
