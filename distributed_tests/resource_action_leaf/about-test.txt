@@ -1,0 +1,19 @@
+Test Objective: test if pipeline can trigger correctly if the resource node is on a leaf pipeline
+
+Pipeline Strucutre: 
+    - root pipeline: http://127.0.0.1:8000
+        - SQLiteMetadataStoreNode: metadata_store
+            - remote successors: http://127.0.0.1:8001/leaf_data_node
+            - remote clients: http://127.0.0.1:8001/metadata_store_rpc
+    - leaf pipeline: http://127.0.0.1:8001
+        - SQLMetadataStoreClient: metadata_store_rpc
+        - FilesystemStoreNode: leaf_data_node
+            - local successors: shakespeare_eval
+            - folder monitored: ./leaf-artifacts/input_artifacts/shakespeare/
+        - EvalNode: shakespeare_eval 
+
+Experimental Procedure:
+    1. Run setup.py to remove all artifacts from previous run and create folders for this run
+    2. Spin up leaf pipeline
+    3. Spin up root pipeline
+    4. Run create_files.py to create files inside the ./leaf-artifacts/input_artifacts/shakespeare/ folder (this will trigger the pipeline)
