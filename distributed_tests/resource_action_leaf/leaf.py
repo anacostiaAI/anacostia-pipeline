@@ -37,7 +37,7 @@ class EvalNode(BaseActionNode):
         super().__init__(name=name, predecessors=[leaf_data_node], loggers=loggers)
         self.leaf_data_node = leaf_data_node
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
         """
@@ -81,9 +81,6 @@ service = PipelineServer(
     port=args.port, 
     remote_clients=[metadata_store_client],
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
     logger=logger,
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
