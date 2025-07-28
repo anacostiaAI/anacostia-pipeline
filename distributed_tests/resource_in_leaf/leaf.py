@@ -1,8 +1,10 @@
-from typing import List, Dict, Union
+from typing import List
 import logging
 from logging import Logger
 from logging.config import dictConfig
 import argparse
+from pathlib import Path
+import os
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.server import PipelineServer
@@ -28,6 +30,14 @@ shakespeare_output_path = f"{output_path}/shakespeare"
 dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("leaf_anacostia")
 
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
+
+
 
 class EvalNode(BaseActionNode):
     def __init__(
@@ -39,27 +49,6 @@ class EvalNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        
-        """
-        try:
-            await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
-        except Exception as e:
-            self.log(f"Failed to log metrics: {e}", level="ERROR")
-        
-        try:
-            run_id = await self.metadata_store_rpc.get_run_id()
-            await self.root_data_rpc.get_artifact(filepath=f"model{run_id}.txt")
-        except Exception as e:
-            self.log(f"Failed to get artifact: {e}", level="ERROR")
-        
-        try:
-            num_artifacts = await self.root_data_rpc.get_num_artifacts()
-            artifacts = await self.root_data_rpc.list_artifacts()
-            self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
-        except Exception as e:
-            self.log(f"Failed to list artifacts: {e}", level="ERROR")
-        """
-            
         return True
 
 
@@ -82,6 +71,9 @@ service = PipelineServer(
     remote_clients=[metadata_store_client],
     allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
     logger=logger,
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
 
