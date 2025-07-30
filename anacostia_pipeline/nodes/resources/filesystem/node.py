@@ -87,7 +87,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
     def start_monitoring(self) -> None:
 
-        async def _monitor_thread_func():
+        def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
                 for root, dirnames, filenames in os.walk(self.path):
@@ -100,9 +100,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
 
                         try:
-                            entry_exists = await self.entry_exists(filepath) 
+                            entry_exists = self.entry_exists(filepath) 
                             if entry_exists is False:
-                                await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
+                                self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
                         except Exception as e:
@@ -110,7 +110,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
                 if self.exit_event.is_set() is True: break
                 try:
-                    await self.resource_trigger()
+                    self.resource_trigger()
                 
                 except NetworkConnectionNotEstablished as e:
                     pass
@@ -130,7 +130,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
         # since we are using asyncio.run, we need to create a new thread to run the event loop 
         # because we can't run an event loop in the same thread as the FilesystemStoreNode
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, args=())
         self.observer_thread.start()
 
     def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
@@ -140,14 +140,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    async def resource_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
         resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
-        num_new_artifacts = await self.get_num_artifacts("new")
-        if num_new_artifacts > 0:
-            await self.trigger(message=f"New files detected in {self.resource_path}")
+
+        if self.connection_event.is_set():
+            num_new_artifacts = self.get_num_artifacts("new")
+            if num_new_artifacts > 0:
+                self.trigger(message=f"New files detected in {self.resource_path}")
     
     async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """

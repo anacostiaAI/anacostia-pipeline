@@ -50,7 +50,7 @@ class FilesystemStoreGUI(BaseGUI):
                 file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
             else:
                 if self.metadata_store_client is not None:
-                    file_entries = await self.metadata_store_client.get_entries(resource_node_name=self.node.name)
+                    file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
             self.displayed_file_entries = file_entries
             file_entries.reverse()

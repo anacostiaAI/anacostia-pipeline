@@ -52,13 +52,13 @@ class BaseMetadataStoreClient(BaseClient):
             *args, **kwargs
         )
 
-    async def add_node(self, node_name: str, node_type: str, base_type: str):
+    def add_node(self, node_name: str, node_type: str, base_type: str):
         raise NotImplementedError("add_node method not implemented in SqliteMetadataRPCclient")
     
     async def get_node_id(self, node_name: str):
         raise NotImplementedError("get_node_id method not implemented in SqliteMetadataRPCclient")
     
-    async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
+    def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
         raise NotImplementedError("create_entry method not implemented in SqliteMetadataRPCclient")
     
     def merge_artifacts_table(self, resource_node_name: str, entries: List[dict]):
@@ -88,11 +88,9 @@ class BaseMetadataStoreClient(BaseClient):
     async def get_entries(self, resource_node_name: str, state: str):
         raise NotImplementedError("get_entries method not implemented in SqliteMetadataRPCclient")
     
-    async def get_num_entries(self, resource_node_name: str, state: str):
+    def get_num_entries(self, resource_node_name: str, state: str):
         raise NotImplementedError("get_num_entries method not implemented in SqliteMetadataRPCclient")
     
-    async def log_trigger(self, node_name: str, message: str):
+    def log_trigger(self, node_name: str, message: str):
         raise NotImplementedError("log_trigger method not implemented in SqliteMetadataRPCclient")
     
-    async def get_num_entries(self, resource_node_name: str, state: str):
-        raise NotImplementedError("get_num_entries method not implemented in SqliteMetadataRPCclient")

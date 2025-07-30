@@ -180,22 +180,41 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_add_node(node_name, node_type, base_type), self.loop)
         return task.result()
 
-    async def get_run_id(self):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_run_id/")
+    def get_run_id(self):
+        """ 
+        Get the current run ID from the metadata store.
+        """
+
+        async def _get_run_id():
+            response = await self.client.get(f"/get_run_id")
             run_id = response.json()["run_id"]
             return run_id
 
-    async def get_node_id(self, node_name: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_node_id/?node_name={node_name}")
+        task = asyncio.run_coroutine_threadsafe(_get_run_id(), self.loop)
+        return task.result()
+
+    def get_node_id(self, node_name: str):
+        """
+        Get the ID of a node from the metadata store.
+        """
+
+        async def _get_node_id(node_name: str):
+            response = await self.client.get(f"/get_node_id/?node_name={node_name}")
             node_id = response.json()["node_id"]
             return node_id
+
+        task = asyncio.run_coroutine_threadsafe(_get_node_id(node_name), self.loop)
+        return task.result()
     
-    async def create_entry(
+    def create_entry(
         self, resource_node_name: str, filepath: str, hash: str, hash_algorithm: str, 
         state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
     ):
+        """
+        Create an entry for an artifact in the metadata store.
+        This method sends a POST request to the server to create an entry.
+        """
+
         data = {
             "resource_node_name": resource_node_name,
             "filepath": filepath,
@@ -207,8 +226,14 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             "content_type": content_type
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/create_entry/", json=data)
+        async def _create_entry(data: Dict):
+            response = await self.client.post(f"/create_entry/", json=data)
+        
+            if response.status_code != status.HTTP_200_OK:
+                raise ValueError(f"Create entry failed with status code {response.status_code}")
+            
+        task = asyncio.run_coroutine_threadsafe(_create_entry(data), self.loop)
+        return task.result()
     
     def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
         """
@@ -232,17 +257,19 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_merge_artifacts_table(resource_node_name, entries), self.loop)
         return task.result()
     
-    async def entry_exists(self, resource_node_name: str, location: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
+    def entry_exists(self, resource_node_name: str, location: str):
+        """
+        Check if an entry exists in the metadata store.
+        This method sends a GET request to the server to check if the entry exists.
+        """
+
+        async def _entry_exists(resource_node_name: str, location: str):
+            response = await self.client.get(f"/entry_exists/?resource_node_name={resource_node_name}&location={location}")
             exists = response.json()["exists"]
             return exists
-
-    async def get_num_entries(self, resource_node_name: str, state: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
-            num_entries = response.json()["num_entries"]
-            return num_entries
+            
+        task = asyncio.run_coroutine_threadsafe(_entry_exists(resource_node_name, location), self.loop)
+        return task.result()
 
     def log_metrics(self, node_name: str, **kwargs):
         """
@@ -315,22 +342,48 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             tags = response.json()
             return tags
     
-    async def log_trigger(self, node_name: str, message: str = None):
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/log_trigger/?node_name={node_name}", json={"message": message})
+    def log_trigger(self, node_name: str, message: str = None):
+        """
+        Log a trigger for a specific node.
+        This method sends a POST request to the server to log the trigger.
+        """
+        
+        async def _log_trigger(node_name: str, message: str):
+            response = await self.client.post(f"/log_trigger/?node_name={node_name}", json={"message": message})
+            if response.status_code != status.HTTP_200_OK:
+                raise ValueError(f"Log trigger failed with status code {response.status_code}")
+        
+        task = asyncio.run_coroutine_threadsafe(_log_trigger(node_name, message), self.loop)
+        return task.result()
 
-    async def get_num_entries(self, resource_node_name: str, state: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+    def get_num_entries(self, resource_node_name: str, state: str):
+        """
+        Get the number of entries in the metadata store for a specific resource node and state.
+        This method sends a GET request to the server to retrieve the number of entries.
+        """
+
+        async def _get_num_entries(resource_node_name: str, state: str):
+            response = await self.client.get(f"/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
             num_entries = response.json()["num_entries"]
             return num_entries
+        
+        task = asyncio.run_coroutine_threadsafe(_get_num_entries(resource_node_name, state), self.loop)
+        return task.result()
     
-    async def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
+    def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
+        """
+        Get entries from the metadata store for a specific resource node and state.
+        This method sends a GET request to the server to retrieve the entries.
+        """
+
+        async def _get_entries(resource_node_name: str, state: str):        
+            response = await self.client.get(f"/get_entries/?resource_node_name={resource_node_name}&state={state}")
             entries = response.json()
 
             for entry in entries:
                 entry["created_at"] = datetime.fromisoformat(entry["created_at"])
 
             return entries
+        
+        task = asyncio.run_coroutine_threadsafe(_get_entries(resource_node_name, state), self.loop)
+        return task.result()
