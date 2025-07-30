@@ -5,6 +5,7 @@ from typing import List, Dict, Tuple, Union
 
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.resources.filesystem.fragments import filesystemstore_home, filesystemstore_viewer, create_table_rows, table_row
+from anacostia_pipeline.pipelines.fragments import head_template
 from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
@@ -46,21 +47,44 @@ class FilesystemStoreGUI(BaseGUI):
 
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
-            if self.metadata_store is not None:
-                file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
-            else:
-                if self.metadata_store_client is not None:
-                    file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
+            """
+            try:
+                if self.metadata_store is not None:
+                    file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
+                else:
+                    if self.metadata_store_client is not None:
+                        file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
-            self.displayed_file_entries = file_entries
-            file_entries.reverse()
-            file_entries = format_file_entries(file_entries)
+                self.displayed_file_entries = file_entries
+                file_entries.reverse()
+                file_entries = format_file_entries(file_entries)
 
-            return filesystemstore_home(
-                sse_endpoint = self.event_source,
-                event_name = self.event_name,
-                file_entries = file_entries,
-            ) 
+                return filesystemstore_home(
+                    sse_endpoint = self.event_source,
+                    event_name = self.event_name,
+                    file_entries = file_entries,
+                ) 
+            except Exception as e:
+                print(f"{type(e).__name__} at line {e.__traceback__.tb_lineno} of {__file__}: {e}")
+            """
+            if self.metadata_store_client is not None:
+                file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
+                print("Retrieving file entries from metadata store client")
+
+            return f"""
+                {head_template(
+                    '''
+                    <!-- Bulma CSS --> 
+                    <link rel="stylesheet" href="/static/css/third_party/bulma.css">
+
+                    <!-- CSS for filesystem store node -->
+                    <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
+                    '''
+                )}
+                <div id="table_container" class="container">
+                    hello world
+                </div>
+            """
 
         @self.get("/table_update_events", response_class=HTMLResponse)
         async def samples(request: Request):

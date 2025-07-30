@@ -297,20 +297,22 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_server_url()}/set_tags/?node_name={node_name}", json=kwargs)
     
-    async def get_metrics(self, node_name: str = None, run_id: int = None):
-        async with httpx.AsyncClient() as client:
-
+    def get_metrics(self, node_name: str = None, run_id: int = None):
+        async def _get_metrics(node_name: str = None, run_id: int = None):
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
+                response = await self.client.get(f"/get_metrics/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}")
+                response = await self.client.get(f"/get_metrics/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?run_id={run_id}")
+                response = await self.client.get(f"/get_metrics/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/")
+                response = await self.client.get(f"/get_metrics/")
 
             metrics = response.json()
             return metrics
+
+        task = asyncio.run_coroutine_threadsafe(_get_metrics(node_name, run_id), self.loop)
+        return task.result()
     
     async def get_params(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:
@@ -376,8 +378,24 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         This method sends a GET request to the server to retrieve the entries.
         """
 
+        self.log(f"entering get_entries() for {resource_node_name} with state {state}", level="INFO")
+
         async def _get_entries(resource_node_name: str, state: str):        
-            response = await self.client.get(f"/get_entries/?resource_node_name={resource_node_name}&state={state}")
+            try:
+                self.log("About to call self.client.get", level="INFO")
+                response = await self.client.get(f"/get_entries/?resource_node_name={resource_node_name}&state={state}", timeout=2)
+                self.log(f"Retrieved entries for {resource_node_name} with state {state}: {response.status_code}", level="INFO")
+
+                response.raise_for_status()
+
+            except Exception as e:
+                self.log(f"Error retrieving entries: {e}", level="ERROR")
+                print(f"Error retrieving entries: {e}")
+                raise e
+
+            if response.status_code != status.HTTP_200_OK:
+                raise ValueError(f"Get entries failed with status code {response.status_code}")
+
             entries = response.json()
 
             for entry in entries:
