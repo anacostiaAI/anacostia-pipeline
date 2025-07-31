@@ -51,7 +51,7 @@ class ShakespeareEvalNode(BaseActionNode):
 
 
 metadata_store_rpc = SQLMetadataStoreClient(client_name="metadata_store_rpc")
-shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc, loggers=logger)
+shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=metadata_store_rpc)
 
 pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval], loggers=[logger])
 

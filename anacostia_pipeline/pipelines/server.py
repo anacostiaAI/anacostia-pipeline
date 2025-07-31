@@ -444,11 +444,9 @@ class PipelineServer(FastAPI):
 
             # Stop the server
             print(f"\nCTRL+C Caught!; Killing pipeline server '{self.name}', this might take a few minutes...")
-            self.logger.info(f"CTRL+C Caught!; Killing pipeline server '{self.name}'...")
             server.should_exit = True
             fastapi_thread.join()
             print(f"Pipeline server '{self.name}' Killed...")
-            self.logger.info(f"Pipeline server '{self.name}' Killed...")
 
             # register the original default kill handler once the pipeline is killed
             signal.signal(signal.SIGINT, original_sigint_handler)
