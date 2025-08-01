@@ -275,6 +275,11 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             response = await client.post(f"{self.get_server_url()}/set_tags/?node_name={node_name}", json=kwargs)
     
     def get_metrics(self, node_name: str = None, run_id: int = None):
+        """
+        Get metrics for a specific node or run ID.
+        This method sends a GET request to the server to retrieve metrics.
+        """
+
         async def _get_metrics(node_name: str = None, run_id: int = None):
 
             if node_name is not None and run_id is not None:
