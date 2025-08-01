@@ -270,20 +270,23 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_server_url()}/set_tags/?node_name={node_name}", json=kwargs)
     
-    async def get_metrics(self, node_name: str = None, run_id: int = None):
-        async with httpx.AsyncClient() as client:
+    def get_metrics(self, node_name: str = None, run_id: int = None):
+        async def _get_metrics(node_name: str = None, run_id: int = None):
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
+                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}")
+                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/?run_id={run_id}")
+                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_server_url()}/get_metrics/")
+                response = await self.client.get(f"{self.get_server_url()}/get_metrics/")
 
             metrics = response.json()
             return metrics
+
+        task = asyncio.run_coroutine_threadsafe(_get_metrics(node_name, run_id), self.loop)
+        return task.result()
     
     async def get_params(self, node_name: str = None, run_id: int = None):
         async with httpx.AsyncClient() as client:

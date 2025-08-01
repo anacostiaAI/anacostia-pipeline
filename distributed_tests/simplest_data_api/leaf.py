@@ -45,6 +45,9 @@ class ShakespeareEvalNode(BaseActionNode):
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         try:
             self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
+
+            metrics = self.metadata_store_rpc.get_metrics(node_name=self.name)
+            self.log(f"Metrics logged: {metrics}", level="INFO")
         except Exception as e:
             self.log(f"Failed to log metrics: {e}", level="ERROR")
         return True
