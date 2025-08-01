@@ -100,7 +100,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
 
                         try:
-                            entry_exists = await self.entry_exists(filepath) 
+                            entry_exists = self.entry_exists(filepath) 
                             if entry_exists is False:
                                 await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
@@ -146,8 +146,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
         num_new_artifacts = await self.get_num_artifacts("new")
-        if num_new_artifacts > 0:
-            await self.trigger(message=f"New files detected in {self.resource_path}")
+        if num_new_artifacts is not None:
+            if num_new_artifacts > 0:
+                await self.trigger(message=f"New files detected in {self.resource_path}")
     
     async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """

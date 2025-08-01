@@ -37,7 +37,7 @@ class EvalNode(BaseActionNode):
         super().__init__(name=name, predecessors=[leaf_data_node], loggers=loggers)
         self.leaf_data_node = leaf_data_node
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
         """

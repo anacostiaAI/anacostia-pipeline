@@ -234,10 +234,9 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
     
     def entry_exists(self, resource_node_name: str, location: str):
         async def _entry_exists(resource_node_name: str, location: str):
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"/entry_exists/?resource_node_name={resource_node_name}&location={location}")
-                exists = response.json()["exists"]
-                return exists
+            response = await self.client.get(f"/entry_exists/?resource_node_name={resource_node_name}&location={location}")
+            exists = response.json()["exists"]
+            return exists
 
         task = asyncio.run_coroutine_threadsafe(_entry_exists(resource_node_name, location), self.loop)
         return task.result()

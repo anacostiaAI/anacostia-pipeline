@@ -329,10 +329,10 @@ class PipelineServer(FastAPI):
 
         # Extract the node name and type from the responses and add them to the metadata store
         if self.metadata_store is not None:
-            for node_model in successor_node_models:
-                node_name = node_model.name
-                node_type = node_model.node_type
-                base_type = node_model.base_type
+            for successor_node_model in successor_node_models:
+                node_name = successor_node_model.name
+                node_type = successor_node_model.node_type
+                base_type = successor_node_model.base_type
         
                 if self.metadata_store.node_exists(node_name=node_name) is False:
                     self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
@@ -344,19 +344,19 @@ class PipelineServer(FastAPI):
             for connection in node.remote_successors:
                 remote_node_name = connection.split("/")[-1]
 
-                for node_model in successor_node_models:
-                    if node_model.name == remote_node_name:
-                        remote_node_base_type = node_data.base_type
+                for successor_node_model in successor_node_models:
+                    if successor_node_model.name == remote_node_name:
+                        remote_node_base_type = successor_node_model.base_type
                         
                         # based on the remote_successors information, check if the connection is valid
                         if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
                             raise InvalidNodeDependencyError(
-                                f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
+                                f"Invalid connection: Metadata store node '{node.name}' (node_base_type: {node_base_type}) cannot connect to non-resource node '{remote_node_name}' (remote_node_base_type: {remote_node_base_type})"
                             )
                         
                         if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
                             raise InvalidNodeDependencyError(
-                                f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
+                                f"Invalid connection: Resource node '{node.name}' (node_base_type: {node_base_type}) cannot connect to non-action node '{remote_node_name}' (remote_node_base_type: {remote_node_base_type})"
                             )
         # ------------------------------------------------------------------
 

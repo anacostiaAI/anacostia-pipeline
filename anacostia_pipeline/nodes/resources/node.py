@@ -94,14 +94,14 @@ class BaseResourceNode(BaseNode, ABC):
         """Override to specify how the resource is triggered."""
         pass
 
-    async def entry_exists(self, filepath: str) -> bool:
+    def entry_exists(self, filepath: str) -> bool:
         if self.metadata_store is not None:
             return self.metadata_store.entry_exists(self.name, filepath)
         
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    return await self.metadata_store_client.entry_exists(self.name, filepath)
+                    return self.metadata_store_client.entry_exists(self.name, filepath)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -232,7 +232,8 @@ class BaseResourceNode(BaseNode, ABC):
             return self.metadata_store.get_num_entries(self.name, state)
         
         if self.metadata_store_client is not None:
-            return await self.metadata_store_client.get_num_entries(self.name, state)
+            if self.connection_event.is_set() is True:
+                return await self.metadata_store_client.get_num_entries(self.name, state)
 
     def get_artifact(self, id: int) -> Dict:
         """
