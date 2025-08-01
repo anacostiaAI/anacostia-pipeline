@@ -232,11 +232,15 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_merge_artifacts_table(resource_node_name, entries), self.loop)
         return task.result()
     
-    async def entry_exists(self, resource_node_name: str, location: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/entry_exists/?resource_node_name={resource_node_name}&location={location}")
-            exists = response.json()["exists"]
-            return exists
+    def entry_exists(self, resource_node_name: str, location: str):
+        async def _entry_exists(resource_node_name: str, location: str):
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"/entry_exists/?resource_node_name={resource_node_name}&location={location}")
+                exists = response.json()["exists"]
+                return exists
+
+        task = asyncio.run_coroutine_threadsafe(_entry_exists(resource_node_name, location), self.loop)
+        return task.result()
 
     async def get_num_entries(self, resource_node_name: str, state: str):
         async with httpx.AsyncClient() as client:
@@ -274,13 +278,13 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async def _get_metrics(node_name: str = None, run_id: int = None):
 
             if node_name is not None and run_id is not None:
-                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}&run_id={run_id}")
+                response = await self.client.get(f"/get_metrics/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?node_name={node_name}")
+                response = await self.client.get(f"/get_metrics/?node_name={node_name}")
             elif run_id is not None:
-                response = await self.client.get(f"{self.get_server_url()}/get_metrics/?run_id={run_id}")
+                response = await self.client.get(f"/get_metrics/?run_id={run_id}")
             else:
-                response = await self.client.get(f"{self.get_server_url()}/get_metrics/")
+                response = await self.client.get(f"/get_metrics/")
 
             metrics = response.json()
             return metrics
