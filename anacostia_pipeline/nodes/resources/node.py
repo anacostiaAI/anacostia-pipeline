@@ -135,7 +135,7 @@ class BaseResourceNode(BaseNode, ABC):
                     raise e
                                 
         
-    async def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
+    def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record an artifact produced in the current run metadata store.
 
@@ -149,7 +149,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -187,7 +187,7 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
         
-    async def add_artifact(
+    def add_artifact(
         self, filepath: str, hash: str, hash_algorithm: str, state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
     ) -> None:
         """
@@ -205,7 +205,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(
+                    self.metadata_store_client.create_entry(
                         self.name, filepath=filepath, hash=hash, hash_algorithm=hash_algorithm, state=state, run_id=run_id, file_size=file_size, content_type=content_type
                     )
                 except httpx.ConnectError as e:
