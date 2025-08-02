@@ -252,20 +252,25 @@ class BaseNode(Thread):
 
     def exit(self):
         # setting all events forces the loop to continue to the next checkpoint which will break out of the loop
-        self.log(f"Node '{self.name}' exiting at {datetime.now()}")
+        self.log(f"Node '{self.name}' exiting at {datetime.now()}", level='INFO')
         
         # set all events so loop can continue to next checkpoint and break out of loop
         self.connection_event.set()
+        self.log(f"Node '{self.name}' connection event set at {datetime.now()}", level='INFO')
         self.pause_event.set()
+        self.log(f"Node '{self.name}' pause event set at {datetime.now()}", level='INFO')
         self.exit_event.set()
+        self.log(f"Node '{self.name}' exit event set at {datetime.now()}", level='INFO')
 
         for event in self.successor_events.values():
             event.set()
-        
+            self.log(f"Node '{self.name}' successor event set at {datetime.now()}", level='INFO')
+
         for event in self.predecessors_events.values():
             event.set()
+            self.log(f"Node '{self.name}' predecessor event set at {datetime.now()}", level='INFO')
 
-        self.log(f"Node '{self.name}' exited at {datetime.now()}")
+        self.log(f"Node '{self.name}' exited at {datetime.now()}", level='INFO')
 
     @log_exception
     def setup(self) -> None:

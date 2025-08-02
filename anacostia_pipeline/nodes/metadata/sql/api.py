@@ -192,7 +192,7 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             node_id = response.json()["node_id"]
             return node_id
     
-    async def create_entry(
+    def create_entry(
         self, resource_node_name: str, filepath: str, hash: str, hash_algorithm: str, 
         state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
     ):
@@ -207,9 +207,18 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             "content_type": content_type
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/create_entry/", json=data)
-    
+        async def _create_entry(data: Dict):
+            try:
+                response = await self.client.post(f"/create_entry/", json=data)
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Create entry failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error creating entry: {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_create_entry(data), self.loop)
+        return task.result()
+
     def merge_artifacts_table(self, resource_node_name: str, entries: List[Dict]):
         """
         Merge artifacts table with the provided entries.

@@ -93,7 +93,6 @@ class PipelineServer(FastAPI):
             except asyncio.CancelledError:
                 pass
 
-            app.pipeline.terminate_nodes()  # Terminate the root pipeline
             await app.disconnect()  # Disconnect from the leaf services
 
             if app.logger is not None:
@@ -448,6 +447,7 @@ class PipelineServer(FastAPI):
 
             # Stop the server
             print(f"\nCTRL+C Caught!; Killing pipeline server '{self.name}', this might take a few minutes...")
+            self.pipeline.terminate_nodes()  # Terminate the root pipeline
             server.should_exit = True
             fastapi_thread.join()
             print(f"Pipeline server '{self.name}' Killed...")

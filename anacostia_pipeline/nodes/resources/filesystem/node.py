@@ -87,8 +87,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
     def start_monitoring(self) -> None:
 
-        async def _monitor_thread_func():
-            self.log(f"Starting observer thread for node '{self.name}'")
+        def _monitor_thread_func():
+            self.log(f"Starting observer thread for node '{self.name}'", level="INFO")
             while self.exit_event.is_set() is False:
                 for root, dirnames, filenames in os.walk(self.path):
                     for filename in filenames:
@@ -102,7 +102,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         try:
                             entry_exists = self.entry_exists(filepath) 
                             if entry_exists is False:
-                                await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
+                                self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
                         except Exception as e:
@@ -130,7 +130,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
         # since we are using asyncio.run, we need to create a new thread to run the event loop 
         # because we can't run an event loop in the same thread as the FilesystemStoreNode
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()
 
     def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
@@ -263,6 +263,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise e
 
     def stop_monitoring(self) -> None:
-        self.log(f"Beginning teardown for node '{self.name}'")
+        self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")
         self.observer_thread.join()
-        self.log(f"Observer stopped for node '{self.name}'")
+        self.log(f"Observer stopped for node '{self.name}'", level="INFO")

@@ -4,6 +4,7 @@ from threading import Event
 from threading import Thread
 import traceback
 import time
+import datetime
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
@@ -158,14 +159,14 @@ class BaseMetadataStoreNode(BaseNode):
                 # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
                 time.sleep(0.1)
 
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()
 
     def stop_monitoring(self) -> None:
-        self.log(f"Beginning teardown for node '{self.name}'")
+        self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")
         self.observer_thread.join()
-        self.log(f"Observer stopped for node '{self.name}'")
-    
+        self.log(f"Observer stopped for node '{self.name}'", level="INFO")
+
     def metadata_store_trigger(self) -> None:
         """
         The default trigger for the SqliteMetadataStoreNode. 
@@ -179,6 +180,7 @@ class BaseMetadataStoreNode(BaseNode):
         super().exit()
         self.stop_monitoring()    
         self.trigger_event.set()
+        self.log(f"Node '{self.name}' trigger event set at {datetime.datetime.now()}", level='INFO')
     
     def run(self) -> None:
         # start monitoring thread for metadata store node
