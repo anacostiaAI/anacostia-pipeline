@@ -338,9 +338,22 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             tags = response.json()
             return tags
     
-    async def log_trigger(self, node_name: str, message: str = None):
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/log_trigger/?node_name={node_name}", json={"message": message})
+    def log_trigger(self, node_name: str, message: str = None):
+        """
+        Log a trigger for a specific node.
+        This method sends a POST request to the server to log the trigger.
+        """
+
+        async def _log_trigger(node_name: str, message: str = None):
+            try:
+                response = await self.client.post(f"/log_trigger/?node_name={node_name}", json={"message": message})
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log trigger failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error logging trigger for node {node_name}: {e}", level="ERROR")
+
+        task = asyncio.run_coroutine_threadsafe(_log_trigger(node_name, message), self.loop)
+        return task.result()
 
     def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
         """

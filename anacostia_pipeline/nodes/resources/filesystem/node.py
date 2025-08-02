@@ -110,7 +110,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
                 if self.exit_event.is_set() is True: break
                 try:
-                    await self.resource_trigger()
+                    self.resource_trigger()
                 
                 except NetworkConnectionNotEstablished as e:
                     pass
@@ -140,15 +140,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    async def resource_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
         resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
+
         num_new_artifacts = self.get_num_artifacts("new")
         if num_new_artifacts is not None:
             if num_new_artifacts > 0:
-                await self.trigger(message=f"New files detected in {self.resource_path}")
+                self.trigger(message=f"New files detected in {self.resource_path}")
 
     def get_num_artifacts(self, state: str) -> int:
         """

@@ -90,7 +90,7 @@ class BaseResourceNode(BaseNode, ABC):
         pass
 
     @abstractmethod
-    async def resource_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """Override to specify how the resource is triggered."""
         pass
 
@@ -279,7 +279,7 @@ class BaseResourceNode(BaseNode, ABC):
         
         self.resource_event.set()
     
-    async def trigger(self, message: str = None) -> None:
+    def trigger(self, message: str = None) -> None:
         if self.resource_event.is_set() is False:
             
             # Note: log the trigger first before setting the event or there will be a race condition
@@ -289,7 +289,7 @@ class BaseResourceNode(BaseNode, ABC):
                 
                 if self.connection_event.is_set() is True:
                     if self.metadata_store_client is not None:
-                        await self.metadata_store_client.log_trigger(node_name=self.name, message=message)
+                        self.metadata_store_client.log_trigger(node_name=self.name, message=message)
             
             self.resource_event.set()
 
