@@ -153,7 +153,7 @@ class BaseMetadataStoreNode(BaseNode):
                     self.metadata_store_trigger()
 
                 except Exception as e:
-                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                        self.log(f"Error checking metadata store data for node '{self.name}': {traceback.format_exc()}")
                 
                 # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
                 time.sleep(0.1)

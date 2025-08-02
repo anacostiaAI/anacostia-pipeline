@@ -217,7 +217,7 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
 
-    async def get_num_artifacts(self, state: str) -> int:
+    def get_num_artifacts(self, state: str) -> int:
         """
         Get the number of artifacts in the specified state.
         
@@ -233,7 +233,7 @@ class BaseResourceNode(BaseNode, ABC):
         
         if self.metadata_store_client is not None:
             if self.connection_event.is_set() is True:
-                return await self.metadata_store_client.get_num_entries(self.name, state)
+                return self.metadata_store_client.get_num_entries(self.name, state)
 
     def get_artifact(self, id: int) -> Dict:
         """
@@ -265,7 +265,7 @@ class BaseResourceNode(BaseNode, ABC):
             entries = self.metadata_store.get_entries(self.name, state)
         
         if self.metadata_store_client is not None:
-            entries = await self.metadata_store_client.get_entries(self.name, state)
+            entries = self.metadata_store_client.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
 

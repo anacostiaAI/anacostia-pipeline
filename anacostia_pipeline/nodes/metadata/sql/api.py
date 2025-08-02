@@ -241,11 +241,23 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_entry_exists(resource_node_name, location), self.loop)
         return task.result()
 
-    async def get_num_entries(self, resource_node_name: str, state: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
-            num_entries = response.json()["num_entries"]
-            return num_entries
+    def get_num_entries(self, resource_node_name: str, state: str):
+        """
+        Get the number of entries for a specific resource node and state.
+        This method sends a GET request to the server to retrieve the number of entries.
+        """
+        
+        async def _get_num_entries(resource_node_name: str, state: str):
+            try:
+                response = await self.client.get(f"/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
+                num_entries = response.json()["num_entries"]
+                return num_entries
+            except Exception as e:
+                self.log(f"Error getting number of entries: {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_get_num_entries(resource_node_name, state), self.loop)
+        return task.result()
 
     def log_metrics(self, node_name: str, **kwargs):
         """
@@ -330,18 +342,20 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.get_server_url()}/log_trigger/?node_name={node_name}", json={"message": message})
 
-    async def get_num_entries(self, resource_node_name: str, state: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_num_entries/?resource_node_name={resource_node_name}&state={state}")
-            num_entries = response.json()["num_entries"]
-            return num_entries
-    
-    async def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_entries/?resource_node_name={resource_node_name}&state={state}")
+    def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
+        """
+        Get entries from the metadata store for a specific resource node and state.
+        This method sends a GET request to the server to retrieve entries.
+        """
+
+        async def _get_entries(resource_node_name: str, state: str):
+            response = await self.client.get(f"/get_entries/?resource_node_name={resource_node_name}&state={state}")
             entries = response.json()
 
             for entry in entries:
                 entry["created_at"] = datetime.fromisoformat(entry["created_at"])
 
             return entries
+
+        task = asyncio.run_coroutine_threadsafe(_get_entries(resource_node_name, state), self.loop)
+        return task.result()

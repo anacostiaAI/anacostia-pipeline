@@ -161,6 +161,7 @@ class PipelineServer(FastAPI):
 
         # Mount the apps and connectors to the webserver
         self.connectors: List[Connector] = []
+        self.gui_apps: List[BaseGUI] = []
         self.node_servers: List[BaseServer] = []
         for node in self.pipeline.nodes:
             connector: Connector = node.setup_connector(
@@ -173,6 +174,7 @@ class PipelineServer(FastAPI):
                 host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
             )
             self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
+            self.gui_apps.append(node_gui)
 
             server: BaseServer = node.setup_node_server(
                 host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
@@ -180,17 +182,16 @@ class PipelineServer(FastAPI):
             self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
             self.node_servers.append(server)                                # add the server to the list of node servers
 
-        if remote_clients is not None:
-            for rpc_client in remote_clients:
-                rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
-                rpc_client.set_credentials(
-                    host=self.host, 
-                    port=self.port, 
-                    ssl_keyfile=ssl_keyfile, 
-                    ssl_certfile=ssl_certfile, 
-                    ssl_ca_certs=ssl_ca_certs
-                )
-                self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
+        for rpc_client in self.remote_clients:
+            rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
+            rpc_client.set_credentials(
+                host=self.host, 
+                port=self.port, 
+                ssl_keyfile=ssl_keyfile, 
+                ssl_certfile=ssl_certfile, 
+                ssl_ca_certs=ssl_ca_certs
+            )
+            self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
         
         self.predecessor_host = None
         self.predecessor_port = None
@@ -366,6 +367,9 @@ class PipelineServer(FastAPI):
             connector.set_event_loop(self.loop)  # Set the event loop for the connector
             tasks.extend(await connector.connect())
         await asyncio.gather(*tasks)
+
+        for gui in self.gui_apps:
+            gui.set_event_loop(self.loop)         # Set the event loop for the node's GUI
 
         # Connect RPC servers to RPC clients
         tasks = []
