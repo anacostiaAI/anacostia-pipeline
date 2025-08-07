@@ -380,4 +380,9 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             return entries
 
         task = asyncio.run_coroutine_threadsafe(_get_entries(resource_node_name, state), self.loop)
-        return task.result()
+        try:
+            result = task.result(timeout=10)
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting entries: {e}", level="ERROR")
+            raise e

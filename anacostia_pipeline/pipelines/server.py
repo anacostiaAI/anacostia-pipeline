@@ -363,23 +363,23 @@ class PipelineServer(FastAPI):
         # Connect each node to its remote successors
         tasks = []
         for connector in self.connectors:
-            connector.set_event_loop(self.loop)  # Set the event loop for the connector
+            connector.set_event_loop(self.pipeline.loop)  # Set the event loop for the connector
             tasks.extend(await connector.connect())
         await asyncio.gather(*tasks)
 
         for gui in self.gui_apps:
-            gui.set_event_loop(self.loop)         # Set the event loop for the node's GUI
+            gui.set_event_loop(self.pipeline.loop)         # Set the event loop for the node's GUI
 
         # Connect RPC servers to RPC clients
         tasks = []
         for node_server in self.node_servers:
-            node_server.set_event_loop(self.loop)  # Set the event loop for the node server
+            node_server.set_event_loop(self.pipeline.loop)  # Set the event loop for the node server
             tasks.append(node_server.connect())
         await asyncio.gather(*tasks)
 
         # Set the event loop for each remote client
         for remote_client in self.remote_clients:
-            remote_client.set_event_loop(self.loop)
+            remote_client.set_event_loop(self.pipeline.loop)
 
         # Finish the connection process for each leaf pipeline
         # Leaf pipeline will set the connection event for each node
