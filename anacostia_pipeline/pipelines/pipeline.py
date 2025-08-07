@@ -3,6 +3,7 @@ from threading import Thread
 from datetime import datetime
 from logging import Logger
 import signal
+import asyncio
 
 from pydantic import BaseModel, ConfigDict
 import networkx as nx
@@ -46,6 +47,18 @@ class Pipeline:
         self.node_dict = dict()
         self.graph = nx.DiGraph()
         self.name = name
+
+        # create a new event loop (low-level api)
+        self.loop = asyncio.new_event_loop()
+
+        # helper function to start and run the asyncio event loop
+        def run_event_loop(loop: asyncio.AbstractEventLoop):
+            asyncio.set_event_loop(loop)    # set the loop for the current thread
+            loop.run_forever()              # run the event loop forever
+        
+        # start the event loop in a separate thread
+        self.event_loop_thread = Thread(target=run_event_loop, args=(self.loop,))
+        self.event_loop_thread.start()
 
         # Add nodes into graph
         for node in nodes:
@@ -185,6 +198,12 @@ class Pipeline:
             node.exit()
             node.join()
         print("All nodes terminated")
+
+        # stop the event loop
+        print("Stopping event loop")
+        self.loop.call_soon_threadsafe(self.loop.stop)
+        self.event_loop_thread.join()
+        print("Event loop stopped")
 
     # Note: this run method is only here to run the pipeline without the webserver
     # This method might be deprecated.
