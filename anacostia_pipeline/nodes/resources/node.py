@@ -279,7 +279,6 @@ class BaseResourceNode(BaseNode, ABC):
             self.stop_monitoring()
         
         self.resource_event.set()
-        self.log(f"Node '{self.name}' resource event set at {datetime.datetime.now()}", level='INFO')
     
     def trigger(self, message: str = None) -> None:
         if self.resource_event.is_set() is False:

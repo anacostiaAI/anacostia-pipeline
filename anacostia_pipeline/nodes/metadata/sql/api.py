@@ -317,36 +317,52 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_get_metrics(node_name, run_id), self.loop)
         return task.result()
     
-    async def get_params(self, node_name: str = None, run_id: int = None):
-        async with httpx.AsyncClient() as client:
+    def get_params(self, node_name: str = None, run_id: int = None):
+        async def _get_params(node_name: str = None, run_id: int = None):
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_params/?node_name={node_name}&run_id={run_id}")
+                response = await self.client.get(f"/get_params/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_server_url()}/get_params/?node_name={node_name}")
+                response = await self.client.get(f"/get_params/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_params/?run_id={run_id}")
+                response = await self.client.get(f"/get_params/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_server_url()}/get_params/")
+                response = await self.client.get(f"/get_params/")
 
             params = response.json()
             return params
+        
+        task = asyncio.run_coroutine_threadsafe(_get_params(node_name, run_id), self.loop)
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting params: {e}", level="ERROR")
+            raise e
     
-    async def get_tags(self, node_name: str = None, run_id: int = None):
-        async with httpx.AsyncClient() as client:
+    def get_tags(self, node_name: str = None, run_id: int = None):
+        async def _get_tags(node_name: str = None, run_id: int = None):
 
             if node_name is not None and run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_tags/?node_name={node_name}&run_id={run_id}")
+                response = await self.client.get(f"/get_tags/?node_name={node_name}&run_id={run_id}")
             elif node_name is not None:
-                response = await client.get(f"{self.get_server_url()}/get_tags/?node_name={node_name}")
+                response = await self.client.get(f"/get_tags/?node_name={node_name}")
             elif run_id is not None:
-                response = await client.get(f"{self.get_server_url()}/get_tags/?run_id={run_id}")
+                response = await self.client.get(f"/get_tags/?run_id={run_id}")
             else:
-                response = await client.get(f"{self.get_server_url()}/get_tags/")
+                response = await self.client.get(f"/get_tags/")
 
             tags = response.json()
             return tags
-    
+
+        task = asyncio.run_coroutine_threadsafe(_get_tags(node_name, run_id), self.loop)
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting tags: {e}", level="ERROR")
+            raise e
+
     def log_trigger(self, node_name: str, message: str = None):
         """
         Log a trigger for a specific node.
@@ -362,7 +378,12 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
                 self.log(f"Error logging trigger for node {node_name}: {e}", level="ERROR")
 
         task = asyncio.run_coroutine_threadsafe(_log_trigger(node_name, message), self.loop)
-        return task.result()
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while logging trigger: {e}", level="ERROR")
+            raise e
 
     def get_entries(self, resource_node_name: str, state: str = "all") -> List[Dict]:
         """
@@ -381,7 +402,7 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
 
         task = asyncio.run_coroutine_threadsafe(_get_entries(resource_node_name, state), self.loop)
         try:
-            result = task.result(timeout=10)
+            result = task.result()
             return result
         except Exception as e:
             self.log(f"Error occurred while getting entries: {e}", level="ERROR")

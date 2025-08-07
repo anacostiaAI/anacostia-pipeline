@@ -39,27 +39,6 @@ class EvalNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        
-        """
-        try:
-            await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
-        except Exception as e:
-            self.log(f"Failed to log metrics: {e}", level="ERROR")
-        
-        try:
-            run_id = await self.metadata_store_rpc.get_run_id()
-            await self.root_data_rpc.get_artifact(filepath=f"model{run_id}.txt")
-        except Exception as e:
-            self.log(f"Failed to get artifact: {e}", level="ERROR")
-        
-        try:
-            num_artifacts = await self.root_data_rpc.get_num_artifacts()
-            artifacts = await self.root_data_rpc.list_artifacts()
-            self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
-        except Exception as e:
-            self.log(f"Failed to list artifacts: {e}", level="ERROR")
-        """
-            
         return True
 
 
