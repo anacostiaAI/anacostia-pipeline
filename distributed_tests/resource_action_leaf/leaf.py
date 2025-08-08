@@ -3,6 +3,8 @@ import logging
 from logging import Logger
 from logging.config import dictConfig
 import argparse
+import os
+from pathlib import Path
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.server import PipelineServer
@@ -27,6 +29,13 @@ shakespeare_output_path = f"{output_path}/shakespeare"
 # Set up logging
 dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("leaf_anacostia")
+
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 class EvalNode(BaseActionNode):
@@ -59,10 +68,13 @@ service = PipelineServer(
     host=args.host, 
     port=args.port, 
     remote_clients=[metadata_store_client],
-    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
     logger=logger,
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
