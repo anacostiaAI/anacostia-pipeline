@@ -93,6 +93,7 @@ class PipelineServer(FastAPI):
             except asyncio.CancelledError:
                 pass
 
+            app.pipeline.terminate_nodes()  # Terminate the nodes in the pipeline
             await app.disconnect()  # Disconnect from the leaf services
 
             if app.logger is not None:
@@ -425,12 +426,11 @@ class PipelineServer(FastAPI):
         await self.client.aclose()
         for connector in self.connectors:
             await connector.client.aclose()
+        
+        for remote_client in self.remote_clients:
+            await remote_client.client.aclose()
 
     def run(self):
-        # Store original signal handlers
-        original_sigint_handler = signal.getsignal(signal.SIGINT)
-        original_sigterm_handler = signal.getsignal(signal.SIGTERM)
-
         config = uvicorn.Config(
             app=self, 
             host="0.0.0.0", 
@@ -441,35 +441,9 @@ class PipelineServer(FastAPI):
             log_config=self.uvicorn_access_log_config
         )
         server = uvicorn.Server(config)
-        fastapi_thread = threading.Thread(target=server.run, name=self.name)
 
-        def _kill_webserver(sig, frame):
-
-            # Stop the server
-            print(f"\nCTRL+C Caught!; Killing pipeline server '{self.name}', this might take a few minutes...")
-            self.pipeline.terminate_nodes()  # Terminate the root pipeline
+        try:
+            server.run()       # start the server
+        except (KeyboardInterrupt, SystemExit):
             server.should_exit = True
-            fastapi_thread.join()
-            print(f"Pipeline server '{self.name}' Killed...")
-
-            # register the original default kill handler once the pipeline is killed
-            signal.signal(signal.SIGINT, original_sigint_handler)
-            signal.signal(signal.SIGTERM, original_sigterm_handler)
-
-            # If this was SIGTERM, we exit the process
-            if sig == signal.SIGTERM:
-                sys.exit(0)
-
-        # register the kill handler for the webserver
-        signal.signal(signal.SIGINT, _kill_webserver)
-        signal.signal(signal.SIGTERM, _kill_webserver)
-
-        # Start the webserver
-        fastapi_thread.start()
-
-        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
-        # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9
-        for thread in threading.enumerate():
-            if thread.daemon or thread is threading.current_thread():
-                continue
-            thread.join()
+            server.force_exit = True
