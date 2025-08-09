@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
@@ -79,4 +79,13 @@ service = PipelineServer(
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
 
-service.run()
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

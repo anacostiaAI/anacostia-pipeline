@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loggers import ROOT_ANACOSTIA_LOGGING_CONFIG, ROOT_ACCESS_LOGGING_CONFIG
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 
 
@@ -62,4 +62,14 @@ service = PipelineServer(
     logger=logger, 
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
-service.run()
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

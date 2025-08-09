@@ -1,5 +1,4 @@
 import threading
-import signal
 from logging import Logger
 from contextlib import asynccontextmanager
 from queue import Queue
@@ -11,6 +10,8 @@ import os
 import json
 from urllib.parse import urlparse
 import asyncio
+import contextlib
+import time
 
 import uvicorn
 import httpx
@@ -19,12 +20,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.pipelines.pipeline import Pipeline, InvalidPipelineError, InvalidNodeDependencyError
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.api import BaseClient
-from anacostia_pipeline.nodes.api import BaseServer
+from anacostia_pipeline.nodes.api import BaseServer, BaseClient
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
@@ -268,7 +268,7 @@ class PipelineServer(FastAPI):
                         await asyncio.sleep(0.1)
 
                     except asyncio.CancelledError:
-                        print("event source /graph_sse closed")
+                        print(f"event source /graph_sse closed for {self.name}")
                         yield "event: close\n"
                         yield "data: \n\n"
                         break
@@ -426,12 +426,9 @@ class PipelineServer(FastAPI):
         await self.client.aclose()
         for connector in self.connectors:
             await connector.client.aclose()
-        
-        for remote_client in self.remote_clients:
-            await remote_client.client.aclose()
-
-    def run(self):
-        config = uvicorn.Config(
+    
+    def get_config(self):
+        return uvicorn.Config(
             app=self, 
             host="0.0.0.0", 
             port=self.port, 
@@ -440,10 +437,20 @@ class PipelineServer(FastAPI):
             ssl_ca_certs=self.ssl_ca_certs,
             log_config=self.uvicorn_access_log_config
         )
-        server = uvicorn.Server(config)
 
+
+class AnacostiaServer(uvicorn.Server):
+    def install_signal_handlers(self):
+        pass
+
+    @contextlib.contextmanager
+    def run_in_thread(self):
+        thread = threading.Thread(target=self.run)
+        thread.start()
         try:
-            server.run()       # start the server
-        except (KeyboardInterrupt, SystemExit):
-            server.should_exit = True
-            server.force_exit = True
+            while not self.started:
+                time.sleep(1e-3)
+            yield
+        finally:
+            self.should_exit = True
+            thread.join()
