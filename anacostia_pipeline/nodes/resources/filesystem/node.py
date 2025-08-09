@@ -106,7 +106,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         except Exception as e:
                             self.log(f"Unexpected error in monitoring logic for '{self.name}': {traceback.format_exc()}", level="ERROR")
 
-                if self.exit_event.is_set() is True: break
+                if self.exit_event.is_set() is True: 
+                    self.log(f"Observer thread for node '{self.name}' exiting", level="INFO")
+                    return
                 try:
                     self.resource_trigger()
                 
@@ -125,6 +127,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 
                 # sleep for a while before checking again
                 time.sleep(0.1)
+
+            self.log(f"Observer thread for node '{self.name}' exited", level="INFO")
 
         # since we are using asyncio.run, we need to create a new thread to run the event loop 
         # because we can't run an event loop in the same thread as the FilesystemStoreNode

@@ -149,7 +149,9 @@ class BaseMetadataStoreNode(BaseNode):
         def _monitor_thread_func():
             self.log(f"Starting observer thread for node '{self.name}'")
             while self.exit_event.is_set() is False:
-                if self.exit_event.is_set() is True: break
+                if self.exit_event.is_set() is True:
+                    self.log(f"Observer thread for node '{self.name}' exiting", level="INFO")
+                    return
                 try:
                     self.metadata_store_trigger()
 
@@ -158,6 +160,8 @@ class BaseMetadataStoreNode(BaseNode):
                 
                 # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
                 time.sleep(0.1)
+            
+            self.log(f"Observer thread for node '{self.name}' exited", level="INFO")
 
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()

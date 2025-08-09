@@ -47,11 +47,13 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
         node_name = "edge_deployment_client"
         metrics = self.get_metrics(node_name=node_name, run_id=run_id)
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
-        highest_accuracy = max(accuracy_scores)
+        
+        if len(accuracy_scores) > 0:
+            highest_accuracy = max(accuracy_scores)
 
-        # trigger condition
-        if highest_accuracy > 0.4:
-            self.trigger(f"% accuracy = {highest_accuracy}, trigger condition % accuracy > 0.4 satisfied")
+            # trigger condition
+            if highest_accuracy > 0.4:
+                self.trigger(f"% accuracy = {highest_accuracy}, trigger condition % accuracy > 0.4 satisfied")
 
 
 
@@ -82,7 +84,7 @@ server = PipelineServer(
     pipeline=pipeline, 
     host="127.0.0.1", 
     port=8000, 
-    logger=logger, 
+    logger=logger,
     ssl_ca_certs=mkcert_ca,
     ssl_certfile=ssl_certfile,
     ssl_keyfile=ssl_keyfile,
