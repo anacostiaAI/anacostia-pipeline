@@ -143,15 +143,13 @@ class BaseMetadataStoreNode(BaseNode):
                 self.log_trigger(node_name=self.name, message=message)
             
             self.trigger_event.set()
+            self.log(f"Trigger event set for node '{self.name}' with message: {message}", level='INFO')
 
     def start_monitoring(self) -> None:
 
         def _monitor_thread_func():
-            self.log(f"Starting observer thread for node '{self.name}'")
+            self.log(f"Starting observer thread for node '{self.name}'", level='INFO')
             while self.exit_event.is_set() is False:
-                if self.exit_event.is_set() is True:
-                    self.log(f"Observer thread for node '{self.name}' exiting", level="INFO")
-                    return
                 try:
                     self.metadata_store_trigger()
 
@@ -203,7 +201,6 @@ class BaseMetadataStoreNode(BaseNode):
             
             if self.exit_event.is_set(): return
             
-            self.trigger_event.clear()
             self.status = Status.TRIGGERED
 
             # creating a new run
@@ -226,6 +223,8 @@ class BaseMetadataStoreNode(BaseNode):
             if self.exit_event.is_set(): return
             self.end_run()
 
+            # we are clearing the trigger event here to prevent the next run from being triggered before we record the end of the current run.
+            self.trigger_event.clear()
             self.run_id += 1
             
             # signal to all successors that the run has ended; i.e., end pipeline execution
