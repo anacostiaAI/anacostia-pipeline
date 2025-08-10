@@ -180,17 +180,43 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_add_node(node_name, node_type, base_type), self.loop)
         return task.result()
 
-    async def get_run_id(self):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_run_id/")
+    def get_run_id(self):
+        """
+        Get the run ID from the metadata store.
+        This method sends a GET request to the server to retrieve the run ID.
+        """
+
+        async def _get_run_id():
+            response = await self.client.get(f"/get_run_id/")
             run_id = response.json()["run_id"]
             return run_id
 
-    async def get_node_id(self, node_name: str):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{self.get_server_url()}/get_node_id/?node_name={node_name}")
+        task = asyncio.run_coroutine_threadsafe(_get_run_id(), self.loop)
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting run ID: {e}", level="ERROR")
+            raise e
+
+    def get_node_id(self, node_name: str):
+        """
+        Get the node ID from the metadata store.
+        This method sends a GET request to the server to retrieve the node ID.
+        """
+
+        async def _get_node_id(node_name: str):
+            response = await self.client.get(f"/get_node_id/?node_name={node_name}")
             node_id = response.json()["node_id"]
             return node_id
+
+        task = asyncio.run_coroutine_threadsafe(_get_node_id(node_name), self.loop)
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting node ID: {e}", level="ERROR")
+            raise e
     
     def create_entry(
         self, resource_node_name: str, filepath: str, hash: str, hash_algorithm: str, 
