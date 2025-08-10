@@ -143,7 +143,6 @@ class BaseMetadataStoreNode(BaseNode):
                 self.log_trigger(node_name=self.name, message=message)
             
             self.trigger_event.set()
-            self.log(f"Trigger event set for node '{self.name}' with message: {message}", level='INFO')
 
     def start_monitoring(self) -> None:
 

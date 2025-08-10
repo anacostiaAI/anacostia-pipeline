@@ -333,10 +333,7 @@ class BaseResourceNode(BaseNode, ABC):
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
 
-            # we clear the resource_event after the run has been created so that the trigger won't execute more than once on the same resource
-            # this is important so we don't trigger the same run multiple times if the resource is not changing
             if self.monitoring is True:
-                self.resource_event.clear()
                 self.status = Status.TRIGGERED
                 
             # signalling to all successors that the resource is ready to be used for the current run
@@ -358,3 +355,7 @@ class BaseResourceNode(BaseNode, ABC):
             # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
+
+            # we clear the resource_event after the run ends so the trigger won't execute more than once on the same resource
+            # this is important so we don't trigger the same run multiple times if the resource is not changing
+            self.resource_event.clear()
