@@ -21,6 +21,12 @@ ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 # make sure metadata_store_name is the same as the name of the metadata store in the pipeline
+# Note: we don't have to set the following arguments:
+# allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
+# allow_credentials=True,
+# allow_methods=["*"],
+# allow_headers=["*"]
+# in the SQLMetadataStoreClient because it is not sending any html snippets to the client.
 metadata_store_name = "metadata_store"
 node_name = "edge_deployment_client"
 metadata_store_client = SQLMetadataStoreClient(
