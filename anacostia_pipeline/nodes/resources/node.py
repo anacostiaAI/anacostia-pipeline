@@ -253,7 +253,7 @@ class BaseResourceNode(BaseNode, ABC):
                 return entry
         raise EntryNotFoundError(f"No entry found with id: {id}")
     
-    async def list_artifacts(self, state: str) -> List[str]:
+    def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the specified state.
         Args:

@@ -171,7 +171,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             if self.connection_event.is_set() is True:
                 return self.metadata_store_client.get_num_entries(self.name, state)
 
-    async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
+    def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
 
@@ -209,14 +209,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             hash = self.hash_file(artifact_save_path)
 
             # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
-            await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
+            self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
         except Exception as e:
             self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise e
 
-    async def list_artifacts(self, state: str) -> List[str]:
+    def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the resource path.
         Args:
@@ -225,7 +225,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             List[str]: A list of artifact paths.
         """
 
-        entries = await super().list_artifacts(state)
+        entries = super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
 
