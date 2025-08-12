@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import argparse
 from typing import List
 from pathlib import Path
+from logging.config import dictConfig
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
@@ -13,9 +14,7 @@ from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 from utils import *
-
-# Make sure that the .env file is in the same directory as this Python script
-load_dotenv()
+from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
 
 
 
@@ -26,20 +25,8 @@ parser.add_argument('leaf_host', type=str)
 parser.add_argument('leaf_port', type=int)
 args = parser.parse_args()
 
-root_test_path = "./testing_artifacts"
-
-# Create a file for Anacostia logs
-log_path = f"{root_test_path}/anacostia.log"
-log_file_handler = logging.FileHandler(log_path)
-log_file_handler.setLevel(logging.INFO)
-log_formatter = logging.Formatter(
-    fmt='ROOT %(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-log_file_handler.setFormatter(log_formatter)
-logger = logging.getLogger(__name__)
-logger.addHandler(log_file_handler)
-logger.setLevel(logging.INFO)  # Make sure it's at least INFO
+dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
+logger = logging.getLogger("root_anacostia")
 
 mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
 mkcert_ca = str(mkcert_ca)
@@ -47,38 +34,6 @@ mkcert_ca = str(mkcert_ca)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
 ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
-
-
-# Step 1: Create a file handler for access logs
-access_log_path = f"{root_test_path}/access.log"
-
-# Uvicorn needs a dictionary describing the log setup
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "ROOT ACCESS %(asctime)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-    },
-    "handlers": {
-        "access_file_handler": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "formatter": "default",
-            "filename": f"{access_log_path}",   # access_log_path = "./testing_artifacts/access.log" , log_path = "./testing_artifacts/anacostia.log"
-        },
-    },
-    "loggers": {
-        "uvicorn.access": {
-            "handlers": ["access_file_handler"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
-}
 
 
 
@@ -237,7 +192,7 @@ service = PipelineServer(
     ssl_ca_certs=mkcert_ca,
     ssl_certfile=ssl_certfile,
     ssl_keyfile=ssl_keyfile,
-    uvicorn_access_log_config=LOGGING_CONFIG
+    uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
 
 config = service.get_config()
