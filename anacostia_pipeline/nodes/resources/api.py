@@ -36,7 +36,7 @@ class BaseResourceServer(BaseServer):
 
         @self.get("/get_num_artifacts/")
         async def get_num_artifacts(state: str):
-            num_artifacts = await self.node.get_num_artifacts(state)
+            num_artifacts = self.node.get_num_artifacts(state)
             try:
                 return JSONResponse(content={"num_artifacts": num_artifacts}, status_code=200)
             except Exception as e:
@@ -45,7 +45,7 @@ class BaseResourceServer(BaseServer):
         @self.get("/list_artifacts/")
         async def list_artifacts(state: str):
             try:
-                artifacts = await self.node.list_artifacts(state)
+                artifacts = self.node.list_artifacts(state)
                 return JSONResponse(content={"artifacts": artifacts}, status_code=200)
             except Exception as e:
                 return JSONResponse(content={"error": f"An error occurred while listing artifacts: {str(e)}"}, status_code=500)
