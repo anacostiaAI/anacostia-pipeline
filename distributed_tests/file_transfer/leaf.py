@@ -53,11 +53,7 @@ class ShakespeareEvalNode(BaseActionNode):
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
         run_id = self.metadata_store_rpc.get_run_id()
-
-        try:
-            self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
-        except Exception as e:
-            self.log(f"Error downloading artifact: {str(e)}", level="ERROR")
+        self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
         
         num_artifacts = self.model_registry_rpc.get_num_artifacts()
         artifacts = self.model_registry_rpc.list_artifacts()
@@ -79,11 +75,7 @@ class HaikuEvalNode(BaseActionNode):
         
         run_id = self.metadata_store_rpc.get_run_id()
         create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
-
-        try:
-            self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
-        except Exception as e:
-            self.log(f"Error uploading artifact: {str(e)}", level="ERROR")
+        self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
 
         return True
 
