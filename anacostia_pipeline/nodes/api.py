@@ -1,6 +1,7 @@
 from logging import Logger
 import httpx
 from fastapi import FastAPI, status
+from fastapi import HTTPException
 from pydantic import BaseModel
 from typing import List, Union
 import asyncio
@@ -115,13 +116,26 @@ class BaseServer(FastAPI):
         """
         self.loop = loop
 
-    async def connect(self) -> None:
-        if self.client_url is not None:
-            response = await self.client.post("/api/client/connect", json={"url": self.get_server_url()})
-            message = response.json()["message"]
-            self.log(message, level="INFO")
+    def connect(self) -> None:
+        """
+        Connect to the client URL and register the server with the client.
+        """
 
-
+        async def _connect():
+            if self.client_url is not None:
+                response = await self.client.post("/api/server/connect", json={"url": self.get_server_url()})
+                if response.status_code == 200:
+                    message = response.json()["message"]
+                    self.log(message, level="INFO")
+                else:
+                    raise HTTPException(status_code=response.status_code, detail=response.json().get("error", "Unknown error occurred"))
+                return response
+        
+        if self.loop.is_running():
+            response = asyncio.run_coroutine_threadsafe(_connect(), self.loop)
+            return response.result()
+        else:
+            raise RuntimeError("Event loop is not running. Cannot connect to client.")
 
 class BaseClient(FastAPI):
     """

@@ -366,11 +366,9 @@ class PipelineServer(FastAPI):
             gui.set_event_loop(self.pipeline.loop)         # Set the event loop for the node's GUI
 
         # Connect RPC servers to RPC clients
-        tasks = []
         for node_server in self.node_servers:
             node_server.set_event_loop(self.pipeline.loop)  # Set the event loop for the node server
-            tasks.append(node_server.connect())
-        await asyncio.gather(*tasks)
+            node_server.connect()
 
         # Set the event loop for each remote client
         for remote_client in self.remote_clients:
