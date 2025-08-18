@@ -1,6 +1,7 @@
 import asyncio
 from urllib.parse import urlparse
-from typing import List, Coroutine
+from typing import List, Coroutine, Union
+from logging import Logger
 
 import httpx
 from fastapi import FastAPI, status
@@ -17,6 +18,7 @@ class Connector(FastAPI):
         ssl_keyfile: str = None, 
         ssl_certfile: str = None, 
         ssl_ca_certs: str = None, 
+        loggers: Union[Logger, List[Logger]] = None, 
         *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -71,6 +73,38 @@ class Connector(FastAPI):
             self.node.successor_events[leaf.node_url].set()
             return {"message": "Signalled predecessors"}
     
+        if loggers is None:
+            self.loggers: List[Logger] = list()
+        else:
+            if isinstance(loggers, Logger):
+                self.loggers: List[Logger] = [loggers]
+            else:
+                self.loggers: List[Logger] = loggers
+        
+    def add_loggers(self, loggers: Union[Logger, List[Logger]]) -> None:
+        if isinstance(loggers, Logger):
+            self.loggers.append(loggers)
+        else:
+            self.loggers.extend(loggers)
+
+    def log(self, message: str, level="DEBUG") -> None:
+        if len(self.loggers) > 0:
+            for logger in self.loggers:
+                if level == "DEBUG":
+                    logger.debug(message)
+                elif level == "INFO":
+                    logger.info(message)
+                elif level == "WARNING":
+                    logger.warning(message)
+                elif level == "ERROR":
+                    logger.error(message)
+                elif level == "CRITICAL":
+                    logger.critical(message)
+                else:
+                    raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(message)
+
     def get_connector_prefix(self):
         # sample output: /metadata/connector
         return f"/{self.node.name}/connector"
@@ -110,7 +144,7 @@ class Connector(FastAPI):
                 response = asyncio.run_coroutine_threadsafe(_connect(), self.loop)
                 results = response.result()
                 results = [r.json() for r in results if r.status_code == 200]
-                print(f"Connected to remote successors: {[r['node_url'] for r in results]}")
+                self.log(f"Node '{self.node.name}' connected to remote successors: {[r['node_url'] for r in results]}", level="INFO")
                 return results
             else:
                 raise RuntimeError("Event loop is not running. Cannot connect to remote successors.")
