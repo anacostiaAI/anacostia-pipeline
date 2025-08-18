@@ -84,23 +84,36 @@ class Connector(FastAPI):
         """
         self.loop = loop
 
-    async def connect(self) -> List[Coroutine]:
+    def connect(self) -> List[Coroutine]:
         """
         Connect to all remote predecessors and successors.
         Returns a list of coroutines that can be awaited to perform the connection.
         """
-        tasks = []
-        for connection in self.node.remote_successors:
-            node_model: NodeModel = self.node.model()
-            connection_mode = NodeConnectionModel(
-                **node_model.model_dump(),
-                node_url=self.get_node_url(),
-            )
-            json = connection_mode.model_dump()
-            tasks.append(
-                self.client.post(f"{connection}/connector/connect", json=json)
-            )
-        return tasks
+
+        async def _connect():
+            tasks = []
+            for connection in self.node.remote_successors:
+                node_model: NodeModel = self.node.model()
+                connection_mode = NodeConnectionModel(
+                    **node_model.model_dump(),
+                    node_url=self.get_node_url(),
+                )
+                json = connection_mode.model_dump()
+                tasks.append(
+                    self.client.post(f"{connection}/connector/connect", json=json)
+                )
+            responses = await asyncio.gather(*tasks)
+            return responses
+ 
+        if len(self.node.remote_successors) > 0:
+            if self.loop.is_running():
+                response = asyncio.run_coroutine_threadsafe(_connect(), self.loop)
+                results = response.result()
+                results = [r.json() for r in results if r.status_code == 200]
+                print(f"Connected to remote successors: {[r['node_url'] for r in results]}")
+                return results
+            else:
+                raise RuntimeError("Event loop is not running. Cannot connect to remote successors.")
 
     def signal_remote_predecessors(self) -> List[Coroutine]:
         """
