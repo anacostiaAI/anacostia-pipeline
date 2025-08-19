@@ -56,9 +56,9 @@ service = PipelineServer(
     logger=logger, 
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG_1,
     allow_origins=[
-        "https://127.0.0.1:8000", "https://localhost:8000",
+        "https://127.0.0.1:8000", "https://localhost:8000",     # Note: it seems like only the root server needs to be allowed
         #"https://127.0.0.1:8001", "https://localhost:8001",
-        "https://127.0.0.1:8002", "https://localhost:8002",
+        #"https://127.0.0.1:8002", "https://localhost:8002",
     ],
     allow_credentials=True,
     allow_methods=["*"],
