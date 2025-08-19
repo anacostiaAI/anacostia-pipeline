@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # generate certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ./certs/private.key -out ./certs/cert.pem -config ./certs/openssl.cnf
+mkdir -p ./certs
+mkcert -key-file ./certs/private_leaf_1.key -cert-file ./certs/certificate_leaf_1.pem localhost 127.0.0.1
+mkcert -key-file ./certs/private_leaf_2.key -cert-file ./certs/certificate_leaf_2.pem localhost 127.0.0.1
+mkcert -key-file ./certs/private_root.key -cert-file ./certs/certificate_root.pem localhost 127.0.0.1
 
 # Configuration
 ROOT_SCRIPT="root.py"
