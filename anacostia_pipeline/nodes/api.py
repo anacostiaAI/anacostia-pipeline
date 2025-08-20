@@ -123,7 +123,7 @@ class BaseServer(FastAPI):
 
         async def _connect():
             if self.client_url is not None:
-                response = await self.client.post("/api/server/connect", json={"url": self.get_server_url()})
+                response = await self.client.post("/api/client/connect", json={"url": self.get_server_url()})
                 if response.status_code == 200:
                     message = response.json()["message"]
                     self.log(message, level="INFO")
