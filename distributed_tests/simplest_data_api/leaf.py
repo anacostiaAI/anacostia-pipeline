@@ -5,7 +5,7 @@ from pathlib import Path
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 import logging
 from loggers import LEAF_ANACOSTIA_LOGGING_CONFIG, LEAF_ACCESS_LOGGING_CONFIG
@@ -58,7 +58,7 @@ shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", metadata_store_rpc=me
 
 pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval], loggers=[logger])
 
-webserver = PipelineServer(
+service = PipelineServer(
     name="shakespeare_eval_pipeline",
     pipeline=pipeline,
     host=args.host, 
@@ -70,4 +70,14 @@ webserver = PipelineServer(
     logger=logger, 
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
-webserver.run()
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break
