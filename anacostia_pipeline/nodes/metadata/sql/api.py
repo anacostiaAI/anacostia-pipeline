@@ -312,14 +312,40 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
         task = asyncio.run_coroutine_threadsafe(_log_metrics(node_name, **kwargs), self.loop)
         return task.result()
 
-    async def log_params(self, node_name: str, **kwargs):
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/log_params/?node_name={node_name}", json=kwargs)
-    
-    async def set_tags(self, node_name: str, **kwargs):
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"{self.get_server_url()}/set_tags/?node_name={node_name}", json=kwargs)
-    
+    def log_params(self, node_name: str, **kwargs):
+        """
+        Log parameters for a specific node.
+        This method sends a POST request to the server to log parameters.
+        """
+        async def _log_params(node_name: str, **kwargs):
+            try:
+                response = await self.client.post(f"/log_params/?node_name={node_name}", json=kwargs)
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log params failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error logging params: {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_log_params(node_name, **kwargs), self.loop)
+        return task.result()
+
+    def set_tags(self, node_name: str, **kwargs):
+        """
+        Set tags for a specific node.
+        This method sends a POST request to the server to set tags.
+        """
+        async def _set_tags(node_name: str, **kwargs):
+            try:
+                response = await self.client.post(f"/set_tags/?node_name={node_name}", json=kwargs)
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Set tags failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error setting tags: {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_set_tags(node_name, **kwargs), self.loop)
+        return task.result()
+
     def get_metrics(self, node_name: str = None, run_id: int = None):
         """
         Get metrics for a specific node or run ID.
