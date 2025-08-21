@@ -8,7 +8,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 from loggers import ROOT_ANACOSTIA_LOGGING_CONFIG, ROOT_ACCESS_LOGGING_CONFIG
 from logging.config import dictConfig
@@ -45,7 +45,7 @@ class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None, remote_successors: List[str] = None) -> None:
         super().__init__(name=name, predecessors=predecessors, remote_successors=remote_successors)
 
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Logging node executed", level="INFO")
         return True
 
@@ -62,7 +62,7 @@ printing_node = PrintingNode(
 pipeline = Pipeline(name="test_pipeline", nodes=[metadata_store, data_store, printing_node], loggers=[logger])
 
 # Create the web server
-webserver = PipelineServer(
+service = PipelineServer(
     name="test_pipeline", 
     pipeline=pipeline, 
     host=args.root_host, 
@@ -73,4 +73,14 @@ webserver = PipelineServer(
     logger=logger,
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
-webserver.run()
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 import logging
 from loggers import LEAF_ANACOSTIA_LOGGING_CONFIG, LEAF_ACCESS_LOGGING_CONFIG
@@ -39,7 +39,7 @@ class ShakespeareEvalNode(BaseActionNode):
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         return True
 
@@ -48,7 +48,7 @@ shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", loggers=logger)
 
 pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval], loggers=[logger])
 
-webserver = PipelineServer(
+service = PipelineServer(
     name="shakespeare_eval_pipeline",
     pipeline=pipeline,
     host=args.host, 
@@ -58,4 +58,14 @@ webserver = PipelineServer(
     ssl_certfile=ssl_certfile,
     ssl_keyfile=ssl_keyfile
 )
-webserver.run()
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break
