@@ -1,5 +1,4 @@
 import threading
-import signal
 from logging import Logger
 from contextlib import asynccontextmanager
 from queue import Queue
@@ -10,6 +9,9 @@ import sys
 import os
 import json
 from urllib.parse import urlparse
+import asyncio
+import contextlib
+import time
 
 import uvicorn
 import httpx
@@ -18,12 +20,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from anacostia_pipeline.nodes.utils import NodeConnectionModel, NodeModel
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.pipelines.pipeline import Pipeline, InvalidPipelineError, InvalidNodeDependencyError
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
-from anacostia_pipeline.nodes.api import BaseClient
-from anacostia_pipeline.nodes.api import BaseServer
+from anacostia_pipeline.nodes.api import BaseServer, BaseClient
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
@@ -62,6 +63,9 @@ class PipelineServer(FastAPI):
             num_metadata_clients = len([client for client in remote_clients if isinstance(client, BaseMetadataStoreClient)])
             if num_metadata_clients > 1:
                 raise InvalidPipelineError("Only one BaseMetadataStoreClient is allowed in the pipeline. Found multiple metadata store nodes.")
+        
+        self.remote_clients = remote_clients if remote_clients is not None else []
+        self.uvicorn_access_log_config = uvicorn_access_log_config
 
         # lifespan context manager for spinning up and shutting down the service
         @asynccontextmanager
@@ -75,6 +79,7 @@ class PipelineServer(FastAPI):
 
             app.background_task = asyncio.create_task(app.process_queue())
 
+            app.pipeline.launch_nodes()   # Launch the nodes in the pipeline
             await app.connect()     # Connect to the leaf services
 
             yield
@@ -85,6 +90,9 @@ class PipelineServer(FastAPI):
                 await app.background_task
             except asyncio.CancelledError:
                 pass
+
+            app.pipeline.terminate_nodes()  # Terminate the nodes in the pipeline
+            await app.disconnect()  # Disconnect from the leaf services
 
             if app.logger is not None:
                 app.logger.info(f"Pipeline server '{app.name}' shut down")
@@ -98,6 +106,21 @@ class PipelineServer(FastAPI):
         self.successor_pipeline_models = []
         self.queue = Queue()
         self.background_task = None
+        self.ssl_ca_certs = ssl_ca_certs
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_certfile = ssl_certfile
+
+        if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
+            # If no SSL certificates are provided, create a client without them
+            self.client = httpx.AsyncClient()
+            self.scheme = "http"
+        else:
+            # If SSL certificates are provided, use them to create the client
+            try:
+                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.scheme = "https"
+            except httpx.ConnectError as e:
+                raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
 
         if allow_credentials is True and allow_origins == ["*"]:
             raise ValueError("allow_origins cannot be [\"*\"] when allow_credentials = True")
@@ -114,18 +137,6 @@ class PipelineServer(FastAPI):
         DASHBOARD_DIR = os.path.dirname(sys.modules["anacostia_pipeline"].__file__)
         self.static_dir = os.path.join(DASHBOARD_DIR, "static")
         self.mount("/static", StaticFiles(directory=self.static_dir), name="webserver")
-
-        config = uvicorn.Config(
-            self, 
-            host="0.0.0.0", 
-            port=self.port, 
-            ssl_keyfile=ssl_keyfile, 
-            ssl_certfile=ssl_certfile, 
-            ssl_ca_certs=ssl_ca_certs,
-            log_config=uvicorn_access_log_config
-        )
-        self.server = uvicorn.Server(config)
-        self.fastapi_thread = threading.Thread(target=self.server.run, name=name)
 
         # get the successor ip addresses
         self.successor_ip_addresses = []
@@ -146,23 +157,37 @@ class PipelineServer(FastAPI):
 
         # Mount the apps and connectors to the webserver
         self.connectors: List[Connector] = []
+        self.gui_apps: List[BaseGUI] = []
+        self.node_servers: List[BaseServer] = []
         for node in self.pipeline.nodes:
-            connector: Connector = node.setup_connector(host=self.host, port=self.port)
-            self.connectors.append(connector)  # store the connector for later use
-            self.mount(connector.get_connector_prefix(), connector)          
+            connector: Connector = node.setup_connector(
+                host=self.host, port=self.port, ssl_ca_certs=ssl_ca_certs, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile
+            )
+            self.mount(connector.get_connector_prefix(), connector)
+            self.connectors.append(connector)
 
-            node_gui: BaseGUI = node.setup_node_GUI(host=self.host, port=self.port)
-            self.mount(node_gui.get_node_prefix(), node_gui)                    # mount GUIs to PipelineWebserver
-        
-            server: BaseServer = node.setup_node_server(host=self.host, port=self.port)
-            self.mount(server.get_node_prefix(), server)                        # mount API servers to PipelineWebserver
+            node_gui: BaseGUI = node.setup_node_GUI(
+                host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+            )
+            self.mount(node_gui.get_node_prefix(), node_gui)                # mount the BaseNodeApp to PipelineWebserver
+            self.gui_apps.append(node_gui)
 
-        if remote_clients is not None:
-            for rpc_client in remote_clients:
-                rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
-                rpc_client.client_host = self.host
-                rpc_client.client_port = self.port
-                self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount API clients to PipelineWebserver
+            server: BaseServer = node.setup_node_server(
+                host=self.host, port=self.port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+            )
+            self.mount(server.get_node_prefix(), server)                    # mount the BaseRPCserver to PipelineWebserver
+            self.node_servers.append(server)                                # add the server to the list of node servers
+
+        for rpc_client in self.remote_clients:
+            rpc_client.add_loggers(self.logger)                             # add the logger to the rpc_client
+            rpc_client.set_credentials(
+                host=self.host, 
+                port=self.port, 
+                ssl_keyfile=ssl_keyfile, 
+                ssl_certfile=ssl_certfile, 
+                ssl_ca_certs=ssl_ca_certs
+            )
+            self.mount(rpc_client.get_client_prefix(), rpc_client)          # mount the BaseRPCclient to PipelineWebserver
         
         self.predecessor_host = None
         self.predecessor_port = None
@@ -239,7 +264,7 @@ class PipelineServer(FastAPI):
                         await asyncio.sleep(0.1)
 
                     except asyncio.CancelledError:
-                        print("event source /graph_sse closed")
+                        print(f"event source /graph_sse closed for {self.name}")
                         yield "event: close\n"
                         yield "data: \n\n"
                         break
@@ -251,111 +276,111 @@ class PipelineServer(FastAPI):
             response.headers["HX-Redirect"] = "/"
 
     async def process_queue(self):
-        async with httpx.AsyncClient() as client:
-            while True:
-                if self.queue.empty() is False and self.connected is True:
-                    message = self.queue.get()
-                    
-                    try:
-                        if self.predecessor_host is not None and self.predecessor_port is not None:
-                            await client.post(f"http://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
-                    
-                    except httpx.ConnectError as e:
-                        self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
-                        self.queue.put(message)
-                        self.connected = False
-
-                    except Exception as e:
-                        self.logger.error(f"Error forwarding message: {str(e)}")
-                        self.queue.put(message)
-                        self.connected = False
-                    
-                    finally:
-                        self.queue.task_done()
+        while True:
+            if self.queue.empty() is False and self.connected is True:
+                message = self.queue.get()
                 
                 try:
-                    await asyncio.sleep(0.1)
-                except asyncio.CancelledError:
-                    self.logger.info("Background task cancelled; breaking out of queue processing loop")
-                    break 
+                    if self.predecessor_host is not None and self.predecessor_port is not None:
+                        await self.client.post(f"{self.scheme}://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
+                
+                except httpx.ConnectError as e:
+                    self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
+                    self.queue.put(message)
+                    self.connected = False
+
+                except Exception as e:
+                    self.logger.error(f"Error forwarding message from queue: {str(e)}")
+                    self.queue.put(message)
+                    self.connected = False
+                
+                finally:
+                    self.queue.task_done()
+            
+            try:
+                await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                self.logger.info("Background task cancelled; breaking out of queue processing loop")
+                break 
 
     async def connect(self):
-        async with httpx.AsyncClient() as client:
-            # Connect to leaf pipeline
-            task = []
-            for leaf_ip_address in self.successor_ip_addresses:
-                pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
-                task.append(client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
+        # Connect to leaf pipeline
+        task = []
+        for leaf_ip_address in self.successor_ip_addresses:
+            pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
+            task.append(self.client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
 
-            responses = await asyncio.gather(*task)
+        responses = await asyncio.gather(*task)
 
-            successor_node_models: List[NodeModel] = []
+        successor_node_models: List[NodeModel] = []
 
-            for response in responses:
-                # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
-                response_data = response.json()
-                self.successor_pipeline_models.append(response_data)
+        for response in responses:
+            # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
+            response_data = response.json()
+            self.successor_pipeline_models.append(response_data)
 
-                # Validate the response data and extract node models
-                for node_data in response_data["nodes"]:
-                    node_data = NodeModel.model_validate(node_data)
-                    successor_node_models.append(node_data)
+            # Validate the response data and extract node models
+            for node_data in response_data["nodes"]:
+                node_data = NodeModel.model_validate(node_data)
+                successor_node_models.append(node_data)
 
-            # Extract the node name and type from the responses and add them to the metadata store
-            if self.metadata_store is not None:
-                for node_model in successor_node_models:
-                    node_name = node_model.name
-                    node_type = node_model.node_type
-                    base_type = node_model.base_type
-            
-                    if self.metadata_store.node_exists(node_name=node_name) is False:
-                        self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
+        # Extract the node name and type from the responses and add them to the metadata store
+        if self.metadata_store is not None:
+            for successor_node_model in successor_node_models:
+                node_name = successor_node_model.name
+                node_type = successor_node_model.node_type
+                base_type = successor_node_model.base_type
+        
+                if self.metadata_store.node_exists(node_name=node_name) is False:
+                    self.metadata_store.add_node(node_name=node_name, node_type=node_type, base_type=base_type)
 
-            # ------ Check graph structure of when pipelines before they are connected ------
-            for node in self.pipeline.nodes:
-                node_base_type = node.model().base_type
+        # ------ Check graph structure of when pipelines before they are connected ------
+        for node in self.pipeline.nodes:
+            node_base_type = node.model().base_type
 
-                for connection in node.remote_successors:
-                    remote_node_name = connection.split("/")[-1]
+            for connection in node.remote_successors:
+                remote_node_name = connection.split("/")[-1]
 
-                    for node_model in successor_node_models:
-                        if node_model.name == remote_node_name:
-                            remote_node_base_type = node_data.base_type
-                            
-                            # based on the remote_successors information, check if the connection is valid
-                            if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
-                                raise InvalidNodeDependencyError(
-                                    f"Invalid connection: Metadata store node '{node.name}' cannot connect to non-resource node '{remote_node_name}'"
-                                )
-                            
-                            if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
-                                raise InvalidNodeDependencyError(
-                                    f"Invalid connection: Resource node '{node.name}' cannot connect to non-action node '{remote_node_name}'"
-                                )
-            # ------------------------------------------------------------------
+                for successor_node_model in successor_node_models:
+                    if successor_node_model.name == remote_node_name:
+                        remote_node_base_type = successor_node_model.base_type
+                        
+                        # based on the remote_successors information, check if the connection is valid
+                        if node_base_type == "BaseMetadataStoreNode" and remote_node_base_type != "BaseResourceNode":
+                            raise InvalidNodeDependencyError(
+                                f"Invalid connection: Metadata store node '{node.name}' (node_base_type: {node_base_type}) cannot connect to non-resource node '{remote_node_name}' (remote_node_base_type: {remote_node_base_type})"
+                            )
+                        
+                        if node_base_type == "BaseResourceNode" and remote_node_base_type != "BaseActionNode":
+                            raise InvalidNodeDependencyError(
+                                f"Invalid connection: Resource node '{node.name}' (node_base_type: {node_base_type}) cannot connect to non-action node '{remote_node_name}' (remote_node_base_type: {remote_node_base_type})"
+                            )
+        # ------------------------------------------------------------------
 
-            # Connect each node to its remote successors
-            task = []
-            for connector in self.connectors:
-                connection_tasks = await connector.connect()
-                task.extend(connection_tasks)
+        # Connect each node to its remote successors
+        for connector in self.connectors:
+            connector.set_event_loop(self.pipeline.loop)  # Set the event loop for the connector
+            connector.connect()  # Connect the node to its remote successors
 
-            await asyncio.gather(*task)
+        for gui in self.gui_apps:
+            gui.set_event_loop(self.pipeline.loop)         # Set the event loop for the node's GUI
 
-            # Connect RPC servers to RPC clients
-            task = []
-            for node in self.pipeline.nodes:
-                task.append(node.node_server.connect())
+        # Connect RPC servers to RPC clients
+        for node_server in self.node_servers:
+            node_server.set_event_loop(self.pipeline.loop)  # Set the event loop for the node server
+            node_server.connect()
 
-            await asyncio.gather(*task)
+        # Set the event loop for each remote client
+        for remote_client in self.remote_clients:
+            remote_client.set_event_loop(self.pipeline.loop)
 
-            # Finish the connection process for each leaf pipeline
-            # Leaf pipeline will set the connection event for each node
-            task = []
-            for leaf_ip_address in self.successor_ip_addresses:
-                task.append(client.post(f"{leaf_ip_address}/finish_connect"))
+        # Finish the connection process for each leaf pipeline
+        # Leaf pipeline will set the connection event for each node
+        tasks = []
+        for leaf_ip_address in self.successor_ip_addresses:
+            tasks.append(self.client.post(f"{leaf_ip_address}/finish_connect"))
 
-            await asyncio.gather(*task)
+        await asyncio.gather(*tasks)
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
@@ -365,13 +390,11 @@ class PipelineServer(FastAPI):
             subapp = node.get_node_gui()
             node_model["id"] = node_model["name"]
             node_model["label"] = node_model["name"]
-            node_model["origin_url"] = f"http://{self.host}:{self.port}"
+            node_model["origin_url"] = f"{self.scheme}://{self.host}:{self.port}"
             node_model["type"] = type(node).__name__
             
-            subapp_home_endpoint = subapp.get_home_endpoint()
-            node_model["endpoint"] = f"http://{self.host}:{self.port}{subapp_home_endpoint}" if subapp_home_endpoint else ''
-            
-            node_model["status_endpoint"] = f"http://{self.host}:{self.port}{subapp.get_status_endpoint()}"
+            node_model["endpoint"] = subapp.get_home_endpoint()
+            node_model["status_endpoint"] = subapp.get_status_endpoint()
             node_model["header_bar_endpoint"] = f'/header_bar/?node_id={node_model["id"]}'
 
             # add the remote successors to the node model
@@ -391,44 +414,35 @@ class PipelineServer(FastAPI):
         model["edges"] = edges
         return model
 
-    def run(self):
-        # Store original signal handlers
-        original_sigint_handler = signal.getsignal(signal.SIGINT)
-        original_sigterm_handler = signal.getsignal(signal.SIGTERM)
+    async def disconnect(self):
+        await self.client.aclose()
+        for connector in self.connectors:
+            await connector.client.aclose()
+    
+    def get_config(self):
+        return uvicorn.Config(
+            app=self, 
+            host="0.0.0.0", 
+            port=self.port, 
+            ssl_keyfile=self.ssl_keyfile, 
+            ssl_certfile=self.ssl_certfile, 
+            ssl_ca_certs=self.ssl_ca_certs,
+            log_config=self.uvicorn_access_log_config
+        )
 
-        def _kill_webserver(sig, frame):
 
-            # Stop the server
-            print(f"\nCTRL+C Caught!; Killing {self.name} Webservice...")
-            self.server.should_exit = True
-            self.fastapi_thread.join()
-            print(f"Anacostia leaf webserver {self.name} Killed...")
+class AnacostiaServer(uvicorn.Server):
+    def install_signal_handlers(self):
+        pass
 
-            # Terminate the pipeline
-            print("Killing leaf pipeline...")
-            self.pipeline.terminate_nodes()
-            print("Leaf pipeline Killed.")
-
-            # register the original default kill handler once the pipeline is killed
-            signal.signal(signal.SIGINT, original_sigint_handler)
-            signal.signal(signal.SIGTERM, original_sigterm_handler)
-
-            # If this was SIGTERM, we might want to exit the process
-            if sig == signal.SIGTERM:
-                sys.exit(0)
-
-        # register the kill handler for the webserver
-        signal.signal(signal.SIGINT, _kill_webserver)
-        signal.signal(signal.SIGTERM, _kill_webserver)
-
-        # Start the webserver
-        self.fastapi_thread.start()
-
-        self.pipeline.launch_nodes()
-
-        # keep the main thread open; this is done to avoid an error in python 3.12 "RuntimeError: can't create new thread at interpreter shutdown"
-        # and to avoid "RuntimeError: can't register atexit after shutdown" in python 3.9
-        for thread in threading.enumerate():
-            if thread.daemon or thread is threading.current_thread():
-                continue
+    @contextlib.contextmanager
+    def run_in_thread(self):
+        thread = threading.Thread(target=self.run)
+        thread.start()
+        try:
+            while not self.started:
+                time.sleep(1e-3)
+            yield
+        finally:
+            self.should_exit = True
             thread.join()

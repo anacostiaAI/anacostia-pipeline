@@ -10,8 +10,11 @@ from anacostia_pipeline.utils.sse import format_html_for_sse
 
 
 class FilesystemStoreGUI(BaseGUI):
-    def __init__(self, node, host: str, port: int, metadata_store = None, metadata_store_client = None, *args, **kwargs):
-        super().__init__(node, host=host, port=port, *args, **kwargs)
+    def __init__(
+        self, node, host: str, port: int, metadata_store = None, metadata_store_client = None, 
+        ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None, *args, **kwargs
+    ):
+        super().__init__(node, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs)
 
         if metadata_store is None and metadata_store_client is None:
             raise ValueError("Either metadata_store or metadata_store_rpc must be provided")
@@ -47,7 +50,7 @@ class FilesystemStoreGUI(BaseGUI):
                 file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
             else:
                 if self.metadata_store_client is not None:
-                    file_entries = await self.metadata_store_client.get_entries(resource_node_name=self.node.name)
+                    file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
             self.displayed_file_entries = file_entries
             file_entries.reverse()
@@ -68,7 +71,7 @@ class FilesystemStoreGUI(BaseGUI):
                     file_entries = self.metadata_store.get_entries(resource_node_name=self.node.name)
                 else:
                     if self.metadata_store_client is not None:
-                        file_entries = await self.metadata_store_client.get_entries(resource_node_name=self.node.name)
+                        file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
                 added_rows = []
                 entry_ids = [displayed_entry["id"] for displayed_entry in self.displayed_file_entries]

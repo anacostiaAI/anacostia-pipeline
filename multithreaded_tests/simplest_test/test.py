@@ -7,7 +7,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 # Create the testing artifacts directory for the SQLAlchemy tests
 tests_path = "./testing_artifacts"
@@ -22,7 +22,7 @@ class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None) -> None:
         super().__init__(name=name, predecessors=predecessors)
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         print("Logging node executed")
         return True
 
@@ -35,5 +35,15 @@ printing_node = PrintingNode("logging_node", predecessors=[data_store])
 pipeline = Pipeline(name="test_pipeline", nodes=[metadata_store, data_store, printing_node])
 
 # Create the web server
-webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
-webserver.run()
+service = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

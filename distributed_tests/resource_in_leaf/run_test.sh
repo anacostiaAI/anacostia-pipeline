@@ -2,6 +2,11 @@
 
 # remember to make file executable with chmod +x run_test.sh
 
+# generate certs
+mkdir -p ./certs
+mkcert -key-file ./certs/private_leaf.key -cert-file ./certs/certificate_leaf.pem localhost 127.0.0.1
+mkcert -key-file ./certs/private_root.key -cert-file ./certs/certificate_root.pem localhost 127.0.0.1
+
 # Configuration
 ROOT_SCRIPT="root.py"
 LEAF_SCRIPT="leaf.py"
@@ -88,12 +93,6 @@ if ! kill -0 $LEAF_PID 2>/dev/null; then
     exit 1
 fi
 
-# Create test data
-echo "Creating test data 1..."
-python3 create_files_1.py &
-wait $!
-echo "Created test data 1"
-
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT..."
 python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT &
 ROOT_PID=$!
@@ -108,10 +107,10 @@ echo "leaf server (PID: $LEAF_PID) and root server (PID: $ROOT_PID) are running.
 echo "Press Ctrl+C to stop both processes."
 
 # Create test data
-echo "Creating test data 2..."
-python3 create_files_2.py &
+echo "Creating test data..."
+python3 create_files.py &
 wait $!
-echo "Created test data 2"
+echo "Created test data."
 
 # Keep the script running until interrupted
 # This allows the user to press Ctrl+C which will trigger the cleanup function

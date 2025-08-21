@@ -4,6 +4,7 @@ from threading import Event
 from threading import Thread
 import traceback
 import time
+import datetime
 
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.utils.constants import Result, Status
@@ -146,26 +147,27 @@ class BaseMetadataStoreNode(BaseNode):
     def start_monitoring(self) -> None:
 
         def _monitor_thread_func():
-            self.log(f"Starting observer thread for node '{self.name}'")
+            self.log(f"Starting observer thread for node '{self.name}'", level='INFO')
             while self.exit_event.is_set() is False:
-                if self.exit_event.is_set() is True: break
                 try:
                     self.metadata_store_trigger()
 
                 except Exception as e:
-                        self.log(f"Error checking resource in node '{self.name}': {traceback.format_exc()}")
+                        self.log(f"Error checking metadata store data for node '{self.name}': {traceback.format_exc()}")
                 
                 # IMPORTANT: sleep for a while before checking again to enable other threads to access the database and to avoid starvation.
                 time.sleep(0.1)
+            
+            self.log(f"Observer thread for node '{self.name}' exited", level="INFO")
 
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func)
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()
 
     def stop_monitoring(self) -> None:
-        self.log(f"Beginning teardown for node '{self.name}'")
+        self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")
         self.observer_thread.join()
-        self.log(f"Observer stopped for node '{self.name}'")
-    
+        self.log(f"Observer stopped for node '{self.name}'", level="INFO")
+
     def metadata_store_trigger(self) -> None:
         """
         The default trigger for the SqliteMetadataStoreNode. 
@@ -179,8 +181,9 @@ class BaseMetadataStoreNode(BaseNode):
         super().exit()
         self.stop_monitoring()    
         self.trigger_event.set()
+        self.log(f"Node '{self.name}' trigger event set at {datetime.datetime.now()}", level='INFO')
     
-    async def run_async(self) -> None:
+    def run(self) -> None:
         # start monitoring thread for metadata store node
         self.start_monitoring()
 
@@ -197,7 +200,6 @@ class BaseMetadataStoreNode(BaseNode):
             
             if self.exit_event.is_set(): return
             
-            self.trigger_event.clear()
             self.status = Status.TRIGGERED
 
             # creating a new run
@@ -208,7 +210,7 @@ class BaseMetadataStoreNode(BaseNode):
             # signal to all successors that the run has been created; i.e., begin pipeline execution
             # self.log(f"{self.name} signaling successors that the run has been created", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)
 
             # waiting for all resource nodes to signal they are done using the current state
             # self.log(f"{self.name} waiting for resource nodes to signal they are done using the current state", level='INFO')
@@ -220,9 +222,11 @@ class BaseMetadataStoreNode(BaseNode):
             if self.exit_event.is_set(): return
             self.end_run()
 
+            # we are clearing the trigger event here to prevent the next run from being triggered before we record the end of the current run.
+            self.trigger_event.clear()
             self.run_id += 1
             
             # signal to all successors that the run has ended; i.e., end pipeline execution
             # self.log(f"{self.name} signaling successors that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)

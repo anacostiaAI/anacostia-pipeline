@@ -2,13 +2,17 @@ import argparse
 import logging
 from logging import Logger
 from typing import List
+import os
+from pathlib import Path
+from logging.config import dictConfig
 
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
 from utils import create_file
+from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 
 
 
@@ -24,49 +28,16 @@ output_path = f"{path}/output_artifacts"
 model_registry_path = f"{input_path}/model_registry"
 plots_path = f"{output_path}/plots"
 
-# Create a file for Anacostia logs
-log_path = f"{leaf_test_path}/anacostia.log"
-log_file_handler = logging.FileHandler(log_path)
-log_file_handler.setLevel(logging.INFO)
-log_formatter = logging.Formatter(
-    fmt='LEAF %(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-log_file_handler.setFormatter(log_formatter)
-logger = logging.getLogger(__name__)
-logger.addHandler(log_file_handler)
-logger.setLevel(logging.INFO)  # Make sure it's at least INFO
+dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
+logger = logging.getLogger("leaf_anacostia")
 
-# Step 1: Create a file handler for access logs
-access_log_path = f"{leaf_test_path}/access.log"
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
 
-# Uvicorn needs a dictionary describing the log setup
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "LEAF ACCESS %(asctime)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-    },
-    "handlers": {
-        "access_file_handler": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "formatter": "default",
-            "filename": f"{access_log_path}",   # access_log_path = "./testing_artifacts/access.log" , log_path = "./testing_artifacts/anacostia.log"
-        },
-    },
-    "loggers": {
-        "uvicorn.access": {
-            "handlers": ["access_file_handler"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
-}
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
+
 
 
 class ShakespeareEvalNode(BaseActionNode):
@@ -78,26 +49,20 @@ class ShakespeareEvalNode(BaseActionNode):
         self.metadata_store_rpc = metadata_store_rpc
         self.model_registry_rpc = model_registry_rpc
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
-        try:
-            await self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
-        except Exception as e:
-            self.log(f"Failed to log metrics: {e}", level="ERROR")
+        self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
         
-        try:
-            run_id = await self.metadata_store_rpc.get_run_id()
-            await self.model_registry_rpc.get_artifact(filepath=f"model{run_id}.txt")
-        except Exception as e:
-            self.log(f"Failed to get artifact: {e}", level="ERROR")
+        run_id = self.metadata_store_rpc.get_run_id()
+
+        """
+        self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
         
-        try:
-            num_artifacts = await self.model_registry_rpc.get_num_artifacts()
-            artifacts = await self.model_registry_rpc.list_artifacts()
-            self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
-        except Exception as e:
-            self.log(f"Failed to list artifacts: {e}", level="ERROR")
+        num_artifacts = self.model_registry_rpc.get_num_artifacts()
+        artifacts = self.model_registry_rpc.list_artifacts()
+        self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
+        """
             
         return True
 
@@ -110,31 +75,21 @@ class HaikuEvalNode(BaseActionNode):
         self.metadata_store_rpc = metadata_store_rpc
         self.plots_store_rpc = plots_store_rpc
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
 
-        try:
-            await self.metadata_store_rpc.log_metrics(node_name=self.name, haiku_test_loss=2.47)
-        except Exception as e:
-            self.log(f"Failed to log metrics: {e}", level="ERROR")
+        self.metadata_store_rpc.log_metrics(node_name=self.name, haiku_test_loss=2.47)
+    
+        tags = self.metadata_store_rpc.get_metrics()
+        self.log(f"Tags: {tags}", level="INFO")
         
-        try:
-            tags = await self.metadata_store_rpc.get_metrics()
-            self.log(f"Tags: {tags}", level="INFO")
-        except Exception as e:
-            self.log(f"Failed to get tags: {e}", level="ERROR")
-        
-        try:
-            run_id = await self.metadata_store_rpc.get_run_id()
+        run_id = self.metadata_store_rpc.get_run_id()
 
-            create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
+        """
+        create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
             
-            await self.plots_store_rpc.upload_file(
-                filepath=f"plot{run_id}.txt",
-                remote_path=f"plot{run_id}.txt"
-            )
-        except Exception as e:
-            self.log(f"Failed to create plot: {e}", level="ERROR")
+        self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
+        """
 
         return True
 
@@ -157,6 +112,24 @@ service = PipelineServer(
     port=args.port, 
     remote_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger,
-    uvicorn_access_log_config=LOGGING_CONFIG
+    allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
+    uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
-service.run()
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break
+

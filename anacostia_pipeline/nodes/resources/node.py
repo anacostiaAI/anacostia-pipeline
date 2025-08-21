@@ -2,6 +2,7 @@ from typing import List, Union, Dict, Any
 from logging import Logger
 import threading
 from abc import ABC, abstractmethod
+import datetime
 
 import httpx
 
@@ -90,25 +91,25 @@ class BaseResourceNode(BaseNode, ABC):
         pass
 
     @abstractmethod
-    async def resource_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """Override to specify how the resource is triggered."""
         pass
 
-    async def entry_exists(self, filepath: str) -> bool:
+    def entry_exists(self, filepath: str) -> bool:
         if self.metadata_store is not None:
             return self.metadata_store.entry_exists(self.name, filepath)
         
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    return await self.metadata_store_client.entry_exists(self.name, filepath)
+                    return self.metadata_store_client.entry_exists(self.name, filepath)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
                     # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
             
 
-    async def record_new(self, filepath: str, hash: str, hash_algorithm: str) -> None:
+    def record_new(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record a new artifact in the metadata store.
 
@@ -122,7 +123,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
+                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="new", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -134,7 +135,7 @@ class BaseResourceNode(BaseNode, ABC):
                     raise e
                                 
         
-    async def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
+    def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record an artifact produced in the current run metadata store.
 
@@ -148,7 +149,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -186,7 +187,7 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
         
-    async def add_artifact(
+    def add_artifact(
         self, filepath: str, hash: str, hash_algorithm: str, state: str = "new", run_id: int = None, file_size: int = None, content_type: str = None
     ) -> None:
         """
@@ -204,7 +205,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.create_entry(
+                    self.metadata_store_client.create_entry(
                         self.name, filepath=filepath, hash=hash, hash_algorithm=hash_algorithm, state=state, run_id=run_id, file_size=file_size, content_type=content_type
                     )
                 except httpx.ConnectError as e:
@@ -217,7 +218,7 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
 
-    async def get_num_artifacts(self, state: str) -> int:
+    def get_num_artifacts(self, state: str) -> int:
         """
         Get the number of artifacts in the specified state.
         
@@ -232,7 +233,8 @@ class BaseResourceNode(BaseNode, ABC):
             return self.metadata_store.get_num_entries(self.name, state)
         
         if self.metadata_store_client is not None:
-            return await self.metadata_store_client.get_num_entries(self.name, state)
+            if self.connection_event.is_set() is True:
+                return self.metadata_store_client.get_num_entries(self.name, state)
 
     def get_artifact(self, id: int) -> Dict:
         """
@@ -251,7 +253,7 @@ class BaseResourceNode(BaseNode, ABC):
                 return entry
         raise EntryNotFoundError(f"No entry found with id: {id}")
     
-    async def list_artifacts(self, state: str) -> List[str]:
+    def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the specified state.
         Args:
@@ -264,7 +266,7 @@ class BaseResourceNode(BaseNode, ABC):
             entries = self.metadata_store.get_entries(self.name, state)
         
         if self.metadata_store_client is not None:
-            entries = await self.metadata_store_client.get_entries(self.name, state)
+            entries = self.metadata_store_client.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
 
@@ -278,7 +280,7 @@ class BaseResourceNode(BaseNode, ABC):
         
         self.resource_event.set()
     
-    async def trigger(self, message: str = None) -> None:
+    def trigger(self, message: str = None) -> None:
         if self.resource_event.is_set() is False:
             
             # Note: log the trigger first before setting the event or there will be a race condition
@@ -288,11 +290,11 @@ class BaseResourceNode(BaseNode, ABC):
                 
                 if self.connection_event.is_set() is True:
                     if self.metadata_store_client is not None:
-                        await self.metadata_store_client.log_trigger(node_name=self.name, message=message)
+                        self.metadata_store_client.log_trigger(node_name=self.name, message=message)
             
             self.resource_event.set()
 
-    async def run_async(self) -> None:
+    def run(self) -> None:
         # if the node is not monitoring the resource, then we don't need to start the observer / monitoring thread
         if self.monitoring is True:
             self.start_monitoring()
@@ -308,7 +310,7 @@ class BaseResourceNode(BaseNode, ABC):
 
         if self.metadata_store_client is not None and self.metadata_store is not None and self.wait_for_connection is True:
             entries = self.metadata_store.get_entries(self.name)
-            await self.metadata_store_client.merge_artifacts_table(self.name, entries)
+            self.metadata_store_client.merge_artifacts_table(self.name, entries)
 
         while self.exit_event.is_set() is False:
             
@@ -324,23 +326,20 @@ class BaseResourceNode(BaseNode, ABC):
             # e.g., there is enough new data to trigger the next run
             # self.log(f"{self.name} signaling metadata store that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_predecessors(Result.SUCCESS)
+            self.signal_predecessors(Result.SUCCESS)
 
             # wait for metadata store node to finish creating the run 
             # self.log(f"{self.name} waiting for metadata store to finish creating the run", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
 
-            # we clear the resource_event after the run has been created so that the trigger won't execute more than once on the same resource
-            # this is important so we don't trigger the same run multiple times if the resource is not changing
             if self.monitoring is True:
-                self.resource_event.clear()
                 self.status = Status.TRIGGERED
                 
             # signalling to all successors that the resource is ready to be used for the current run
             # self.log(f"{self.name} signaling successors that the resource is ready to be used", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_successors(Result.SUCCESS)
+            self.signal_successors(Result.SUCCESS)
 
             # waiting for all successors to finish using the the resource for the current run
             # self.log(f"{self.name} waiting for successors to finish using the resource", level='INFO')
@@ -350,9 +349,13 @@ class BaseResourceNode(BaseNode, ABC):
             # signal the metadata store node that the action nodes have finish using the resource for the current run
             # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')
             if self.exit_event.is_set(): return
-            await self.signal_predecessors(Result.SUCCESS)
+            self.signal_predecessors(Result.SUCCESS)
             
             # wait for acknowledgement from metadata store node that the run has been ended
             # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_predecessors()
+
+            # we clear the resource_event after the run ends so the trigger won't execute more than once on the same resource
+            # this is important so we don't trigger the same run multiple times if the resource is not changing
+            self.resource_event.clear()

@@ -14,18 +14,44 @@ class BaseMetadataStoreServer(BaseServer):
         host = "127.0.0.1", 
         port: int = 8000, 
         loggers: Union[Logger, List[Logger]] = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
         *args, 
         **kwargs
     ) -> None:
-        super().__init__(metadata_store, client_url, host, port, loggers, *args, **kwargs)
+        super().__init__(
+            metadata_store, client_url, host, port, loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs
+        )
         self.metadata_store = metadata_store
 
 
 
 class BaseMetadataStoreClient(BaseClient):
-    def __init__(self, client_name: str, client_host: str = "127.0.0.1", client_port: int = 8000, server_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
-    
+    def __init__(
+        self, 
+        client_name: str, 
+        client_host: str = "127.0.0.1", 
+        client_port: int = 8000, 
+        server_url = None, 
+        loggers = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            client_name=client_name, 
+            client_host=client_host, 
+            client_port=client_port, 
+            server_url=server_url, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
+
     async def add_node(self, node_name: str, node_type: str, base_type: str):
         raise NotImplementedError("add_node method not implemented in SqliteMetadataRPCclient")
     
@@ -35,13 +61,13 @@ class BaseMetadataStoreClient(BaseClient):
     async def create_entry(self, resource_node_name: str, filepath: str, state: str = "new", run_id: int = None):
         raise NotImplementedError("create_entry method not implemented in SqliteMetadataRPCclient")
     
-    async def merge_artifacts_table(self, resource_node_name: str, entries: List[dict]):
+    def merge_artifacts_table(self, resource_node_name: str, entries: List[dict]):
         raise NotImplementedError("merge_artifacts_table method not implemented in SqliteMetadataRPCclient")
     
     async def entry_exists(self, resource_node_name: str, location: str):
         raise NotImplementedError("entry_exists method not implemented in SqliteMetadataRPCclient")
     
-    async def log_metrics(self, node_name: str, **kwargs):
+    def log_metrics(self, node_name: str, **kwargs):
         raise NotImplementedError("log_metrics method not implemented in SqliteMetadataRPCclient")
     
     async def log_params(self, node_name: str, **kwargs):

@@ -6,9 +6,7 @@ from threading import Thread
 import traceback
 import time
 from abc import ABC
-import asyncio
 import hashlib
-import inspect
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -66,24 +64,29 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             monitoring=monitoring
         )
     
-    def setup_node_GUI(self, host: str, port: int) -> FilesystemStoreGUI:
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> FilesystemStoreGUI:
         self.gui = FilesystemStoreGUI(
             node=self, 
             host=host,
             port=port,
             metadata_store=self.metadata_store, 
-            metadata_store_client=self.metadata_store_client
+            metadata_store_client=self.metadata_store_client,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
+            ssl_ca_certs=ssl_ca_certs
         )
         return self.gui
-    
-    def setup_node_server(self, host: str, port: int):
-        self.node_server = FilesystemStoreServer(self, self.client_url, host, port, loggers=self.loggers)
+
+    def setup_node_server(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> FilesystemStoreServer:
+        self.node_server = FilesystemStoreServer(
+            self, self.client_url, host, port, loggers=self.loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+        )
         return self.node_server
 
     def start_monitoring(self) -> None:
 
-        async def _monitor_thread_func():
-            self.log(f"Starting observer thread for node '{self.name}'")
+        def _monitor_thread_func():
+            self.log(f"Starting observer thread for node '{self.name}'", level="INFO")
             while self.exit_event.is_set() is False:
                 for root, dirnames, filenames in os.walk(self.path):
                     for filename in filenames:
@@ -95,17 +98,19 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         filepath = filepath.lstrip(os.sep)              # Remove leading separator
 
                         try:
-                            entry_exists = await self.entry_exists(filepath) 
+                            entry_exists = self.entry_exists(filepath) 
                             if entry_exists is False:
-                                await self.record_new(filepath, hash=hash, hash_algorithm="sha256")
+                                self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
                         except Exception as e:
                             self.log(f"Unexpected error in monitoring logic for '{self.name}': {traceback.format_exc()}", level="ERROR")
 
-                if self.exit_event.is_set() is True: break
+                if self.exit_event.is_set() is True: 
+                    self.log(f"Observer thread for node '{self.name}' exiting", level="INFO")
+                    return
                 try:
-                    await self.resource_trigger()
+                    self.resource_trigger()
                 
                 except NetworkConnectionNotEstablished as e:
                     pass
@@ -123,9 +128,11 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 # sleep for a while before checking again
                 time.sleep(0.1)
 
+            self.log(f"Observer thread for node '{self.name}' exited", level="INFO")
+
         # since we are using asyncio.run, we need to create a new thread to run the event loop 
         # because we can't run an event loop in the same thread as the FilesystemStoreNode
-        self.observer_thread = Thread(name=f"{self.name}_observer", target=asyncio.run, args=(_monitor_thread_func(),))
+        self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()
 
     def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
@@ -135,16 +142,36 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    async def resource_trigger(self) -> None:
+    def resource_trigger(self) -> None:
         """
         The default trigger for the FilesystemStoreNode. 
         resource_trigger checks if there are any new files in the resource directory and triggers the node if there are.
         """
-        num_new_artifacts = await self.get_num_artifacts("new")
-        if num_new_artifacts > 0:
-            await self.trigger(message=f"New files detected in {self.resource_path}")
-    
-    async def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
+
+        num_new_artifacts = self.get_num_artifacts("new")
+        if num_new_artifacts is not None:
+            if num_new_artifacts > 0:
+                self.trigger(message=f"New files detected in {self.resource_path}")
+
+    def get_num_artifacts(self, state: str) -> int:
+        """
+        Get the number of artifacts in the specified state.
+        
+        Args:
+            state: The state of the artifacts to count (e.g., "new", "current", "old")
+        
+        Returns:
+            int: The number of artifacts in the specified state
+        """
+
+        if self.metadata_store is not None:
+            return self.metadata_store.get_num_entries(self.name, state)
+        
+        if self.metadata_store_client is not None:
+            if self.connection_event.is_set() is True:
+                return self.metadata_store_client.get_num_entries(self.name, state)
+
+    def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
 
@@ -182,14 +209,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             hash = self.hash_file(artifact_save_path)
 
             # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
-            await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
+            self.record_current(filepath, hash=hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
 
         except Exception as e:
             self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise e
 
-    async def list_artifacts(self, state: str) -> List[str]:
+    def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the resource path.
         Args:
@@ -198,7 +225,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             List[str]: A list of artifact paths.
         """
 
-        entries = await super().list_artifacts(state)
+        entries = super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
 
@@ -238,6 +265,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise e
 
     def stop_monitoring(self) -> None:
-        self.log(f"Beginning teardown for node '{self.name}'")
+        self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")
         self.observer_thread.join()
-        self.log(f"Observer stopped for node '{self.name}'")
+        self.log(f"Observer stopped for node '{self.name}'", level="INFO")

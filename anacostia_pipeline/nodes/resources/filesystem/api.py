@@ -2,18 +2,31 @@ from typing import List, Union, Any, Optional, Callable
 from logging import Logger
 import os
 import hashlib
+import asyncio
 
 from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
-import httpx
 
 from anacostia_pipeline.nodes.resources.api import BaseResourceServer, BaseResourceClient
 
 
 
 class FilesystemStoreServer(BaseResourceServer):
-    def __init__(self, node, client_url: str, host = "127.0.0.1", port = 8000, loggers: Union[Logger, List[Logger]]  = None, *args, **kwargs):
-        super().__init__(node, client_url, host, port, loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        node, 
+        client_url: str, 
+        host = "127.0.0.1", 
+        port = 8000, 
+        loggers: Union[Logger, List[Logger]]  = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            node, client_url, host, port, loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs
+        )
         self.resource_path: str = node.resource_path
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
@@ -84,7 +97,7 @@ class FilesystemStoreServer(BaseResourceServer):
                     raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
 
                 # enter the uploaded file into the metadata store
-                await self.node.record_current(x_filename, hash=actual_hash, hash_algorithm="sha256")
+                self.node.record_current(x_filename, hash=actual_hash, hash_algorithm="sha256")
                 
                 return JSONResponse(
                     content={
@@ -105,8 +118,30 @@ class FilesystemStoreServer(BaseResourceServer):
 
 
 class FilesystemStoreClient(BaseResourceClient):
-    def __init__(self, storage_directory: str, client_name: str, client_host = "127.0.0.1", client_port = 8000, server_url = None, loggers = None, *args, **kwargs):
-        super().__init__(client_name=client_name, client_host=client_host, client_port=client_port, server_url=server_url, loggers=loggers, *args, **kwargs)
+    def __init__(
+        self, 
+        storage_directory: str, 
+        client_name: str, 
+        client_host = "127.0.0.1", 
+        client_port = 8000, 
+        server_url = None, 
+        loggers = None, 
+        ssl_keyfile: str = None, 
+        ssl_certfile: str = None, 
+        ssl_ca_certs: str = None, 
+        *args, **kwargs
+    ):
+        super().__init__(
+            client_name=client_name, 
+            client_host=client_host, 
+            client_port=client_port, 
+            server_url=server_url, 
+            loggers=loggers, 
+            ssl_keyfile=ssl_keyfile, 
+            ssl_certfile=ssl_certfile, 
+            ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
 
         self.storage_directory = f"{storage_directory}/{client_name}"
     
@@ -120,47 +155,57 @@ class FilesystemStoreClient(BaseResourceClient):
                 sha256.update(chunk)
         return sha256.hexdigest()
     
-    async def get_artifact(self, filepath: str) -> Any:
-        local_filepath = os.path.join(self.storage_directory, filepath)
+    def download_artifact(self, filepath: str) -> Any:
+        """
+        Download an artifact from the FilesystemStoreRPCserver on the root pipeline.
+        Args:
+            filepath (str): Path of the artifact to download, relative to the resource_path.
+                            Example: "data/file.txt" will download the file from resource_path/data/file.txt.
+        Raises:
+            HTTPException: If the response code from /get_artifact is not 200.
+        """
 
-        try:
-            async with httpx.AsyncClient() as client:
+        async def _get_artifact(local_filepath: str, filepath: str):
 
-                # Stream the response to handle large files efficiently
-                url = f"{self.get_server_url()}/get_artifact/{filepath}"
-                async with client.stream("GET", url) as response:
-                    if response.status_code != 200:
-                        self.log(f"Error: Server returned status code {response.status_code}", level="ERROR")
-                        self.log(f"Response: {await response.text()}", level="ERROR")
-                        raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
+            # Stream the response to handle large files efficiently
+            url = f"/get_artifact/{filepath}"
+            async with self.client.stream("GET", url) as response:
+                if response.status_code != 200:
+                    self.log(f"Error in download_artifact: Server returned status code {response.status_code}", level="ERROR")
+                    self.log(f"Response: {await response.text()}", level="ERROR")
+                    raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
+                
+                else:
+                    self.log(f"Downloading file from {url}...", level="INFO")
+
+                    # Create the file and write the content chunk by chunk
+                    with open(local_filepath, "wb") as f:
+                        async for chunk in response.aiter_bytes():
+                            f.write(chunk)
                     
-                    else:
-                        self.log(f"Downloading file from {url}...", level="INFO")
+                    # Get expected hash from header
+                    expected_hash = response.headers.get("x-file-hash")
+                    if not expected_hash:
+                        raise HTTPException(status_code=500, detail="Missing file hash in response headers")
+                    
+                    # Verify file hash
+                    actual_hash = self.hash_file(local_filepath)
+                    if actual_hash != expected_hash:
+                        self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
+                        raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
 
-                        # Create the file and write the content chunk by chunk
-                        with open(local_filepath, "wb") as f:
-                            async for chunk in response.aiter_bytes():
-                                f.write(chunk)
-                        
-                        # Get expected hash from header
-                        expected_hash = response.headers.get("x-file-hash")
-                        if not expected_hash:
-                            raise HTTPException(status_code=500, detail="Missing file hash in response headers")
-                        
-                        # Verify file hash
-                        actual_hash = self.hash_file(local_filepath)
-                        if actual_hash != expected_hash:
-                            self.log(f"Hash mismatch! Expected: {expected_hash}, Actual: {actual_hash}", level="ERROR")
-                            raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
-
-                        self.log(f"File downloaded successfully: {local_filepath}", level="INFO")
-                        return True
+                    self.log(f"File downloaded successfully: {local_filepath}", level="INFO")
+                    return True
+            
+        try:
+            local_filepath = os.path.join(self.storage_directory, filepath)
+            asyncio.run_coroutine_threadsafe(_get_artifact(local_filepath, filepath), self.loop)
 
         except Exception as e:
             self.log(f"Error: An exception occurred while downloading the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: An exception occurred while downloading the file: {str(e)}")
 
-    async def upload_file(self, filepath: str, remote_path: str = None):
+    def upload_artifact(self, filepath: str, remote_path: str = None):
         """
         Upload a file back to the FilesystemStoreRPCserver on the root pipeline.
         Args:
@@ -208,24 +253,27 @@ class FilesystemStoreClient(BaseResourceClient):
                         self.log(f"Sent chunk: {len(chunk)/1024/1024:.2f} MB", level="INFO")
             
             # Send the file using streaming upload
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.get_server_url()}/upload_stream",
+            async def _upload_file():
+                response = await self.client.post(
+                    f"/upload_stream",
                     headers=headers,
                     content=file_generator(),
                     timeout=None  # Disable timeout for large uploads
                 )
             
-            # self.log the response
-            if response.status_code == 200:
-                self.log(f"Success: File {filename} sent successfully", level="INFO")
-                response_data = response.json()
-                self.log(f"remote storage path: {response_data['stored_path']}", level="INFO")
-                return True
-            else:
-                self.log(f"Error: Received status code {response.status_code}", level="ERROR")
-                self.log(f"Response: {response.text}", level="ERROR")
-                raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
+                # self.log the response
+                if response.status_code == 200:
+                    self.log(f"Success: File {filename} sent successfully", level="INFO")
+                    response_data = response.json()
+                    self.log(f"remote storage path: {response_data['stored_path']}", level="INFO")
+                    return True
+                else:
+                    self.log(f"Error in upload_artifact: Received status code {response.status_code}", level="ERROR")
+                    self.log(f"Response: {response.text}", level="ERROR")
+                    raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
+                
+            # Run the upload in an async context
+            asyncio.run_coroutine_threadsafe(_upload_file(), self.loop)
                 
         except Exception as e:
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")

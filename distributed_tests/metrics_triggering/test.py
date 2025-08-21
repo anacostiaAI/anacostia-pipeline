@@ -1,8 +1,10 @@
 import os
 import shutil
 import logging
+from pathlib import Path
 from logging.config import dictConfig
 from typing import List
+import threading
 
 from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
@@ -10,7 +12,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
 # Create the testing artifacts directory for the SQLAlchemy tests
 tests_path = "./testing_artifacts"
@@ -22,6 +24,13 @@ data_store_path = f"{tests_path}/data_store"
 
 dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("root_anacostia")
+
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 
@@ -35,14 +44,16 @@ class MetricMonitoringNode(SQLiteMetadataStoreNode):
 
         # note: make sure the node_name is the same as the name of the node in the client, 
         # essentially we are showing how to get the metrics logged by the client, and the client can be anywhere
-        node_name = "edge_deployment"
+        node_name = "edge_deployment_client"
         metrics = self.get_metrics(node_name=node_name, run_id=run_id)
         accuracy_scores = [metric['metric_value'] for metric in metrics if metric["metric_name"] == "percent_accuracy"]
-        highest_accuracy = max(accuracy_scores)
+        
+        if len(accuracy_scores) > 0:
+            highest_accuracy = max(accuracy_scores)
 
-        # trigger condition
-        if highest_accuracy > 0.4:
-            self.trigger(f"% accuracy = {highest_accuracy}, trigger condition % accuracy > 0.4 satisfied")
+            # trigger condition
+            if highest_accuracy > 0.4:
+                self.trigger(f"% accuracy = {highest_accuracy}, trigger condition % accuracy > 0.4 satisfied")
 
 
 
@@ -51,8 +62,8 @@ class PrintingNode(BaseActionNode):
     def __init__(self, name: str, predecessors: List[BaseNode] = None) -> None:
         super().__init__(name=name, predecessors=predecessors)
     
-    async def execute(self, *args, **kwargs) -> bool:
-        self.log("Logging node executed", level="INFO")
+    def execute(self, *args, **kwargs) -> bool:
+        self.log(f"Logging node executed, thread ID = {threading.get_ident()}", level="INFO")
         return True
 
 # Create the nodes
@@ -68,5 +79,29 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
-webserver.run()
+service = PipelineServer(
+    name="test_pipeline", 
+    pipeline=pipeline, 
+    host="127.0.0.1", 
+    port=8000, 
+    logger=logger,
+    allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
+    uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
+)
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

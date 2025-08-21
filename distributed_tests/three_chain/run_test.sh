@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # generate certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ./certs/private.key -out ./certs/cert.pem -config ./certs/openssl.cnf
+mkdir -p ./certs
+mkcert -key-file ./certs/private_leaf_1.key -cert-file ./certs/certificate_leaf_1.pem localhost 127.0.0.1
+mkcert -key-file ./certs/private_leaf_2.key -cert-file ./certs/certificate_leaf_2.pem localhost 127.0.0.1
+mkcert -key-file ./certs/private_root.key -cert-file ./certs/certificate_root.pem localhost 127.0.0.1
 
 # Configuration
 ROOT_SCRIPT="root.py"
@@ -93,15 +96,26 @@ echo "Setting up distributed tests"
 python setup.py
 echo "Done."
 
-echo "Starting leaf1 server on port $LEAF_PORT_1..."
-python3 $LEAF_SCRIPT_1 "127.0.0.1" $LEAF_PORT_1 &
-LEAF_PID_1=$!
-
+# ---------------- spin up leaf-2 server
 echo "Starting leaf2 server on port $LEAF_PORT_2..."
 python3 $LEAF_SCRIPT_2 "127.0.0.1" $LEAF_PORT_2 &
 LEAF_PID_2=$!
 
-# Give the leaf servers time to start
+# Give the leaf2 server time to start
+sleep 2
+
+# Verify leaf server started successfully
+if ! kill -0 $LEAF_PID_2 2>/dev/null; then
+    echo "Error: Leaf2 server failed to start. Check ./testing_artifacts/leaf_server_output.log for details."
+    exit 1
+fi
+
+# ---------------- spin up leaf-1 server
+echo "Starting leaf1 server on port $LEAF_PORT_1..."
+python3 $LEAF_SCRIPT_1 "127.0.0.1" $LEAF_PORT_1 "127.0.0.1" $LEAF_PORT_2 &
+LEAF_PID_1=$!
+
+# Give the leaf1 server time to start
 sleep 2
 
 # Verify leaf server started successfully
@@ -110,14 +124,9 @@ if ! kill -0 $LEAF_PID_1 2>/dev/null; then
     exit 1
 fi
 
-# Verify leaf server started successfully
-if ! kill -0 $LEAF_PID_2 2>/dev/null; then
-    echo "Error: Leaf2 server failed to start. Check ./testing_artifacts/leaf_server_output.log for details."
-    exit 1
-fi
-
+# ---------------- spin up root server
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT_1 and $LEAF_PORT_2 ..."
-python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT_1 "127.0.0.1" $LEAF_PORT_2 &
+python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT_1 &
 ROOT_PID=$!
 
 # Give the root server time to start

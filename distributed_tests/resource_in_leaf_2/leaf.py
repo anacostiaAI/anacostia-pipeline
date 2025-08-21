@@ -3,9 +3,11 @@ import logging
 from logging import Logger
 from logging.config import dictConfig
 import argparse
+import os
+from pathlib import Path
 
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
@@ -30,6 +32,14 @@ metadata_store_path = f"sqlite:///{input_path}/metadata_store/metadata.db"
 dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("leaf_anacostia")
 
+mkcert_ca = Path(os.popen("mkcert -CAROOT").read().strip()) / "rootCA.pem"
+mkcert_ca = str(mkcert_ca)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ssl_certfile = os.path.join(BASE_DIR, "certs/certificate_leaf.pem")
+ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
+
+
 
 class EvalNode(BaseActionNode):
     def __init__(
@@ -39,9 +49,9 @@ class EvalNode(BaseActionNode):
         super().__init__(name=name, predecessors=[leaf_data_node], loggers=loggers)
         self.leaf_data_node = leaf_data_node
     
-    async def execute(self, *args, **kwargs) -> bool:
+    def execute(self, *args, **kwargs) -> bool:
         try:
-            current_artifacts = await self.leaf_data_node.list_artifacts("current")
+            current_artifacts = self.leaf_data_node.list_artifacts("current")
             for filepath in current_artifacts:
                 with open(filepath, 'r') as f:
                     self.log(f"Evaluated LLM on {filepath}", level="INFO")
@@ -74,13 +84,24 @@ service = PipelineServer(
     host=args.host, 
     port=args.port, 
     remote_clients=[metadata_store_client],
-    allow_origins=["http://127.0.0.1:8000", "http://localhost:8000"],
+    allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    ssl_ca_certs=mkcert_ca,
+    ssl_certfile=ssl_certfile,
+    ssl_keyfile=ssl_keyfile,
     logger=logger,
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
 
-if __name__ == "__main__":
-    service.run()
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

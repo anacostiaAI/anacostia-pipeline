@@ -7,11 +7,10 @@ from datetime import datetime
 from functools import wraps
 import traceback
 import json
-import asyncio
 import httpx
 
 from anacostia_pipeline.utils.constants import Status, Result
-from anacostia_pipeline.nodes.utils import NodeModel, NodeConnectionModel
+from anacostia_pipeline.nodes.utils import NodeModel
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer
@@ -98,13 +97,17 @@ class BaseNode(Thread):
         if url not in self.remote_predecessors:
             self.remote_predecessors.append(url)
             self.predecessors_events[url] = Event()
-    
-    def setup_connector(self, host: str, port: int):
-        self.connector = Connector(self, host=host, port=port)
+
+    def setup_connector(
+        self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None
+    ) -> Connector:
+        self.connector = Connector(
+            node=self, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, loggers=self.loggers
+        )
         return self.connector
 
-    def setup_node_GUI(self, host: str, port: int):
-        self.gui = BaseGUI(node=self, host=host, port=port)
+    def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
+        self.gui = BaseGUI(node=self, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs)
         return self.gui
     
     def get_node_gui(self):
@@ -112,8 +115,11 @@ class BaseNode(Thread):
             raise ValueError("Node GUI not set up")
         return self.gui
     
-    def setup_node_server(self, host: str, port: int):
-        self.node_server = BaseServer(self, client_url=self.client_url, host=host, port=port, loggers=self.loggers)
+    def setup_node_server(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
+        self.node_server = BaseServer(
+            self, client_url=self.client_url, host=host, port=port, loggers=self.loggers, 
+            ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+        )
         return self.node_server
 
     def __hash__(self) -> int:
@@ -151,13 +157,13 @@ class BaseNode(Thread):
 
     @property
     def status(self):
-        while True:
+        while not self.exit_event.is_set():
             with self._status_lock:
                 return self._status
 
     @status.setter
     def status(self, value: Status):
-        while True:
+        while not self.exit_event.is_set():
             with self._status_lock:
                 self._status = value
 
@@ -191,25 +197,15 @@ class BaseNode(Thread):
                 return
         return log_exception_wrapper
     
-    def __signal_local_predecessors(self):
-        if len(self.predecessors) > 0:
-            for predecessor in self.predecessors:
-                predecessor.successor_events[self.name].set()
-            # self.log(f"'{self.name}' finished signalling local predecessors", level="INFO")
-    
-    def __signal_local_successors(self):
+    def signal_successors(self, result: Result):
+        # self.log(f"'{self.name}' signaling local successors", level="INFO")
         if len(self.successors) > 0:
             for successor in self.successors:
                 successor.predecessors_events[self.name].set()
-            # self.log(f"'{self.name}' finished signalling local successors", level="INFO")
-    
-    async def signal_successors(self, result: Result):
-        # self.log(f"'{self.name}' signaling local successors", level="INFO")
-        self.__signal_local_successors()
 
         # self.log(f"'{self.name}' signaling remote successors", level="INFO")
         try:
-            await self.connector.signal_remote_successors(result)
+            self.connector.signal_remote_successors()
             self.log(f"'{self.name}' finished signalling remote successors", level="INFO")
         except httpx.ConnectError:
             self.log(f"'{self.name}' failed to signal successors from {self.name}", level="ERROR")
@@ -224,16 +220,18 @@ class BaseNode(Thread):
         for event in self.successor_events.values():
             event.clear()
     
-    async def signal_predecessors(self, result: Result):
+    def signal_predecessors(self, result: Result):
         # self.log(f"'{self.name}' signaling local predecessors", level="INFO")
-        self.__signal_local_predecessors()
+        if len(self.predecessors) > 0:
+            for predecessor in self.predecessors:
+                predecessor.successor_events[self.name].set()
         
         # self.log(f"'{self.name}' signaling remote predecessors", level="INFO")
         try:
-            await self.connector.signal_remote_predecessors(result)
+            self.connector.signal_remote_predecessors()
             self.log(f"'{self.name}' finished signalling remote predecessors", level="INFO")
         except httpx.ConnectError:
-            self.log(f"'{self.name}' failed to signal predecessors from {self.name}", level="ERROR")
+            self.log(f"'{self.name}' failed to signal remote predecessors", level="ERROR")
             self.exit()
 
     def wait_for_predecessors(self):
@@ -254,7 +252,7 @@ class BaseNode(Thread):
 
     def exit(self):
         # setting all events forces the loop to continue to the next checkpoint which will break out of the loop
-        self.log(f"Node '{self.name}' exiting at {datetime.now()}")
+        self.log(f"Node '{self.name}' exiting at {datetime.now()}", level='INFO')
         
         # set all events so loop can continue to next checkpoint and break out of loop
         self.connection_event.set()
@@ -263,11 +261,11 @@ class BaseNode(Thread):
 
         for event in self.successor_events.values():
             event.set()
-        
+
         for event in self.predecessors_events.values():
             event.set()
 
-        self.log(f"Node '{self.name}' exited at {datetime.now()}")
+        self.log(f"Node '{self.name}' exited at {datetime.now()}", level='INFO')
 
     @log_exception
     def setup(self) -> None:
@@ -281,11 +279,5 @@ class BaseNode(Thread):
         """
         pass
     
-    async def run_async(self) -> None:
-        """
-        override to specify the logic of the node.
-        """
-        raise NotImplementedError
-    
     def run(self) -> None:
-        asyncio.run(self.run_async())
+        raise NotImplementedError("run() method is to be implemented in BaseMetadataStoreNode, BaseResourceNode, and BaseActionNode.")
