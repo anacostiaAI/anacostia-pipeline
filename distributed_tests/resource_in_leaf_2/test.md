@@ -10,6 +10,7 @@ Predecessor pipeline:
         - Type: `SQLiteMetadataStoreNode`
         - Running on https://127.0.0.1:8000/metadata_store
         - Purpose: to provide a central metadata store between the predecessor and successor pipeline.
+        - Database location: `./root-artifacts/input_artifacts/metadata_store/metadata.db`
 
 Successor pipeline:
 - Running on https://127.0.0.1:8001
@@ -17,9 +18,12 @@ Successor pipeline:
     - `leaf_metadata_store`
         - Type: `SQLiteMetadataStoreNode`
         - Purpose: to serve as temporary database to record information about files being created prior to the successor pipeline connecting to the predecessor pipeline.
+        - Server running on https://127.0.0.1:8001/metadata_store
+        - Database location: `./leaf-artifacts/input_artifacts/metadata_store/metadata.db`
     - `leaf_data_node`
         - Type: `FilesystemStoreNode`
         - Running on https://127.0.0.1:8001/leaf_data_node
+        - Storage directory: `./leaf-artifacts/input_artifacts/shakespeare`
         - Purpose: to detect incoming files dumped into the `./leaf-artifacts/input_artifacts/shakespeare` folder and to trigger the pipeline.
     - `shakespeare_eval`
         - Type: `BaseActionNode`
