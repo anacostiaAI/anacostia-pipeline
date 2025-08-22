@@ -1,5 +1,5 @@
 ### Test Objective:
-Show a predecessor pipeline can trigger two different successor pipelines running on two different processes using two different ports.
+Show how three pipelines can chained together.
 
 ### Pipeline Configuration:
 `root_pipline`:
@@ -21,7 +21,7 @@ Show a predecessor pipeline can trigger two different successor pipelines runnin
         - Type: `BaseActionNode`
         - Running on https://127.0.0.1:8001/logging_root
         - Purpose: only here to provide a placeholder.
-        - Remote successors: `logging_leaf_1`, `logging_leaf_2`
+        - Remote successors: `logging_leaf_1` 
 
 `leaf1`:
 - Running on https://127.0.0.1:8001
@@ -30,6 +30,7 @@ Show a predecessor pipeline can trigger two different successor pipelines runnin
         - Type: `BaseActionNode`
         - Running on https://127.0.0.1:8001/logging_leaf_1
         - Purpose: only here to provide a placeholder.
+        - Remote successors: `logging_leaf_2` 
 
 `leaf2`:
 - Running on https://127.0.0.1:8002
@@ -40,21 +41,21 @@ Show a predecessor pipeline can trigger two different successor pipelines runnin
         - Purpose: only here to provide a placeholder.
 
 ### Test Setup:
-Spin up both `leaf1` and `leaf2` pipelines first. Then spin up `root_pipline`.
+Spin up `leaf1` pipeline, then `leaf2` pipeline, and then spin up `root_pipline`.
 
 ### Pipeline Trigger:
 Files will be created and dumped into the `./root-artifacts/input_artifacts/data_store` folder. `data_store` node will monitor the folder and trigger pipeline upon new files being dumped into the folder.
 
 ### Pipeline operation:
-Upon being triggered, `logging_root` will trigger `logging_leaf_1` and `logging_leaf_2` over the network.
+Upon being triggered, `logging_root` will trigger `logging_leaf_1` which will then trigger `logging_leaf_2` over the network.
 
 ### Instructions to run test:
 Run `run_test.sh` file to automatically run tests.
 To run tests manually:
 1. Open up four terminals
 2. Run `python setup.py` in terminal 1
-3. Run `python leaf1.py "127.0.0.1" 8001` in terminal 2
-3. Run `python leaf2.py "127.0.0.1" 8002` in terminal 3
-4. Run `python root.py "127.0.0.1" 8000 "127.0.0.1" 8001 "127.0.0.1" 8002` in terminal 4
-5. Go back to terminal 1 and run `python create_files.py`
-6. Open up a browser and navigate to https://127.0.0.1:8000 to see the GUI
+3. Run `python leaf2.py "127.0.0.1" 8002` in terminal 2
+4. Run `python leaf1.py "127.0.0.1" 8001 "127.0.0.1" 8002` in terminal 3
+5. Run `python root.py "127.0.0.1" 8000 "127.0.0.1" 8001` in terminal 4
+6. Go back to terminal 1 and run `python create_files.py`
+7. Open up a browser and navigate to https://127.0.0.1:8000 to see the GUI
