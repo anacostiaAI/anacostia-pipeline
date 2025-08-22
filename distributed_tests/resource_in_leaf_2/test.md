@@ -5,14 +5,41 @@ metadata store and train on previously detected artifacts.
 ### Pipeline Configuration:
 Predecessor pipeline:
 - Running on https://127.0.0.1:8000
-- Nodes: metadata store node running on https://127.0.0.1:8000/metadata_store
+- Nodes:
+    - `metadata_store`
+        - Type: `SQLiteMetadataStoreNode`
+        - Running on https://127.0.0.1:8000/metadata_store
+        - Purpose: to provide a central metadata store between the predecessor and successor pipeline.
 
 Successor pipeline:
 - Running on https://127.0.0.1:8001
 - Nodes: 
-    - Metadata node (leaf_metadata_store)
-    - Resource node running on https://127.0.0.1:8001/leaf_data_node
-    - Action node running on https://127.0.0.1:8001/shakespeare_eval
+    - `leaf_metadata_store`
+        - Type: `SQLiteMetadataStoreNode`
+        - Purpose: to serve as temporary database to record information about files being created prior to the successor pipeline connecting to the predecessor pipeline.
+    - `leaf_data_node`
+        - Type: `FilesystemStoreNode`
+        - Running on https://127.0.0.1:8001/leaf_data_node
+        - Purpose: to detect incoming files dumped into the `./leaf-artifacts/input_artifacts/shakespeare` folder and to trigger the pipeline.
+    - `shakespeare_eval`
+        - Type: `BaseActionNode`
+        - Running on https://127.0.0.1:8001/shakespeare_eval
+        - Purpose: only here to provide a placeholder.
+- Clients:
+    - `metadata_store_rpc`
+        - Type: `SQLMetadataStoreClient`
+        - Running on https://127.0.0.1:8001/metadata_store_rpc/api/client
+        - Purpose: to provide an interface with the `metadata_store` on the predecessor pipeline.
+
+### Test Setup:
+Files will be created and dumped into the `./leaf-artifacts/input_artifacts/shakespeare` folder (via `create_files_1.py`). 
+`leaf_data_node` will monitor the folder and record entries into the `leaf_metadata_store` upon new files being dumped into the folder. 
+The predecessor pipeline will then start running, `metadata_store` will pull data entries on the files created by `create_files_1.py`,
+and then enter the data entries into the SQLite database in `metadata_store`.
 
 ### Pipeline Trigger:
-Files will be created and dumped into the `./leaf-artifacts/input_artifacts/shakespeare` folder. `leaf_data_node` will monitor the folder and trigger pipeline upon new files being dumped into the folder.
+`create_files_2.py` then creates files and dumps it into the `./leaf-artifacts/input_artifacts/shakespeare` folder as well. 
+`leaf_data_node` will then trigger the pipeline on new files being created by `create_files_2.py`.
+
+### Pipeline operation:
+Files created by `create_files_1.py` and `create_files_2.py` are then used for the first run.
