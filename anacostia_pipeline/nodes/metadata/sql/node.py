@@ -99,7 +99,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             run = Run(run_id=run_id, start_time=start_time)
             session.add(run)
 
-            # update all artifacts with run_id = None and state = "new" to have the current run_id
+            # update all artifacts with run_id = None and state = "new" to have the current run_id and mark them as "current"
             stmt_artifacts = (
                 update(Artifact)
                 .where(Artifact.run_id.is_(None), Artifact.state == "new")
