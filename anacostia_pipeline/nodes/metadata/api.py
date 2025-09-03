@@ -70,6 +70,9 @@ class BaseMetadataStoreClient(BaseClient):
     def log_metrics(self, node_name: str, **kwargs):
         raise NotImplementedError("log_metrics method not implemented in SqliteMetadataRPCclient")
     
+    def tag_artifact(self, node_name: str, location: str, **kwargs) -> None:
+        pass
+
     async def log_params(self, node_name: str, **kwargs):
         raise NotImplementedError("log_params method not implemented in SqliteMetadataRPCclient")
     
