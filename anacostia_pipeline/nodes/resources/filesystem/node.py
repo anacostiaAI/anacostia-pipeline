@@ -1,5 +1,6 @@
 import os
-from typing import List, Any, Union, Callable
+from typing import List, Any, Union, Callable, Iterator
+from contextlib import contextmanager, ExitStack
 from datetime import datetime
 from logging import Logger
 from threading import Thread
@@ -229,9 +230,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
 
-    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
+    @contextmanager
+    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Iterator[Any]:
         """
-        Load an artifact from the specified path relative to the resource_path.
+        Context manager to load an artifact from the specified path relative to the resource_path.
 
         Args:
             filepath (str): Path of the artifact to load, relative to the resource_path.
@@ -247,22 +249,52 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         Raises:
             FileNotFoundError: If the artifact file does not exist.
             Exception: If an error occurs during loading.
-        """
         
-        artifact_save_path = os.path.join(self.resource_path, filepath)
-        if os.path.exists(artifact_save_path) is False:
-            raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
+        Example usage 1: loading a file
+            with self.load_artifact_cm("data/file.txt", open, mode="r") as f:
+                buf = f.read()
+
+        Example usage 2: loading a PyTorch model
+            import torch
+            with self.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
+                # use the model here
+                model.eval()
+                ...
+        
+        Example usage 3: using a custom load function
+            def load_fn(input_file_path) -> str:
+                with open(input_file_path, "r", encoding="utf-8") as f:
+                    return f.read()
+
+            with self.load_artifact_cm("data/readme.txt", load_fn) as text:
+                print("First 120 chars:", text[:120])
+        """
+
+        artifact_path = os.path.join(self.resource_path, filepath)
+        if not os.path.exists(artifact_path):
+            raise FileNotFoundError(f"File '{artifact_path}' does not exist.")
 
         try:
-            actual_hash = self.hash_file(artifact_save_path)
+            actual_hash = self.hash_file(artifact_path)
             expected_hash = None
             # TODO: get hash from metadata store and compare the expected hash with actual_hash
 
-            artifact = load_fn(artifact_save_path, *args, **kwargs)
-            return artifact
+            obj = load_fn(artifact_path, *args, **kwargs)
+
+            with ExitStack() as stack:
+                # If it's already a context manager, enter it.
+                if hasattr(obj, "__enter__") and hasattr(obj, "__exit__"):
+                    resource = stack.enter_context(obj)  # type: ignore[arg-type]
+                    yield resource
+                else:
+                    # If it exposes .close(), make sure we close it on exit.
+                    if hasattr(obj, "close") and callable(getattr(obj, "close")):
+                        stack.callback(obj.close)
+                    yield obj
+                # ExitStack ensures cleanup happens here.
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
-            raise e
+            raise
 
     def stop_monitoring(self) -> None:
         self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")

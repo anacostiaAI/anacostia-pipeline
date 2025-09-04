@@ -42,8 +42,20 @@ class TrainingNode(BaseActionNode):
         super().__init__(name, predecessors, remote_predecessors, remote_successors, client_url, wait_for_connection, loggers)
         self.model_registry = model_registry
         self.data_store = data_store
-    
+
     def execute(self, *args, **kwargs):
+
+        # Define a simple load function to read text files
+        def load_fn(input_file_path) -> str:
+            with open(input_file_path, "r", encoding="utf-8") as f:
+                return f.read()
+
+        # load training data
+        artifacts_paths = self.data_store.list_artifacts(state="current")
+        for artifact_path in artifacts_paths:
+            with self.data_store.load_artifact(filepath=artifact_path, load_fn=load_fn) as data:
+                self.log(f"Current Data: {data}", level="DEBUG")
+
         num_artifacts = self.data_store.get_num_artifacts('all')
         model_name = f"model{num_artifacts}.txt"
         model_card_name = f"model{num_artifacts}_card.md"
