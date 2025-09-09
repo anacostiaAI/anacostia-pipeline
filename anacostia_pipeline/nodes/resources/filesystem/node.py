@@ -186,79 +186,73 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
 
-    def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
-        """
-        Save a file using the provided function and filepath.
-
-        Args:
-            filepath (str): Path of the file to save relative to the resource_path.
-                            Example: "data/file.txt" will save the file at resource_path/data/file.txt.
-            save_fn (Callable): A function that takes the full save path as its first argument,
-                                followed by *args and **kwargs. It is responsible for writing the file.
-            *args: Additional positional arguments passed to `save_fn`.
-            **kwargs: Additional keyword arguments passed to `save_fn`.
-        """
-
-        # as of right now, i am not going to allow monitoring resource nodes to be used for detecting new data,
-        # i haven't seen a use case where it's necessary to save a file while monitoring is enabled.
-        if self.monitoring is True:
-            raise ValueError("Cannot save artifact while monitoring is enabled. Please disable monitoring before saving artifacts.")
-
-        # Ensure the root directory exists
-        folder_path = os.path.join(self.resource_path, os.path.dirname(filepath))
-        if os.path.exists(folder_path) is False:
-            os.makedirs(folder_path)
-        
-        artifact_save_path = os.path.join(self.resource_path, filepath)
-        if os.path.exists(artifact_save_path) is True:
-            raise FileExistsError(f"File '{artifact_save_path}' already exists. Please choose a different filename.")
-
-        try:
-            # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
-            # that way, the Observer can see the file is already logged and ignore it.
-            # await self.record_current(filepath, hash=hash, hash_algorithm="sha256")
-
-            # write the file to artifact_save_path using the user-provided function save_fn
-            save_fn(artifact_save_path, *args, **kwargs)
-
-            hash = self.hash_file(artifact_save_path)
-
-            # TODO: change this to self.add_artifact, not every artifact will be saved as a current artifact
-            self.record_current(filepath, hash=hash, hash_algorithm="sha256")
-            self.log(f"Saved artifact to {artifact_save_path}", level="INFO")
-
-        except Exception as e:
-            self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
-            raise e
-    
     @contextmanager
-    def save_artifact_cm(self, filepath: str, save_fn: Callable[[str, Any], Any], 
+    def save_artifact(
+        self,
+        filepath: str,
+        save_fn: Callable[[str, Any], Any],
         *args,
         overwrite: bool = False,
         atomic: bool = True,
         **kwargs
     ) -> Iterator[Any]:
         """
-        Context-managed save.
-
-        Usage patterns:
-        1) save_fn writes immediately and returns None:
-            with self.save_artifact_cm("out.txt", write_text, text="hello"):
-                pass
-
-        2) save_fn returns something to work with (e.g., an open file handle):
-            def open_writer(path): return open(path, "w", encoding="utf-8")
-            with self.save_artifact_cm("out.txt", open_writer) as f:
-                f.write("hello")
+        Context manager to save artifacts.
 
         Args:
-        filepath: path relative to self.resource_path
-        save_fn: function that takes (target_path, *args, **kwargs) and returns either:
+            filepath: path relative to self.resource_path
+            save_fn: function that takes (target_path, *args, **kwargs) and returns either:
                 - a context manager, OR
                 - an object with .close(), OR
                 - a plain object / None
-        overwrite: if False (default), raise if destination exists
-        atomic: if True (default), write to a temp file and os.replace() into place on success
+            *args: additional positional arguments to pass to `save_fn`
+            overwrite: if False (default), raise if destination exists
+            atomic: if True (default), write to a temp file and os.replace() into place on success
+            **kwargs: additional keyword arguments to pass to `save_fn`
+
+        ## Usage patterns:
+        1. “Fire and forget” writer (returns None) 
+        ```
+        fs_store = FilesystemStoreNode(...)
+
+        def write_text(path, text: str):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(text)
+
+        with fs_store.save_artifact_cm("notes/hello.txt", write_text, text="Hello, world!"):
+            pass  # nothing else to do
+        ```
+        2. Return an open file handle and write inside the `with` block
+        ```
+        fs_store = FilesystemStoreNode(...)
+
+        def open_writer(path):
+            return open(path, "w", encoding="utf-8")
+
+        with fs_store.save_artifact_cm("logs/run.log", open_writer) as f:
+            f.write("first line\\n")
+            f.write("second line\\n")
+        ```
+        3. Save a PIL image (write immediately)
+        ```
+        from PIL import Image
+
+        fs_store = FilesystemStoreNode(...)
+
+        def save_image(path, img: Image.Image, fmt="PNG"):
+            img.save(path, format=fmt)
+
+        img = Image.new("RGB", (100, 100))
+        with fs_store.save_artifact_cm("images/blank.png", save_image, img, fmt="PNG"):
+            pass
+        ```
+        4. Overwrite an existing file atomically
+        ```
+        fs_store = FilesystemStoreNode(...)
+
+        with fs_store.save_artifact_cm("notes/hello.txt", write_text, text="Updated", overwrite=True):
+            pass
+        ```
         """
 
         if self.monitoring is True:
@@ -347,26 +341,34 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             FileNotFoundError: If the artifact file does not exist.
             Exception: If an error occurs during loading.
         
-        ### Example usage 1: loading a file
+        ## Usage patterns:
+        1. Loading a file
         ```
-        with self.load_artifact_cm("data/file.txt", open, mode="r") as f:
+        fs_store = FilesystemStoreNode(...)
+
+        with fs_store.load_artifact_cm("data/file.txt", open, mode="r") as f:
             buf = f.read()
         ```
-        ### Example usage 2: loading a PyTorch model
+        2. Loading a PyTorch model
         ```
         import torch
-        with self.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
+        
+        fs_store = FilesystemStoreNode(...)
+
+        with fs_store.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
             # use the model here
             model.eval()
             ...
         ```
-        ### Example usage 3: using a custom load function
+        3. Using a custom load function
         ```
+        fs_store = FilesystemStoreNode(...)
+
         def load_fn(input_file_path) -> str:
             with open(input_file_path, "r", encoding="utf-8") as f:
                 return f.read()
 
-        with self.load_artifact_cm("data/readme.txt", load_fn) as text:
+        with fs_store.load_artifact_cm("data/readme.txt", load_fn) as text:
             print("First 120 chars:", text[:120])
         ```
         """
