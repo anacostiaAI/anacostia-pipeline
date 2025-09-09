@@ -84,15 +84,15 @@ class TrainingNode(BaseActionNode):
             template_path="modelcard.md",
         )
 
+        # we're using a simple string as a "model" for testing purposes
+        model = f"model {num_artifacts}"
+
         def save_model_fn(filepath: str, model: str) -> None:
             with locked_file(filepath, 'w') as f:
                 f.write(model)
-
-        self.model_registry.save_model(
-            save_model_fn=save_model_fn,
-            model=f"model {num_artifacts}",
-            model_path=model_name,
-        )
+        
+        with self.model_registry.save_artifact_cm(model_name, save_model_fn, model):
+            pass  # save_model_fn already wrote the file
 
         if num_artifacts % 3 == 0:
             self.model_registry.save_model_card(

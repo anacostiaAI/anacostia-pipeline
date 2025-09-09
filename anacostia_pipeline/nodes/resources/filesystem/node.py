@@ -8,6 +8,7 @@ import traceback
 import time
 from abc import ABC
 import hashlib
+import tempfile
 
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -172,6 +173,19 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             if self.connection_event.is_set() is True:
                 return self.metadata_store_client.get_num_entries(self.name, state)
 
+    def list_artifacts(self, state: str) -> List[str]:
+        """
+        List all artifacts in the resource path.
+        Args:
+            state (str): The state of the artifacts to list. Can be "new" or "old".
+        Returns:
+            List[str]: A list of artifact paths.
+        """
+
+        entries = super().list_artifacts(state)
+        full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
+        return full_artifacts_paths
+
     def save_artifact(self, filepath: str, save_fn: Callable[[str, Any], None], *args, **kwargs):
         """
         Save a file using the provided function and filepath.
@@ -216,19 +230,102 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         except Exception as e:
             self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise e
-
-    def list_artifacts(self, state: str) -> List[str]:
+    
+    @contextmanager
+    def save_artifact_cm(self, filepath: str, save_fn: Callable[[str, Any], Any], 
+        *args,
+        overwrite: bool = False,
+        atomic: bool = True,
+        **kwargs
+    ) -> Iterator[Any]:
         """
-        List all artifacts in the resource path.
+        Context-managed save.
+
+        Usage patterns:
+        1) save_fn writes immediately and returns None:
+            with self.save_artifact_cm("out.txt", write_text, text="hello"):
+                pass
+
+        2) save_fn returns something to work with (e.g., an open file handle):
+            def open_writer(path): return open(path, "w", encoding="utf-8")
+            with self.save_artifact_cm("out.txt", open_writer) as f:
+                f.write("hello")
+
         Args:
-            state (str): The state of the artifacts to list. Can be "new" or "old".
-        Returns:
-            List[str]: A list of artifact paths.
+        filepath: path relative to self.resource_path
+        save_fn: function that takes (target_path, *args, **kwargs) and returns either:
+                - a context manager, OR
+                - an object with .close(), OR
+                - a plain object / None
+        overwrite: if False (default), raise if destination exists
+        atomic: if True (default), write to a temp file and os.replace() into place on success
         """
 
-        entries = super().list_artifacts(state)
-        full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
-        return full_artifacts_paths
+        if self.monitoring is True:
+            raise ValueError(
+                "Cannot save artifact while monitoring is enabled. "
+                "Please disable monitoring before saving artifacts."
+            )
+
+        folder_path = os.path.join(self.resource_path, os.path.dirname(filepath))
+        os.makedirs(folder_path, exist_ok=True)
+
+        artifact_path = os.path.join(self.resource_path, filepath)
+
+        if os.path.exists(artifact_path) and not overwrite:
+            raise FileExistsError(
+                f"File '{artifact_path}' already exists. "
+                f"Use overwrite=True or choose a different filename."
+            )
+
+        # Choose a write target: direct path or a temp file for atomic replace.
+        tmp_path = artifact_path
+        tmp_created = False
+        if atomic:
+            # Create a unique temp file in the same directory (safe across crashes).
+            base = os.path.basename(artifact_path)
+            fd, tmp_path = tempfile.mkstemp(
+                dir=folder_path, prefix=f".{base}.", suffix=".tmp"
+            )
+            os.close(fd)
+            tmp_created = True
+
+        try:
+            # Let the user-provided function set up the write target.
+            obj = save_fn(tmp_path, *args, **kwargs)
+
+            # Manage whatever save_fn returned (CM, closeable, or plain)
+            with ExitStack() as stack:
+                if hasattr(obj, "__enter__") and hasattr(obj, "__exit__"):
+                    resource = stack.enter_context(obj)  # type: ignore[arg-type]
+                    yield resource
+                else:
+                    if hasattr(obj, "close") and callable(getattr(obj, "close")):
+                        stack.callback(obj.close)
+                    # Even if obj is None, yielding None is fine; callers can `pass`.
+                    yield obj
+
+            # Commit: move temp file into place atomically (or nothing if non-atomic)
+            if atomic:
+                os.replace(tmp_path, artifact_path)
+
+            # Hash and record after the file is finalized
+            file_hash = self.hash_file(artifact_path)
+            self.record_current(filepath, hash=file_hash, hash_algorithm="sha256")
+            self.log(f"Saved artifact to {artifact_path}", level="INFO")
+
+        except Exception as e:
+            # Best-effort cleanup of temp file on failure
+            if atomic and tmp_created and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception as cleanup_err:
+                    self.log(
+                        f"Cleanup warning: could not remove temp file '{tmp_path}': {cleanup_err}",
+                        level="WARNING",
+                    )
+            self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
+            raise
 
     @contextmanager
     def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Iterator[Any]:
@@ -250,24 +347,28 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             FileNotFoundError: If the artifact file does not exist.
             Exception: If an error occurs during loading.
         
-        Example usage 1: loading a file
-            with self.load_artifact_cm("data/file.txt", open, mode="r") as f:
-                buf = f.read()
+        ### Example usage 1: loading a file
+        ```
+        with self.load_artifact_cm("data/file.txt", open, mode="r") as f:
+            buf = f.read()
+        ```
+        ### Example usage 2: loading a PyTorch model
+        ```
+        import torch
+        with self.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
+            # use the model here
+            model.eval()
+            ...
+        ```
+        ### Example usage 3: using a custom load function
+        ```
+        def load_fn(input_file_path) -> str:
+            with open(input_file_path, "r", encoding="utf-8") as f:
+                return f.read()
 
-        Example usage 2: loading a PyTorch model
-            import torch
-            with self.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
-                # use the model here
-                model.eval()
-                ...
-        
-        Example usage 3: using a custom load function
-            def load_fn(input_file_path) -> str:
-                with open(input_file_path, "r", encoding="utf-8") as f:
-                    return f.read()
-
-            with self.load_artifact_cm("data/readme.txt", load_fn) as text:
-                print("First 120 chars:", text[:120])
+        with self.load_artifact_cm("data/readme.txt", load_fn) as text:
+            print("First 120 chars:", text[:120])
+        ```
         """
 
         artifact_path = os.path.join(self.resource_path, filepath)
