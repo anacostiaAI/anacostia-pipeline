@@ -253,6 +253,25 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         with fs_store.save_artifact_cm("notes/hello.txt", write_text, text="Updated", overwrite=True):
             pass
         ```
+        5. Appending to an existing file (non-atomic)
+        ```
+        fs_store = FilesystemStoreNode(...)
+        
+        def append_line(path: str, line: str) -> None:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+
+        with fs_store.save_artifact_cm(
+            "logs/service.log",
+            append_line,
+            "service started",
+            atomic=False,
+            overwrite=True   # file likely exists; we're appending to it
+        ):
+            pass
+        ```
         """
 
         if self.monitoring is True:
