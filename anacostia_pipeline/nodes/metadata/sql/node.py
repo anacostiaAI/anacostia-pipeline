@@ -162,15 +162,41 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             )
             session.execute(stmt_run)
 
-            # Update artifacts
+            # if artifacts have not been marked as "used" yet, update artifacts with state = "current" to have state = "unused"
             stmt_artifact = (
                 update(Artifact)
                 .where(Artifact.state == "current")
-                .values(state="old")
+                .values(state="unused")
             )
             session.execute(stmt_artifact)
 
         self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
+
+    def mark_current(self, resource_node_name: str, filepath: str) -> None:
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            stmt = (
+                update(Artifact)
+                .where(Artifact.node_id == node_id, Artifact.location == filepath)
+                .values(state="current", run_id=self.get_run_id())
+            )
+            result = session.execute(stmt)
+            if result.rowcount == 0:
+                raise ValueError(f"No artifact found for node '{resource_node_name}' with location '{filepath}' to mark as current.")
+    
+    def mark_used(self, resource_node_name: str, filepath: str) -> None:
+        node_id = self.get_node_id(resource_node_name)
+
+        with self.get_session() as session:
+            stmt = (
+                update(Artifact)
+                .where(Artifact.node_id == node_id, Artifact.location == filepath)
+                .values(state="used")
+            )
+            result = session.execute(stmt)
+            if result.rowcount == 0:
+                raise ValueError(f"No artifact found for node '{resource_node_name}' with location '{filepath}' to mark as used.")
 
     def get_node_id(self, node_name: str) -> int:
         with self.get_session() as session:
@@ -256,7 +282,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     
     def get_num_entries(self, resource_node_name: str, state: str) -> int:
         # Validate input
-        valid_states = {"new", "current", "old", "all"}
+        valid_states = {"new", "current", "used", "all", "unused"}
         assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
 
         node_id = self.get_node_id(resource_node_name)

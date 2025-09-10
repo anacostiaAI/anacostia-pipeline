@@ -420,6 +420,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                         stack.callback(obj.close)
                     yield obj
                 # ExitStack ensures cleanup happens here.
+
+            self.mark_used(relative_path)
+
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise
