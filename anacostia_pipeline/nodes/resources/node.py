@@ -268,6 +268,32 @@ class BaseResourceNode(BaseNode, ABC):
             entries = self.metadata_store_client.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
+    
+    def get_artifact_hash(self, filepath: str) -> str:
+        """
+        Get the hash of an artifact in the metadata store.
+        Args:
+            filepath: The path to the artifact file
+        Returns:
+            str: The hash of the artifact
+        """
+        
+        if self.metadata_store is not None:
+            return self.metadata_store.get_artifact_hash(filepath)
+        
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    return self.metadata_store_client.get_artifact_hash(filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"Resource node '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
 
     def exit(self):
         # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.

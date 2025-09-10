@@ -134,6 +134,9 @@ class BaseMetadataStoreNode(BaseNode):
         E.g., log the trigger message, the trigger time, the run the trigger triggered, and the node_id of the node with name node_name.
         """
         pass
+    
+    def get_artifact_hash(self, location: str) -> str:
+        pass
 
     def trigger(self, message: str = None) -> None:
         if self.trigger_event.is_set() is False:

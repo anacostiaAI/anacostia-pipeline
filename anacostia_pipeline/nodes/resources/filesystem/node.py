@@ -398,8 +398,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
         try:
             actual_hash = self.hash_file(artifact_path)
-            expected_hash = None
-            # TODO: get hash from metadata store and compare the expected hash with actual_hash
+            relative_path = os.path.relpath(artifact_path, self.resource_path)
+            expected_hash = self.get_artifact_hash(relative_path)
+
+            if expected_hash != actual_hash:
+                self.log(
+                    f"Warning: hash mismatch for '{filepath}': expected {expected_hash}, got {actual_hash}",
+                    level="WARNING"
+                )
 
             obj = load_fn(artifact_path, *args, **kwargs)
 
