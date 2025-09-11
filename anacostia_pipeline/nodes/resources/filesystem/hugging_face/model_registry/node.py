@@ -54,7 +54,9 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
             card.save(filepath=model_card_path)
 
-        self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
+        with self.save_artifact(model_card_path, save_model_card, card, *args, **kwargs) as f:
+            pass
+
         self.tag_artifact(filepath=model_card_path, model_path=model_path)
         self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
 
