@@ -90,9 +90,8 @@ class TrainingNode(BaseActionNode):
         def save_model_fn(filepath: str, model: str) -> None:
             with locked_file(filepath, 'w') as f:
                 f.write(model)
-        
-        with self.model_registry.save_artifact(model_name, save_model_fn, model):
-            pass  # save_model_fn already wrote the file
+
+        self.model_registry.save_model(save_model_fn=save_model_fn, model=model, model_path=model_name)
 
         if num_artifacts % 3 == 0:
             self.model_registry.save_model_card(
