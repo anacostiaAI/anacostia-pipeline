@@ -99,14 +99,6 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             run = Run(run_id=run_id, start_time=start_time)
             session.add(run)
 
-            # update all artifacts with run_id = None and state = "new" to have the current run_id
-            stmt_artifacts = (
-                update(Artifact)
-                .where(Artifact.run_id.is_(None), Artifact.state == "new")
-                .values(run_id=run_id, state="current")
-            )
-            session.execute(stmt_artifacts)
-
             # Update triggers where run_triggered is NULL and trigger_time is earlier than this run
             # Note: there are instances where multiple triggers are required to trigger a run (e.g., a metric trigger and a resource trigger)
             stmt_triggers = (

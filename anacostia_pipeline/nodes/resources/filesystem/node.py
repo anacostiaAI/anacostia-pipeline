@@ -406,6 +406,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                     f"Warning: hash mismatch for '{filepath}': expected {expected_hash}, got {actual_hash}",
                     level="WARNING"
                 )
+ 
+            self.mark_current(relative_path)
 
             obj = load_fn(artifact_path, *args, **kwargs)
 

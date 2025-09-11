@@ -159,6 +159,31 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
     
+    def mark_current(self, filepath: str) -> None:
+        """
+        Mark an artifact as current in the metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        """
+
+        if self.metadata_store is not None:
+            self.metadata_store.mark_current(self.name, filepath=filepath)
+
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    self.metadata_store_client.mark_current(self.name, filepath=filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
+
     def mark_used(self, filepath: str) -> None:
         """
         Mark an artifact as used in the metadata store.
