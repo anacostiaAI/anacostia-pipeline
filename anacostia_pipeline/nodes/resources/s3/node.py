@@ -62,7 +62,7 @@ class S3Node(BaseResourceNode):
     def record_new(self, obj_key: str) -> None:
         self.metadata_store.create_entry(self.name, filepath=obj_key, state="new")
 
-    def record_current(self):
+    def record_created(self):
         self.metadata_store.create_entry(self.name, filepath=self.bucket_name, state="current", run_id=self.metadata_store.get_run_id())
 
     def start_monitoring(self) -> None:

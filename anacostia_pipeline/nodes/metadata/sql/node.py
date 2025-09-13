@@ -132,7 +132,9 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         # Create the hash for the run by retrieving the hashes of all artifacts, metrics, params, and tags associated with the current run into a list,
         # sorting the list, concatenating the hashes in the list into a string, and then hashing the string
-        entries = self.get_entries(state="current")
+        using_artifact_entries = self.get_entries(state="using")
+        produced_artifact_entries = self.get_entries(state="produced")
+        entries = using_artifact_entries + produced_artifact_entries
         artifact_hashes = [entry["hash"] for entry in entries]
         artifact_hashes = ''.join(sorted(artifact_hashes))
 
@@ -154,28 +156,28 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
             )
             session.execute(stmt_run)
 
-            # if artifacts have not been marked as "used" yet, update artifacts with state = "current" to have state = "unused"
+            # if artifacts have not been marked as "used" yet, update artifacts with state = "using" and state = "produced" to have state = "unused"
             stmt_artifact = (
                 update(Artifact)
-                .where(Artifact.state == "current")
+                .where(Artifact.state == "using" or Artifact.state == "produced")
                 .values(state="unused")
             )
             session.execute(stmt_artifact)
 
         self.log(f"--------------------------- ended run {self.get_run_id()} at {end_time}")
 
-    def mark_current(self, resource_node_name: str, filepath: str) -> None:
+    def mark_using(self, resource_node_name: str, filepath: str) -> None:
         node_id = self.get_node_id(resource_node_name)
 
         with self.get_session() as session:
             stmt = (
                 update(Artifact)
                 .where(Artifact.node_id == node_id, Artifact.location == filepath)
-                .values(state="current", run_id=self.get_run_id())
+                .values(state="using", run_id=self.get_run_id())
             )
             result = session.execute(stmt)
             if result.rowcount == 0:
-                raise ValueError(f"No artifact found for node '{resource_node_name}' with location '{filepath}' to mark as current.")
+                raise ValueError(f"No artifact found for node '{resource_node_name}' with location '{filepath}' to mark as using.")
     
     def mark_used(self, resource_node_name: str, filepath: str) -> None:
         node_id = self.get_node_id(resource_node_name)
@@ -229,7 +231,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         with self.get_session() as session:
             entry = Artifact(
-                run_id=self.get_run_id() if state == "current" else run_id,
+                run_id=self.get_run_id() if state == "using" else run_id,
                 node_id=node_id,
                 location=filepath,
                 created_at=datetime.now(),
@@ -274,7 +276,7 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
     
     def get_num_entries(self, resource_node_name: str, state: str) -> int:
         # Validate input
-        valid_states = {"new", "current", "used", "all", "unused"}
+        valid_states = {"new", "using", "used", "all", "unused"}
         assert state in valid_states, f"Invalid state: '{state}'. Must be one of {valid_states}"
 
         node_id = self.get_node_id(resource_node_name)

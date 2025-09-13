@@ -324,7 +324,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
             # Hash and record after the file is finalized
             file_hash = self.hash_file(artifact_path)
-            self.record_current(filepath, hash=file_hash, hash_algorithm="sha256")
+            self.record_produced_artifact(filepath, hash=file_hash, hash_algorithm="sha256")
             self.log(f"Saved artifact to {artifact_path}", level="INFO")
 
         except Exception as e:
@@ -407,7 +407,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                     level="WARNING"
                 )
  
-            self.mark_current(relative_path)
+            self.mark_using(relative_path)
 
             obj = load_fn(artifact_path, *args, **kwargs)
 

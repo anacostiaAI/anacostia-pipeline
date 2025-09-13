@@ -109,7 +109,7 @@ class BaseMetadataStoreNode(BaseNode):
     def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         pass
     
-    def mark_current(self, resource_node_name: str, filepath: str) -> None:
+    def mark_using(self, resource_node_name: str, filepath: str) -> None:
         pass
 
     def mark_used(self, resource_node_name: str, filepath: str) -> None:
