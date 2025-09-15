@@ -36,7 +36,7 @@ class ModelRegistryNode(FilesystemStoreNode):
     def _save_artifact_hook(self, filepath: str, content: str) -> None:
         # note: for monitoring-enabled resource nodes, record_artifact should be called before create_file;
         # that way, the Observer can see the file is already logged and ignore it
-        self.record_current(filepath)
+        self.record_created(filepath)
         with open(filepath, 'w') as f:
             f.write(content)
         self.log(f"Saved preprocessed {filepath}", level="INFO")

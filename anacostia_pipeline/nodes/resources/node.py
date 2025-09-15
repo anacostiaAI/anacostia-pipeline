@@ -2,7 +2,6 @@ from typing import List, Union, Dict, Any
 from logging import Logger
 import threading
 from abc import ABC, abstractmethod
-import datetime
 
 import httpx
 
@@ -135,7 +134,7 @@ class BaseResourceNode(BaseNode, ABC):
                     raise e
                                 
         
-    def record_current(self, filepath: str, hash: str, hash_algorithm: str) -> None:
+    def record_produced_artifact(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record an artifact produced in the current run metadata store.
 
@@ -144,12 +143,12 @@ class BaseResourceNode(BaseNode, ABC):
         """
 
         if self.metadata_store is not None:
-            self.metadata_store.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+            self.metadata_store.create_entry(self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm)
 
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="current", hash=hash, hash_algorithm=hash_algorithm)
+                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm)
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -160,7 +159,57 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
     
-    async def tag_artifact(self, filepath: str, **kwargs) -> None:
+    def mark_using(self, filepath: str) -> None:
+        """
+        Mark an artifact's state as 'using' in the metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        """
+
+        if self.metadata_store is not None:
+            self.metadata_store.mark_using(self.name, filepath=filepath)
+
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    self.metadata_store_client.mark_current(self.name, filepath=filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
+
+    def mark_used(self, filepath: str) -> None:
+        """
+        Mark an artifact as used in the metadata store.
+
+        Args:
+            filepath: The path to the artifact file
+        """
+
+        if self.metadata_store is not None:
+            self.metadata_store.mark_used(self.name, filepath=filepath)
+
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    self.metadata_store_client.mark_used(self.name, filepath=filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
+    
+    def tag_artifact(self, filepath: str, **kwargs) -> None:
         """
         Tag an artifact in the metadata store.
         Args:
@@ -176,7 +225,7 @@ class BaseResourceNode(BaseNode, ABC):
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    await self.metadata_store_client.tag_artifact(node_name=self.name, location=filepath, **kwargs)
+                    self.metadata_store_client.tag_artifact(node_name=self.name, location=filepath, **kwargs)
                 except httpx.ConnectError as e:
                     self.log(f"Resource node '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -269,6 +318,32 @@ class BaseResourceNode(BaseNode, ABC):
             entries = self.metadata_store_client.get_entries(self.name, state)
 
         return [entry["location"] for entry in entries]
+    
+    def get_artifact_hash(self, filepath: str) -> str:
+        """
+        Get the hash of an artifact in the metadata store.
+        Args:
+            filepath: The path to the artifact file
+        Returns:
+            str: The hash of the artifact
+        """
+        
+        if self.metadata_store is not None:
+            return self.metadata_store.get_artifact_hash(filepath)
+        
+        if self.connection_event.is_set() is True:
+            if self.metadata_store_client is not None:
+                try:
+                    return self.metadata_store_client.get_artifact_hash(filepath)
+                except httpx.ConnectError as e:
+                    self.log(f"Resource node '{self.name}' is no longer connected", level="ERROR")
+                    raise e
+                except httpx.HTTPStatusError as e:
+                    self.log(f"HTTP error: {e}", level="ERROR")
+                    raise e
+                except Exception as e:
+                    self.log(f"Unexpected error: {e}", level="ERROR")
+                    raise e
 
     def exit(self):
         # call the parent class exit method first to set exit_event, pause_event, all predecessor events, and all successor events.

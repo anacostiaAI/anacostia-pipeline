@@ -40,7 +40,7 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             monitoring=monitoring
         )
     
-    async def save_model_card(self, model_path: str, model_card_path: str, card: ModelCard, *args, **kwargs):
+    def save_model_card(self, model_path: str, model_card_path: str, card: ModelCard):
         """
         Save a model card to the filesystem.
         Args:
@@ -51,15 +51,17 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             **kwargs: Additional keyword arguments to pass to the save function.
         """
 
-        def save_model_card(model_card_path: str, card: ModelCard, *args, **kwargs):
+        def save_model_card(model_card_path: str, card: ModelCard):
             card.save(filepath=model_card_path)
-    
-        await self.save_artifact(filepath=model_card_path, save_fn=save_model_card, card=card, *args, **kwargs)
-        await self.tag_artifact(filepath=model_card_path, model_path=model_path)
-        await self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
+
+        with self.save_artifact(model_card_path, save_model_card, card):
+            pass
+
+        self.tag_artifact(filepath=model_card_path, model_path=model_path)
+        self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
 
 
-    async def save_model(self, save_model_fn: Callable[[str, Any], None], model: Any, model_path: str, *args, **kwargs):
+    def save_model(self, save_model_fn: Callable[[str, Any], None], model: Any, model_path: str, *args, **kwargs):
         """
         Save a model to the filesystem.
         Args:
@@ -69,7 +71,8 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             *args: Additional arguments to pass to the save function.
             **kwargs: Additional keyword arguments to pass to the save function.
         """
-        await self.save_artifact(filepath=model_path, save_fn=save_model_fn, model=model, *args, **kwargs)
+        with self.save_artifact(model_path, save_model_fn, model, *args, **kwargs):
+            pass
 
     def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> ModelRegistryGUI:
         self.gui = ModelRegistryGUI(

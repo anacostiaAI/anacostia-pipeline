@@ -108,6 +108,12 @@ class BaseMetadataStoreNode(BaseNode):
 
     def get_tags(self, node_name: str = None, run_id: int = None) -> List[Dict]:
         pass
+    
+    def mark_using(self, resource_node_name: str, filepath: str) -> None:
+        pass
+
+    def mark_used(self, resource_node_name: str, filepath: str) -> None:
+        pass
 
     def start_run(self) -> None:
         """
@@ -133,6 +139,9 @@ class BaseMetadataStoreNode(BaseNode):
         Override to specify how to log a trigger in the metadata store.
         E.g., log the trigger message, the trigger time, the run the trigger triggered, and the node_id of the node with name node_name.
         """
+        pass
+    
+    def get_artifact_hash(self, location: str) -> str:
         pass
 
     def trigger(self, message: str = None) -> None:

@@ -8,7 +8,7 @@ from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.node import BaseNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard_data import ModelCardData, EvalResult
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.repocard import ModelCard
 from anacostia_pipeline.nodes.resources.filesystem.hugging_face.model_registry.node import HuggingFaceModelRegistryNode
@@ -42,9 +42,23 @@ class TrainingNode(BaseActionNode):
         super().__init__(name, predecessors, remote_predecessors, remote_successors, client_url, wait_for_connection, loggers)
         self.model_registry = model_registry
         self.data_store = data_store
-    
-    async def execute(self, *args, **kwargs):
-        num_artifacts = await self.data_store.get_num_artifacts('all')
+
+    def execute(self, *args, **kwargs):
+
+        # Define a simple load function to read text files
+        def load_fn(input_file_path) -> str:
+            with open(input_file_path, "r", encoding="utf-8") as f:
+                return f.read()
+
+        # load the new training data
+        artifacts_paths = self.data_store.list_artifacts(state="new")
+        for artifact_path in artifacts_paths:
+            # loading the data will automatically log the artifact as "current" in the metadata store
+            with self.data_store.load_artifact(filepath=artifact_path, load_fn=load_fn) as data:
+                self.log(f"Current Data: {data}", level="DEBUG")
+            # after exiting the context manager, the artifact is logged as "used" in the metadata store
+
+        num_artifacts = self.data_store.get_num_artifacts('all')
         model_name = f"model{num_artifacts}.txt"
         model_card_name = f"model{num_artifacts}_card.md"
 
@@ -72,18 +86,17 @@ class TrainingNode(BaseActionNode):
             template_path="modelcard.md",
         )
 
+        # we're using a simple string as a "model" for testing purposes
+        model = f"model {num_artifacts}"
+
         def save_model_fn(filepath: str, model: str) -> None:
             with locked_file(filepath, 'w') as f:
                 f.write(model)
 
-        await self.model_registry.save_model(
-            save_model_fn=save_model_fn,
-            model=f"model {num_artifacts}",
-            model_path=model_name,
-        )
+        self.model_registry.save_model(save_model_fn=save_model_fn, model=model, model_path=model_name)
 
         if num_artifacts % 3 == 0:
-            await self.model_registry.save_model_card(
+            self.model_registry.save_model_card(
                 model_path=model_name,
                 model_card_path=model_card_name,
                 card=card
@@ -105,5 +118,15 @@ pipeline = Pipeline(
 )
 
 # Create the web server
-webserver = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
-webserver.run()
+service = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000, logger=logger)
+
+config = service.get_config()
+server = AnacostiaServer(config=config)
+
+with server.run_in_thread():
+    while True:
+        try:
+            pass    # Keep the server running
+        except (KeyboardInterrupt, SystemExit):
+            print("Shutting down the server...")
+            break

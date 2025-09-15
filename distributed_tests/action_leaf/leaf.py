@@ -11,7 +11,6 @@ from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
-from utils import create_file
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 
 
@@ -51,19 +50,8 @@ class ShakespeareEvalNode(BaseActionNode):
     
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
-        
         self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
-        
         run_id = self.metadata_store_rpc.get_run_id()
-
-        """
-        self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
-        
-        num_artifacts = self.model_registry_rpc.get_num_artifacts()
-        artifacts = self.model_registry_rpc.list_artifacts()
-        self.log(f"{num_artifacts} Artifacts: {artifacts}", level="INFO")
-        """
-            
         return True
 
 class HaikuEvalNode(BaseActionNode):
@@ -84,13 +72,6 @@ class HaikuEvalNode(BaseActionNode):
         self.log(f"Tags: {tags}", level="INFO")
         
         run_id = self.metadata_store_rpc.get_run_id()
-
-        """
-        create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
-            
-        self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
-        """
-
         return True
 
 metadata_store_rpc = SQLMetadataStoreClient(client_name="metadata_store_rpc")
