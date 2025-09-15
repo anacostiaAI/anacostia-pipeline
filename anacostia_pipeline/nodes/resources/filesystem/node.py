@@ -155,24 +155,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             if num_new_artifacts > 0:
                 self.trigger(message=f"New files detected in {self.resource_path}")
 
-    def get_num_artifacts(self, state: str) -> int:
-        """
-        Get the number of artifacts in the specified state.
-        
-        Args:
-            state: The state of the artifacts to count (e.g., "new", "current", "old")
-        
-        Returns:
-            int: The number of artifacts in the specified state
-        """
-
-        if self.metadata_store is not None:
-            return self.metadata_store.get_num_entries(self.name, state)
-        
-        if self.metadata_store_client is not None:
-            if self.connection_event.is_set() is True:
-                return self.metadata_store_client.get_num_entries(self.name, state)
-
     def list_artifacts(self, state: str) -> List[str]:
         """
         List all artifacts in the resource path.
@@ -186,14 +168,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
     
-    def get_run_id(self) -> List[str]:
-        if self.metadata_store is not None:
-            return self.metadata_store.get_run_id()
-
-        if self.metadata_store_client is not None:
-            if self.connection_event.is_set() is True:
-                self.metadata_store_client.get_run_id()
-
     @contextmanager
     def save_artifact(
         self,

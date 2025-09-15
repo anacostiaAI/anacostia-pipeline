@@ -209,6 +209,32 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
     
+    def get_run_id(self) -> List[str]:
+        if self.metadata_store is not None:
+            return self.metadata_store.get_run_id()
+
+        if self.metadata_store_client is not None:
+            if self.connection_event.is_set() is True:
+                self.metadata_store_client.get_run_id()
+
+    def get_num_artifacts(self, state: str) -> int:
+        """
+        Get the number of artifacts in the specified state.
+        
+        Args:
+            state: The state of the artifacts to count (e.g., "new", "current", "old")
+        
+        Returns:
+            int: The number of artifacts in the specified state
+        """
+
+        if self.metadata_store is not None:
+            return self.metadata_store.get_num_entries(self.name, state)
+        
+        if self.metadata_store_client is not None:
+            if self.connection_event.is_set() is True:
+                return self.metadata_store_client.get_num_entries(self.name, state)
+
     def tag_artifact(self, filepath: str, **kwargs) -> None:
         """
         Tag an artifact in the metadata store.
