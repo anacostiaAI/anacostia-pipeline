@@ -185,6 +185,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         entries = super().list_artifacts(state)
         full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
         return full_artifacts_paths
+    
+    def get_run_id(self) -> List[str]:
+        if self.metadata_store is not None:
+            return self.metadata_store.get_run_id()
+
+        if self.metadata_store_client is not None:
+            if self.connection_event.is_set() is True:
+                self.metadata_store_client.get_run_id()
 
     @contextmanager
     def save_artifact(
