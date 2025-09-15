@@ -139,14 +139,19 @@ class BaseResourceNode(BaseNode, ABC):
         Args:
             filepath: The path to the artifact file
         """
+        run_id = self.get_run_id()
 
         if self.metadata_store is not None:
-            self.metadata_store.create_entry(self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm)
+            self.metadata_store.create_entry(
+                self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm, run_id=run_id
+            )
 
         if self.connection_event.is_set() is True:
             if self.metadata_store_client is not None:
                 try:
-                    self.metadata_store_client.create_entry(self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm)
+                    self.metadata_store_client.create_entry(
+                        self.name, filepath=filepath, state="produced", hash=hash, hash_algorithm=hash_algorithm, run_id=run_id
+                    )
                 except httpx.ConnectError as e:
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
@@ -207,13 +212,13 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
     
-    def get_run_id(self) -> List[str]:
+    def get_run_id(self) -> int:
         if self.metadata_store is not None:
             return self.metadata_store.get_run_id()
 
         if self.metadata_store_client is not None:
             if self.connection_event.is_set() is True:
-                self.metadata_store_client.get_run_id()
+                return self.metadata_store_client.get_run_id()
 
     def get_num_artifacts(self, state: str) -> int:
         """
