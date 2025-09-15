@@ -201,7 +201,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(text)
 
-        with fs_store.save_artifact_cm("notes/hello.txt", write_text, text="Hello, world!"):
+        with fs_store.save_artifact("notes/hello.txt", write_text, text="Hello, world!"):
             pass  # nothing else to do
         ```
         2. Return an open file handle and write inside the `with` block
@@ -211,7 +211,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         def open_writer(path):
             return open(path, "w", encoding="utf-8")
 
-        with fs_store.save_artifact_cm("logs/run.log", open_writer) as f:
+        with fs_store.save_artifact("logs/run.log", open_writer) as f:
             f.write("first line\\n")
             f.write("second line\\n")
         ```
@@ -225,14 +225,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             img.save(path, format=fmt)
 
         img = Image.new("RGB", (100, 100))
-        with fs_store.save_artifact_cm("images/blank.png", save_image, img, fmt="PNG"):
+        with fs_store.save_artifact("images/blank.png", save_image, img, fmt="PNG"):
             pass
         ```
         4. Overwrite an existing file atomically
         ```
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.save_artifact_cm("notes/hello.txt", write_text, text="Updated", overwrite=True):
+        with fs_store.save_artifact("notes/hello.txt", write_text, text="Updated", overwrite=True):
             pass
         ```
         5. Appending to an existing file (non-atomic)
@@ -245,7 +245,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
                 f.flush()
                 os.fsync(f.fileno())
 
-        with fs_store.save_artifact_cm(
+        with fs_store.save_artifact(
             "logs/service.log",
             append_line,
             "service started",

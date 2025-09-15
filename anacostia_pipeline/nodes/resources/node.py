@@ -106,7 +106,6 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"FilesystemStoreNode '{self.name}' is no longer connected", level="ERROR")
                     raise e
                     # if an exception is raised here, it means the node is no longer connected to the metadata store on the root pipeline
-            
 
     def record_new(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
@@ -133,7 +132,6 @@ class BaseResourceNode(BaseNode, ABC):
                     self.log(f"Unexpected error: {e}", level="ERROR")
                     raise e
                                 
-        
     def record_produced_artifact(self, filepath: str, hash: str, hash_algorithm: str) -> None:
         """
         Record an artifact produced in the current run metadata store.
