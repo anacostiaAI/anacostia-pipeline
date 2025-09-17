@@ -26,7 +26,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         resource_path: str, 
         metadata_store: BaseMetadataStoreNode = None,
         metadata_store_client: BaseMetadataStoreClient = None,
-        init_state: str = "new", 
+        hash_chunk_size: int = 1_048_576, 
         max_old_samples: int = None, 
         remote_predecessors: List[str] = None,
         remote_successors: List[str] = None,
@@ -38,6 +38,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
 
         # TODO: add max_old_samples functionality
         self.max_old_samples = max_old_samples
+        self.hash_chunk_size = hash_chunk_size
         
         # note: the resource_path must be a path for a directory.
         # we may want to rename this node to be a directory watch node;
@@ -47,10 +48,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             os.makedirs(self.path, exist_ok=True)
         
         self.observer_thread = None
-
-        if init_state not in ("new", "old"):
-            raise ValueError(f"init_state argument of DataStoreNode must be either 'new' or 'old', not '{init_state}'.")
-        self.init_state = init_state
         self.init_time = str(datetime.now())
         
         super().__init__(
@@ -137,10 +134,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         self.observer_thread = Thread(name=f"{self.name}_observer", target=_monitor_thread_func, daemon=True)
         self.observer_thread.start()
 
-    def hash_file(self, filepath: str, chunk_size: int = 8192) -> str:
+    def hash_file(self, filepath: str) -> str:
         sha256 = hashlib.sha256()
         with open(filepath, 'rb') as f:
-            while chunk := f.read(chunk_size):
+            while chunk := f.read(self.hash_chunk_size):
                 sha256.update(chunk)
         return sha256.hexdigest()
 
