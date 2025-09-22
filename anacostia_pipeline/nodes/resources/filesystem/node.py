@@ -344,7 +344,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         ```
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.load_artifact_cm("data/file.txt", open, mode="r") as f:
+        with fs_store.load_artifact("data/file.txt", open, mode="r") as f:
             buf = f.read()
         ```
         2. Loading a PyTorch model
@@ -353,7 +353,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.load_artifact_cm("models/model.pt", torch.load, map_location='cpu') as model:
+        with fs_store.load_artifact("models/model.pt", torch.load, map_location='cpu') as model:
             # use the model here
             model.eval()
             ...
@@ -366,7 +366,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             with open(input_file_path, "r", encoding="utf-8") as f:
                 return f.read()
 
-        with fs_store.load_artifact_cm("data/readme.txt", load_fn) as text:
+        with fs_store.load_artifact("data/readme.txt", load_fn) as text:
             print("First 120 chars:", text[:120])
         ```
         """

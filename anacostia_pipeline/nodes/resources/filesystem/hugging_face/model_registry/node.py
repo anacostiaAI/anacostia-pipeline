@@ -60,8 +60,7 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         self.tag_artifact(filepath=model_card_path, model_path=model_path)
         self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
 
-
-    def save_model(self, save_model_fn: Callable[[str, Any], None], model: Any, model_path: str, *args, **kwargs):
+    def save_model(self, model_path: str, save_model_fn: Callable[[str, Any], None], model: Any, *args, **kwargs):
         """
         Save a model to the filesystem.
         Args:
@@ -71,8 +70,7 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
             *args: Additional arguments to pass to the save function.
             **kwargs: Additional keyword arguments to pass to the save function.
         """
-        with self.save_artifact(model_path, save_model_fn, model, *args, **kwargs):
-            pass
+        return self.save_artifact(model_path, save_model_fn, model, *args, **kwargs)
 
     def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None) -> ModelRegistryGUI:
         self.gui = ModelRegistryGUI(
