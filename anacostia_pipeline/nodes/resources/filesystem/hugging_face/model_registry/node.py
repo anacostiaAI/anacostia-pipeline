@@ -60,13 +60,26 @@ class HuggingFaceModelRegistryNode(FilesystemStoreNode):
         self.tag_artifact(filepath=model_card_path, model_path=model_path)
         self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
 
+    def save_checkpoint(self, checkpoint_path: str, save_checkpoint_fn: Callable[[str, Any], None], model: Any, optimizer: Any, *args, **kwargs):
+        """
+        Save a checkpoint model to the filesystem for continuing training.
+        Args:
+            checkpoint_path (str): The path where the checkpoint should be saved.
+            save_checkpoint_fn (Callable[[str, Any], None]): A function that takes a file path and a checkpoint to save.
+            model (Any): The model to save.
+            optimizer (Any): The optimizer to save.
+            *args: Additional arguments to pass to the save function.
+            **kwargs: Additional keyword arguments to pass to the save function.
+        """
+        return self.save_artifact(checkpoint_path, save_checkpoint_fn, model, optimizer, *args, **kwargs)
+
     def save_model(self, model_path: str, save_model_fn: Callable[[str, Any], None], model: Any, *args, **kwargs):
         """
         Save a model to the filesystem.
         Args:
+            model_path (str): The path where the model should be saved.
             save_model_fn (Callable[[str, Any], None]): A function that takes a file path and a model to save.
             model (Any): The model to save.
-            model_path (str): The path where the model should be saved.
             *args: Additional arguments to pass to the save function.
             **kwargs: Additional keyword arguments to pass to the save function.
         """
