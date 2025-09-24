@@ -175,73 +175,76 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         """
         Context manager to save artifacts.
 
+        Yields a **writable filesystem path**. If `atomic=True` (default), the yielded path
+        is a temporary file in the destination directory; on successful exit it is
+        atomically moved to the final location. If `atomic=False`, the yielded path is
+        the final path and writes happen in place.
+
+        All file handles you open must be closed before the `with` block exits.
+
         Args:
-            filepath: path relative to self.resource_path
-            overwrite: if False (default), raise if destination exists
-            atomic: if True (default), write to a temp file and os.replace() into place on success
+            filepath: Path **relative** to `self.resource_path`. e.g., "data/file.txt" will save to `resource_path/data/file.txt`.
+            overwrite: If False (default), raise if destination exists.
+            atomic: If True (default), write to a temp file and `os.replace()` into place on success.
 
         ## Usage patterns:
-        1. “Fire and forget” writer (returns None) 
-        ```
+        1) Write a small UTF-8 text file (atomic commit)
+        ```python
         fs_store = FilesystemStoreNode(...)
 
-        def write_text(path, text: str):
+        with fs_store.save_artifact("notes/hello.txt") as path:
             with open(path, "w", encoding="utf-8") as f:
-                f.write(text)
-
-        with fs_store.save_artifact("notes/hello.txt", write_text, text="Hello, world!"):
-            pass  # nothing else to do
+                f.write("Hello, world!")
         ```
-        2. Return an open file handle and write inside the `with` block
-        ```
-        fs_store = FilesystemStoreNode(...)
-
-        def open_writer(path):
-            return open(path, "w", encoding="utf-8")
-
-        with fs_store.save_artifact("logs/run.log", open_writer) as f:
-            f.write("first line\\n")
-            f.write("second line\\n")
-        ```
-        3. Save a PIL image (write immediately)
+        2. Save a PIL image (write immediately)
         ```
         from PIL import Image
 
         fs_store = FilesystemStoreNode(...)
 
-        def save_image(path, img: Image.Image, fmt="PNG"):
-            img.save(path, format=fmt)
-
         img = Image.new("RGB", (100, 100))
-        with fs_store.save_artifact("images/blank.png", save_image, img, fmt="PNG"):
-            pass
+        with fs_store.save_artifact("images/blank.png") as path:
+            img.save(path, format="PNG")
         ```
-        4. Overwrite an existing file atomically
+        3. Overwrite an existing file atomically
         ```
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.save_artifact("notes/hello.txt", write_text, text="Updated", overwrite=True):
-            pass
+        with fs_store.save_artifact("notes/hello.txt", overwrite=True) as path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("Updated")
         ```
-        5. Appending to an existing file (non-atomic)
+        4. Appending to an existing file (non-atomic)
         ```
+        import os
         fs_store = FilesystemStoreNode(...)
-        
-        def append_line(path: str, line: str) -> None:
+
+        with fs_store.save_artifact("logs/service.log", overwrite=True, atomic=False) as path:
             with open(path, "a", encoding="utf-8") as f:
-                f.write(line + "\n")
+                f.write("service started\\n")
                 f.flush()
-                os.fsync(f.fileno())
-
-        with fs_store.save_artifact(
-            "logs/service.log",
-            append_line,
-            "service started",
-            atomic=False,
-            overwrite=True   # file likely exists; we're appending to it
-        ):
-            pass
+                os.fsync(f.fileno())  # durability for in-place updates
         ```
+        6) Save a PyTorch model checkpoint (atomic commit)
+        ```python
+        import torch
+
+        # Assume `model`, `optimizer`, and `epoch` are defined
+        # Tip: for portability, you can move tensors to CPU before saving (see commented line)
+
+        with fs_store.save_artifact(f"checkpoints/resnet54-e{epoch}.pt") as path:
+            # state_dict_cpu = {k: v.detach().cpu() for k, v in model.state_dict().items()}  # optional
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),        # or state_dict_cpu
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "epoch": epoch,
+                    # include anything else you need:
+                    # "metrics": {"val_acc": val_acc, "val_loss": val_loss},
+                    # "scaler": scaler.state_dict() if use_amp else None,
+                },
+                path,
+            )
         """
 
         if self.monitoring is True:
