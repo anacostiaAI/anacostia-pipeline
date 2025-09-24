@@ -303,7 +303,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise
 
     @contextmanager
-    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Iterator[Any]:
+    def load_artifact(self, filepath: str, *args, **kwargs) -> Iterator[Any]:
         """
         Context manager to load an artifact from the specified path relative to the resource_path.
 
@@ -371,19 +371,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
  
             self.mark_using(relative_path)
 
-            obj = load_fn(artifact_path, *args, **kwargs)
-
-            with ExitStack() as stack:
-                # If it's already a context manager, enter it.
-                if hasattr(obj, "__enter__") and hasattr(obj, "__exit__"):
-                    resource = stack.enter_context(obj)  # type: ignore[arg-type]
-                    yield resource
-                else:
-                    # If it exposes .close(), make sure we close it on exit.
-                    if hasattr(obj, "close") and callable(getattr(obj, "close")):
-                        stack.callback(obj.close)
-                    yield obj
-                # ExitStack ensures cleanup happens here.
+            # hand the caller the path to write to
+            yield filepath
 
             self.mark_used(relative_path)
 

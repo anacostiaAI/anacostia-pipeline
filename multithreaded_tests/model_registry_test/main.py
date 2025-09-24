@@ -45,17 +45,14 @@ class TrainingNode(BaseActionNode):
 
     def execute(self, *args, **kwargs):
 
-        # Define a simple load function to read text files
-        def load_fn(input_file_path) -> str:
-            with open(input_file_path, "r", encoding="utf-8") as f:
-                return f.read()
-
         # load the new training data
         artifacts_paths = self.data_store.list_artifacts(state="new")
         for artifact_path in artifacts_paths:
             # loading the data will automatically log the artifact as "current" in the metadata store
-            with self.data_store.load_artifact(filepath=artifact_path, load_fn=load_fn) as data:
-                self.log(f"Current Data: {data}", level="DEBUG")
+            with self.data_store.load_artifact(filepath=artifact_path) as path:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = f.read()
+                    self.log(f"Current Data: {data}", level="DEBUG")
             # after exiting the context manager, the artifact is logged as "used" in the metadata store
 
         num_artifacts = self.data_store.get_num_artifacts('all')
@@ -89,12 +86,9 @@ class TrainingNode(BaseActionNode):
         # we're using a simple string as a "model" for testing purposes
         model = f"model {num_artifacts}"
 
-        def save_model_fn(filepath: str, model: str) -> None:
-            with locked_file(filepath, 'w') as f:
-                f.write(model)
-
         with self.model_registry.save_model(model_path=model_name) as full_model_path:
-            save_model_fn(full_model_path, model)
+            with locked_file(full_model_path, 'w') as f:
+                f.write(model)
 
         if num_artifacts % 3 == 0:
             self.model_registry.save_model_card(
