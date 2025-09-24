@@ -169,25 +169,16 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
     def save_artifact(
         self,
         filepath: str,
-        save_fn: Callable[[str, Any], Any],
-        *args,
         overwrite: bool = False,
         atomic: bool = True,
-        **kwargs
     ) -> Iterator[Any]:
         """
         Context manager to save artifacts.
 
         Args:
             filepath: path relative to self.resource_path
-            save_fn: function that takes (target_path, *args, **kwargs) and returns either:
-                - a context manager, OR
-                - an object with .close(), OR
-                - a plain object / None
-            *args: additional positional arguments to pass to `save_fn`
             overwrite: if False (default), raise if destination exists
             atomic: if True (default), write to a temp file and os.replace() into place on success
-            **kwargs: additional keyword arguments to pass to `save_fn`
 
         ## Usage patterns:
         1. “Fire and forget” writer (returns None) 
@@ -283,19 +274,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             tmp_created = True
 
         try:
-            # Let the user-provided function set up the write target.
-            obj = save_fn(tmp_path, *args, **kwargs)
-
-            # Manage whatever save_fn returned (CM, closeable, or plain)
-            with ExitStack() as stack:
-                if hasattr(obj, "__enter__") and hasattr(obj, "__exit__"):
-                    resource = stack.enter_context(obj)  # type: ignore[arg-type]
-                    yield resource
-                else:
-                    if hasattr(obj, "close") and callable(getattr(obj, "close")):
-                        stack.callback(obj.close)
-                    # Even if obj is None, yielding None is fine; callers can `pass`.
-                    yield obj
+            # hand the caller the path to write to
+            yield (tmp_path if atomic else artifact_path)
 
             # Commit: move temp file into place atomically (or nothing if non-atomic)
             if atomic:
