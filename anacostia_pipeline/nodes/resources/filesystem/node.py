@@ -303,17 +303,13 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             raise
 
     @contextmanager
-    def load_artifact(self, filepath: str, *args, **kwargs) -> Iterator[Any]:
+    def load_artifact(self, filepath: str) -> Iterator[Any]:
         """
         Context manager to load an artifact from the specified path relative to the resource_path.
 
         Args:
             filepath (str): Path of the artifact to load, relative to the resource_path.
                             Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
-                                                 and returns the loaded artifact.
-            *args: Additional positional arguments to pass to `load_fn`.
-            **kwargs: Additional keyword arguments to pass to `load_fn`.
 
         Returns:
             Any: The loaded artifact.
@@ -327,8 +323,9 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         ```
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.load_artifact("data/file.txt", open, mode="r") as f:
-            buf = f.read()
+        with fs_store.load_artifact("data/file.txt") as full_path:
+            with open(full_path, "r", encoding="utf-8") as f:
+                buf = f.read()
         ```
         2. Loading a PyTorch model
         ```
@@ -336,21 +333,13 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         
         fs_store = FilesystemStoreNode(...)
 
-        with fs_store.load_artifact("models/model.pt", torch.load, map_location='cpu') as model:
+        with fs_store.load_artifact("models/model.pt") as full_path:
+            # load the model weights
+            torch.load(full_path, map_location="cpu")
+            
             # use the model here
             model.eval()
             ...
-        ```
-        3. Using a custom load function
-        ```
-        fs_store = FilesystemStoreNode(...)
-
-        def load_fn(input_file_path) -> str:
-            with open(input_file_path, "r", encoding="utf-8") as f:
-                return f.read()
-
-        with fs_store.load_artifact("data/readme.txt", load_fn) as text:
-            print("First 120 chars:", text[:120])
         ```
         """
 
