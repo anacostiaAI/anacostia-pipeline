@@ -44,6 +44,8 @@ class BaseResourceNode(BaseNode, ABC):
             loggers=loggers
         )
 
+        self.run_id = 0
+
         self.resource_path = resource_path
         self.monitoring = monitoring
 
@@ -213,12 +215,7 @@ class BaseResourceNode(BaseNode, ABC):
                     raise e
     
     def get_run_id(self) -> int:
-        if self.metadata_store is not None:
-            return self.metadata_store.get_run_id()
-
-        if self.metadata_store_client is not None:
-            if self.connection_event.is_set() is True:
-                return self.metadata_store_client.get_run_id()
+        return self.run_id
 
     def get_num_artifacts(self, state: str) -> int:
         """
@@ -449,6 +446,8 @@ class BaseResourceNode(BaseNode, ABC):
             # self.log(f"{self.name} waiting for successors to finish using the resource", level='INFO')
             if self.exit_event.is_set(): return
             self.wait_for_successors()
+
+            self.run_id += 1
 
             # signal the metadata store node that the action nodes have finish using the resource for the current run
             # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')

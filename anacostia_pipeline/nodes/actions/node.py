@@ -23,6 +23,7 @@ class BaseActionNode(BaseNode):
             name, predecessors, remote_predecessors=remote_predecessors, 
             remote_successors=remote_successors, client_url=client_url, wait_for_connection=wait_for_connection, loggers=loggers
         )
+        self.run_id = 0
 
     def model(self) -> NodeModel:
         return NodeModel(
@@ -33,6 +34,9 @@ class BaseActionNode(BaseNode):
             successors = [n.name for n in self.successors]
         )
 
+    def get_run_id(self) -> int:
+        return self.run_id
+    
     @BaseNode.log_exception
     def before_execution(self) -> None:
         """
@@ -133,6 +137,8 @@ class BaseActionNode(BaseNode):
             # ensure all action nodes have finished using the resource for current run
             if self.exit_event.is_set(): return
             self.wait_for_successors()
+
+            self.run_id += 1
 
             if self.exit_event.is_set(): return
             self.signal_predecessors(Result.SUCCESS if ret else Result.FAILURE)

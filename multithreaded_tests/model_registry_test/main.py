@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 class TrainingNode(BaseActionNode):
     def __init__(
-        self, name, model_registry: HuggingFaceModelRegistryNode, data_store: FilesystemStoreNode, predecessors, 
-        remote_predecessors = None, remote_successors = None, client_url = None, wait_for_connection = False, loggers = None
+        self, name, model_registry: HuggingFaceModelRegistryNode, data_store: FilesystemStoreNode, predecessors,
+        remote_predecessors=None, remote_successors=None, client_url=None, wait_for_connection=False, loggers=None
     ):
         super().__init__(name, predecessors, remote_predecessors, remote_successors, client_url, wait_for_connection, loggers)
         self.model_registry = model_registry
@@ -55,9 +55,9 @@ class TrainingNode(BaseActionNode):
                     self.log(f"Current Data: {data}", level="DEBUG")
             # after exiting the context manager, the artifact is logged as "used" in the metadata store
 
-        num_artifacts = self.data_store.get_num_artifacts('all')
-        model_name = f"model{num_artifacts}.txt"
-        model_card_name = f"model{num_artifacts}_card.md"
+        run_id = self.get_run_id()
+        model_name = f"model{run_id}.txt"
+        model_card_name = f"model{run_id}_card.md"
 
         card_data = ModelCardData(
             language='en', 
@@ -82,9 +82,10 @@ class TrainingNode(BaseActionNode):
             repo="https://github.com/huggingface/huggingface_hub",
             template_path="modelcard.md",
         )
+        num_artifacts = self.data_store.get_num_artifacts('all')
 
         # we're using a simple string as a "model" for testing purposes
-        model = f"model {num_artifacts}"
+        model = f"model_{run_id} with {num_artifacts} data artifacts"
 
         with self.model_registry.save_model(model_path=model_name) as full_model_path:
             with locked_file(full_model_path, 'w') as f:
@@ -103,7 +104,7 @@ class TrainingNode(BaseActionNode):
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
 model_registry = HuggingFaceModelRegistryNode("model_registry", resource_path=model_registry_path, metadata_store=metadata_store, monitoring=False)
-training_node = TrainingNode("training", model_registry=model_registry, data_store=data_store, predecessors=[data_store])
+training_node = TrainingNode("training", model_registry=model_registry, data_store=data_store, predecessors=[data_store, model_registry])
 
 # Create the pipeline
 pipeline = Pipeline(
