@@ -85,6 +85,18 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
             else:
                 return {"exists": False}
 
+        @self.post("/mark_using/")
+        async def mark_using(resource_node_name: str, location: str):
+            self.metadata_store.mark_using(resource_node_name, location)
+
+        @self.post("/mark_used/")
+        async def mark_used(resource_node_name: str, location: str):
+            self.metadata_store.mark_used(resource_node_name, location)
+
+        @self.post("/mark_unused/")
+        async def mark_unused(resource_node_name: str, location: str):
+            self.metadata_store.mark_unused(resource_node_name, location)
+
         @self.post("/log_metrics/")
         async def log_metrics(node_name: str, request: Request):
             data = await request.json()
@@ -292,6 +304,63 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
                 raise e
 
         task = asyncio.run_coroutine_threadsafe(_get_num_entries(resource_node_name, state), self.loop)
+        return task.result()
+
+    def mark_using(self, resource_node_name: str, location: str) -> None:
+        """
+        Mark an artifact as 'using'.
+        This method is a placeholder to maintain compatibility with the BaseMetadataStoreClient interface.
+        Actual implementation may vary based on specific requirements.
+        """
+
+        async def _mark_using(resource_node_name: str, location: str):
+            try:
+                response = await self.client.post(f"/mark_using/?resource_node_name={resource_node_name}&location={location}")
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log metrics failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error marking artifact as 'using': {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_mark_using(resource_node_name, location), self.loop)
+        return task.result()
+
+    def mark_used(self, resource_node_name: str, location: str) -> None:
+        """
+        Mark an artifact as 'used'.
+        This method is a placeholder to maintain compatibility with the BaseMetadataStoreClient interface.
+        Actual implementation may vary based on specific requirements.
+        """
+
+        async def _mark_used(resource_node_name: str, location: str):
+            try:
+                response = await self.client.post(f"/mark_used/?resource_node_name={resource_node_name}&location={location}")
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log metrics failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error marking artifact as 'using': {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_mark_used(resource_node_name, location), self.loop)
+        return task.result()
+
+    def mark_used(self, resource_node_name: str, location: str) -> None:
+        """
+        Mark an artifact as 'used'.
+        This method is a placeholder to maintain compatibility with the BaseMetadataStoreClient interface.
+        Actual implementation may vary based on specific requirements.
+        """
+
+        async def _mark_used(resource_node_name: str, location: str):
+            try:
+                response = await self.client.post(f"/mark_used/?resource_node_name={resource_node_name}&location={location}")
+                if response.status_code != status.HTTP_200_OK:
+                    raise ValueError(f"Log metrics failed with status code {response.status_code}")
+            except Exception as e:
+                self.log(f"Error marking artifact as 'using': {e}", level="ERROR")
+                raise e
+
+        task = asyncio.run_coroutine_threadsafe(_mark_used(resource_node_name, location), self.loop)
         return task.result()
 
     def log_metrics(self, node_name: str, **kwargs):

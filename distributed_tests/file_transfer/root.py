@@ -46,33 +46,34 @@ def load_model(filepath: str) -> None:
 
 
 class MonitoringDataStoreNode(FilesystemStoreNode):
-    def __init__(
-        self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, 
-        init_state: str = "new", max_old_samples: int = None
-    ) -> None:
-        super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, init_state=init_state, max_old_samples=max_old_samples)
-    
+    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, max_old_samples: int = None) -> None:
+        super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, max_old_samples=max_old_samples)
+
     def load_artifact(self, filepath: str, *args, **kwargs):
-        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
+        with super().load_artifact(filepath) as fullpath:
+            return load_model(fullpath)
 
 
 class ModelRegistryNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
+        super().__init__(name, resource_path, metadata_store, max_old_samples=None, client_url=client_url, monitoring=False)
 
     def save_artifact(self, filepath: str, content: str, *args, **kwargs):
-        super().save_artifact(filepath, save_fn=save_model, content=content, *args, **kwargs)
+        with super().save_artifact(filepath) as fullpath:
+            save_model(fullpath, content)
 
     def load_artifact(self, filepath: str, *args, **kwargs):
-        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
+        with super().load_artifact(filepath) as fullpath:
+            return load_model(fullpath)
     
 
 class PlotsStoreNode(FilesystemStoreNode):
     def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, init_state="new", max_old_samples=None, client_url=client_url, monitoring=False)
+        super().__init__(name, resource_path, metadata_store, max_old_samples=None, client_url=client_url, monitoring=False)
     
     def load_artifact(self, filepath: str, *args, **kwargs):
-        return super().load_artifact(filepath, load_fn=load_model, *args, **kwargs)
+        with super().load_artifact(filepath) as fullpath:
+            return load_model(fullpath)
     
 
 class ModelRetrainingNode(BaseActionNode):
@@ -91,16 +92,11 @@ class ModelRetrainingNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log(f"Executing node '{self.name}'", level="INFO")
 
-        current_artifacts = self.data_store.list_artifacts("current")
+        current_artifacts = self.data_store.list_artifacts("new")
         for filepath in current_artifacts:
             content = self.data_store.load_artifact(filepath)
             self.log(f"current {filepath} content: {content}", level="INFO")
 
-        old_artifacts = self.data_store.list_artifacts("old")
-        for filepath in old_artifacts:
-            content = self.data_store.load_artifact(filepath)
-            self.log(f"old {filepath} content: {content}", level="INFO")
-        
         # Simulate saving a trained model
         num_artifacts = self.model_registry.get_num_artifacts('all')
 

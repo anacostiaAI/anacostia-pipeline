@@ -97,7 +97,7 @@ class FilesystemStoreServer(BaseResourceServer):
                     raise HTTPException(status_code=500, detail="Downloaded file hash mismatch")
 
                 # enter the uploaded file into the metadata store
-                self.node.record_current(x_filename, hash=actual_hash, hash_algorithm="sha256")
+                self.node.record_produced_artifact(x_filename, hash=actual_hash, hash_algorithm="sha256")
                 
                 return JSONResponse(
                     content={

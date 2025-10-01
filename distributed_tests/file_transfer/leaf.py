@@ -52,7 +52,7 @@ class ShakespeareEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
-        run_id = self.metadata_store_rpc.get_run_id()
+        run_id = self.get_run_id()
         self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
         
         num_artifacts = self.model_registry_rpc.get_num_artifacts()
@@ -73,7 +73,7 @@ class HaikuEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         
-        run_id = self.metadata_store_rpc.get_run_id()
+        run_id = self.get_run_id()
         create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
         self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
 
