@@ -49,8 +49,8 @@ class TrainingNode(BaseActionNode):
         artifacts_paths = self.data_store.list_artifacts(state="new")
         for artifact_path in artifacts_paths:
             # loading the data will automatically log the artifact as "current" in the metadata store
-            with self.data_store.load_artifact(filepath=artifact_path) as path:
-                with open(path, "r", encoding="utf-8") as f:
+            with self.data_store.load_artifact(filepath=artifact_path) as fullpath:
+                with open(fullpath, "r", encoding="utf-8") as f:
                     data = f.read()
                     self.log(f"Current Data: {data}", level="DEBUG")
             # after exiting the context manager, the artifact is logged as "used" in the metadata store

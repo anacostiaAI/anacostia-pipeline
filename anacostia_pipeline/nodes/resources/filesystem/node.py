@@ -152,19 +152,6 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             if num_new_artifacts > 0:
                 self.trigger(message=f"New files detected in {self.resource_path}")
 
-    def list_artifacts(self, state: str) -> List[str]:
-        """
-        List all artifacts in the resource path.
-        Args:
-            state (str): The state of the artifacts to list. Can be "new" or "old".
-        Returns:
-            List[str]: A list of artifact paths.
-        """
-
-        entries = super().list_artifacts(state)
-        full_artifacts_paths = [os.path.join(self.path, entry) for entry in entries]
-        return full_artifacts_paths
-    
     @contextmanager
     def save_artifact(
         self,
@@ -310,6 +297,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         Args:
             filepath (str): Path of the artifact to load, relative to the resource_path.
                             Example: "data/file.txt" will load the file at resource_path/data/file.txt.
+                            **IMPORTANT NOTE**: make sure filepath does not start with a leading '/'.
 
         Returns:
             Any: The loaded artifact.
@@ -343,6 +331,10 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         ```
         """
 
+        # Note: if self.resource_path = "/path/to/dir" and filepath = "subdir/file.txt", then
+        # os.path.join(self.resource_path, filepath) will give "/path/to/dir/subdir/file.txt"
+        # if self.resource_path = "/path/to/dir/" and filepath = "/path/to/dir/subdir/file.txt", then
+        # os.path.join(self.resource_path, filepath) will still give "/path/to/dir/subdir/file.txt"
         artifact_path = os.path.join(self.resource_path, filepath)
         if not os.path.exists(artifact_path):
             raise FileNotFoundError(f"File '{artifact_path}' does not exist.")
@@ -360,8 +352,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
  
             self.mark_using(relative_path)
 
-            # hand the caller the path to write to
-            yield filepath
+            # yield the full path to the artifact for the caller to use
+            yield artifact_path
 
             self.mark_used(relative_path)
 
