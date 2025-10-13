@@ -3,10 +3,12 @@ import shutil
 import logging
 
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
-from anacostia_pipeline.nodes.resources.filesystem.croissant.node import CroissantDataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
+from anacostia_pipeline.nodes.resources.node import BaseResourceNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
+
+from data_store import CroissantTestDataStoreNode
 
 
 
@@ -30,44 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 
-class CroissantTestDataStoreNode(CroissantDataStoreNode):
-    def __init__(
-        self, 
-        name, 
-        resource_path, 
-        metadata_store = None, 
-        metadata_store_client = None, 
-        hash_chunk_size = 1048576, 
-        max_old_samples = None, 
-        remote_predecessors = None, 
-        remote_successors = None, 
-        client_url = None, 
-        wait_for_connection = False, 
-        loggers = None, 
-        monitoring = True
-    ):
-        super().__init__(
-            name, 
-            resource_path, 
-            metadata_store, 
-            metadata_store_client, 
-            hash_chunk_size, 
-            max_old_samples, 
-            remote_predecessors, 
-            remote_successors, 
-            client_url, 
-            wait_for_connection, 
-            loggers, 
-            monitoring
-        )
-    
-    def save_data_card(self, files_used):
-        self.log(f"Data card saved with files: {files_used}", level="INFO")
-    
-
 class DataProcessingNode(BaseActionNode):
     def __init__(
-        self, name, data_store: CroissantDataStoreNode, loggers = None
+        self, name, data_store: BaseResourceNode, loggers = None
     ):
         super().__init__(
             name, 

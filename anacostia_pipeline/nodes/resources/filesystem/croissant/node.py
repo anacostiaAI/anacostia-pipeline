@@ -44,13 +44,13 @@ class CroissantDataStoreNode(FilesystemStoreNode):
         self.files_used = []
     
     def after_run_ends(self):
-        self.save_data_card(self.files_used)
+        self.save_data_card()
     
     def mark_used(self, filepath):
         super().mark_used(filepath)
         self.files_used.append(filepath)
 
-    def save_data_card(self, files_used: List[str]):
+    def save_data_card(self):
         """
         Save a data card to the filesystem.
         Args:
