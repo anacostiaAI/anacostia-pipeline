@@ -64,6 +64,20 @@ class BaseResourceNode(BaseNode, ABC):
             predecessors = [n.name for n in self.predecessors],
             successors = [n.name for n in self.successors]
         )
+    
+    @abstractmethod
+    def before_run_starts(self) -> None:
+        """
+        Override to specify how the resource is prepared before the run starts.
+        """
+        pass
+    
+    @abstractmethod
+    def after_run_ends(self) -> None:
+        """
+        Override to specify how the resource is cleaned up after the run ends.
+        """
+        pass
 
     @abstractmethod
     def start_monitoring(self) -> None:
@@ -414,6 +428,7 @@ class BaseResourceNode(BaseNode, ABC):
             self.metadata_store_client.merge_artifacts_table(self.name, entries)
 
         while self.exit_event.is_set() is False:
+            self.before_run_starts()
             
             # if the node is not monitoring the resource, then we don't need to check for new resources
             # otherwise, we check for new resources and set the resource_event if there are new resources
@@ -453,6 +468,8 @@ class BaseResourceNode(BaseNode, ABC):
             # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')
             if self.exit_event.is_set(): return
             self.signal_predecessors(Result.SUCCESS)
+
+            self.after_run_ends()
             
             # wait for acknowledgement from metadata store node that the run has been ended
             # self.log(f"{self.name} waiting for metadata store to acknowledge that the run has ended", level='INFO')
