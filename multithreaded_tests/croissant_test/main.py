@@ -41,7 +41,7 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
     def resource_trigger(self) -> None:
         num_new_artifacts = self.get_num_artifacts("new")
         if num_new_artifacts is not None:
-            if num_new_artifacts > 1:
+            if num_new_artifacts >= 2:
                 self.trigger(message=f"New files detected in {self.resource_path}")
 
 
