@@ -39,9 +39,11 @@ class DatasetStoreNode(CroissantDatasetStoreNode):
     
     def save_data_card(self):
 
+        datasets_produced = self.list_artifacts(state="produced")
+
         # 1) One FileObject per concrete file (good for checksums)
         distribution = []
-        for filepath in self.files_used:
+        for filepath in datasets_produced:
             fullpath = os.path.join(self.resource_path, filepath)
 
             distribution.append(
@@ -105,4 +107,4 @@ class DatasetStoreNode(CroissantDatasetStoreNode):
                 content = metadata.to_json()
                 json.dump(content, json_file, indent=4)
 
-        self.log(f"Data card saved with files: {self.files_used}", level="INFO")
+        self.log(f"Data card saved with files: {datasets_produced}", level="INFO")

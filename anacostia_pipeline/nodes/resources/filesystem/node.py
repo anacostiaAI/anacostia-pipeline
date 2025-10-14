@@ -366,7 +366,7 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
     def before_run_starts(self):
         pass
 
-    def after_run_ends(self):
+    def clean_up_resources(self):
         pass
 
     def stop_monitoring(self) -> None:
