@@ -9,7 +9,7 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
 
-from data_store import DatasetStoreNode
+from data_store import CustomDatasetRegistryNode
 
 
 
@@ -83,7 +83,7 @@ class DataProcessingNode(BaseActionNode):
 
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = MonitoringDataStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
-dataset_store = DatasetStoreNode(name="dataset_store", resource_path=dataset_store_path, metadata_store=metadata_store)
+dataset_store = CustomDatasetRegistryNode(name="dataset_store", resource_path=dataset_store_path, metadata_store=metadata_store)
 data_processing_node = DataProcessingNode(name="data_processing", data_store=data_store, dataset_store=dataset_store)
 
 # Create the pipeline

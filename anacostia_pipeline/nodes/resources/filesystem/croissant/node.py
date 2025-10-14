@@ -7,7 +7,7 @@ from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 
 
 
-class CroissantDatasetStoreNode(FilesystemStoreNode):
+class DatasetRegistryNode(FilesystemStoreNode):
     def __init__(
         self, 
         name: str, 
@@ -39,6 +39,8 @@ class CroissantDatasetStoreNode(FilesystemStoreNode):
 
     def before_run_ends(self):
         self.save_data_card()
+        #self.tag_artifact(filepath=model_card_path, model_path=model_path)
+        #self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
 
     def save_data_card(self):
         """

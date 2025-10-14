@@ -4,11 +4,11 @@ from datetime import datetime
 
 import mlcroissant as mlc
 
-from anacostia_pipeline.nodes.resources.filesystem.croissant.node import CroissantDatasetStoreNode
+from anacostia_pipeline.nodes.resources.filesystem.croissant.node import DatasetRegistryNode
 
 
 
-class DatasetStoreNode(CroissantDatasetStoreNode):
+class CustomDatasetRegistryNode(DatasetRegistryNode):
     def __init__(
         self, 
         name, 
