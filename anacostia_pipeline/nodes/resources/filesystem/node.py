@@ -1,6 +1,6 @@
 import os
-from typing import List, Any, Union, Callable, Iterator
-from contextlib import contextmanager, ExitStack
+from typing import List, Any, Union, Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from logging import Logger
 from threading import Thread
