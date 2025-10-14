@@ -34,6 +34,17 @@ logger = logging.getLogger(__name__)
 
 
 
+class MonitoringDataStoreNode(FilesystemStoreNode):
+    def __init__(self, name, resource_path, metadata_store):
+        super().__init__(name, resource_path, metadata_store, monitoring=True)
+    
+    def resource_trigger(self) -> None:
+        num_new_artifacts = self.get_num_artifacts("new")
+        if num_new_artifacts is not None:
+            if num_new_artifacts > 1:
+                self.trigger(message=f"New files detected in {self.resource_path}")
+
+
 class DataProcessingNode(BaseActionNode):
     def __init__(
         self, name, data_store: BaseResourceNode, dataset_store: BaseResourceNode, loggers = None
@@ -71,7 +82,7 @@ class DataProcessingNode(BaseActionNode):
 
 
 metadata_store = SQLiteMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
-data_store = FilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
+data_store = MonitoringDataStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
 dataset_store = DatasetStoreNode(name="dataset_store", resource_path=dataset_store_path, metadata_store=metadata_store)
 data_processing_node = DataProcessingNode(name="data_processing", data_store=data_store, dataset_store=dataset_store)
 

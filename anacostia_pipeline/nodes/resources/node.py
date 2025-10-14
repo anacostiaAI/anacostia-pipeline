@@ -73,7 +73,7 @@ class BaseResourceNode(BaseNode, ABC):
         pass
     
     @abstractmethod
-    def clean_up_resources(self) -> None:
+    def before_run_ends(self) -> None:
         """
         Override to specify how the resource is cleaned up after the run ends.
         """
@@ -464,7 +464,7 @@ class BaseResourceNode(BaseNode, ABC):
 
             self.run_id += 1
 
-            self.clean_up_resources()
+            self.before_run_ends()
             
             # signal the metadata store node that the action nodes have finish using the resource for the current run
             # self.log(f"{self.name} signaling metadata store that the action nodes have finished using the resource", level='INFO')

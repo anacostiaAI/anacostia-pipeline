@@ -37,7 +37,7 @@ class CroissantDatasetStoreNode(FilesystemStoreNode):
             monitoring=False   # disable monitoring for the Croissant data store
         )
 
-    def clean_up_resources(self):
+    def before_run_ends(self):
         self.save_data_card()
 
     def save_data_card(self):
