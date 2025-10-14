@@ -7,7 +7,7 @@ from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 
 
 
-class CroissantDataStoreNode(FilesystemStoreNode):
+class CroissantDatasetStoreNode(FilesystemStoreNode):
     def __init__(
         self, 
         name: str, 
@@ -21,7 +21,6 @@ class CroissantDataStoreNode(FilesystemStoreNode):
         client_url: str = None, 
         wait_for_connection: bool = False, 
         loggers: Union[Logger, List[Logger]] = None, 
-        monitoring: bool = True
     ):
         super().__init__(
             name=name, 
@@ -35,7 +34,7 @@ class CroissantDataStoreNode(FilesystemStoreNode):
             client_url=client_url, 
             wait_for_connection=wait_for_connection, 
             loggers=loggers, 
-            monitoring=monitoring
+            monitoring=False   # disable monitoring for the Croissant data store
         )
 
         self.files_used = []

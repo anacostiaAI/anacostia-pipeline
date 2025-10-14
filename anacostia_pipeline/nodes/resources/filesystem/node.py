@@ -234,6 +234,8 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             )
         """
 
+        # we cannot save artifacts while monitoring is enabled because there might be temporary files created in the resource_path
+        # that we don't want to accidentally pick up and record as new files
         if self.monitoring is True:
             raise ValueError(
                 "Cannot save artifact while monitoring is enabled. "
@@ -360,6 +362,12 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
             raise
+
+    def before_run_starts(self):
+        pass
+
+    def after_run_ends(self):
+        pass
 
     def stop_monitoring(self) -> None:
         self.log(f"Stopping observer thread for node '{self.name}'", level="INFO")
