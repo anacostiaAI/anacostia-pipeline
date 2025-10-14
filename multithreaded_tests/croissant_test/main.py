@@ -2,6 +2,8 @@ import os
 import shutil
 import logging
 
+import mlcroissant as mlc
+
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.resources.node import BaseResourceNode
@@ -47,7 +49,7 @@ class MonitoringDataStoreNode(FilesystemStoreNode):
 
 class DataProcessingNode(BaseActionNode):
     def __init__(
-        self, name, data_store: BaseResourceNode, dataset_store: BaseResourceNode, loggers = None
+        self, name, data_store: BaseResourceNode, dataset_store: CustomDatasetRegistryNode, loggers = None
     ):
         super().__init__(
             name, 
@@ -60,6 +62,7 @@ class DataProcessingNode(BaseActionNode):
     def execute(self, *args, **kwargs):
         # load the new training data
         artifacts_paths = self.data_store.list_artifacts(state="new")
+        datasets_paths = []
         for artifact_path in artifacts_paths:
             
             data = None
@@ -75,7 +78,13 @@ class DataProcessingNode(BaseActionNode):
                 with open(fullpath, "w", encoding="utf-8") as f:
                     processed_data = data.upper()
                     f.write(processed_data)
+                    datasets_paths.append(artifact_path)
                     self.log(f"Processed Data: {processed_data}", level="DEBUG")
+            
+        # save a Croissant data card describing the dataset
+        run_id = self.run_id
+        data_card_path = f"data_card_{run_id}.json"
+        self.dataset_store.save_data_card(data_card_path=data_card_path, datasets_paths=datasets_paths)
 
         return True
 

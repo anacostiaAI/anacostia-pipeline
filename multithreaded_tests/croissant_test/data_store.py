@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from typing import List
 
 import mlcroissant as mlc
 
@@ -37,21 +38,19 @@ class CustomDatasetRegistryNode(DatasetRegistryNode):
             loggers
         )
     
-    def save_data_card(self):
-
-        datasets_produced = self.list_artifacts(state="produced")
+    def save_data_card(self, data_card_path: str, datasets_paths: List[str]):
 
         # 1) One FileObject per concrete file (good for checksums)
         distribution = []
-        for filepath in datasets_produced:
-            fullpath = os.path.join(self.resource_path, filepath)
+        for filepath in datasets_paths:
+            full_data_card_path = os.path.join(self.resource_path, filepath)
 
             distribution.append(
                 mlc.FileObject(
-                    name=os.path.basename(fullpath),
+                    name=os.path.basename(full_data_card_path),
                     content_url=filepath,          # relative path is portable
                     encoding_formats=["text/plain"],
-                    sha256=self.hash_file(fullpath)
+                    sha256=self.hash_file(full_data_card_path)
                 )
             )
 
@@ -101,10 +100,7 @@ class CustomDatasetRegistryNode(DatasetRegistryNode):
         metadata.date_published = datetime.now().strftime("%Y-%m-%d")
 
         # 5) Save to JSON-LD file in the data store
-        run_id = self.run_id
-        with self.save_artifact(filepath=f"data_card_{run_id}.json") as fullpath:
-            with open(fullpath, 'w', encoding='utf-8') as json_file:
+        with super().save_data_card(data_card_path=data_card_path, datasets_paths=datasets_paths) as full_data_card_path:
+            with open(full_data_card_path, 'w', encoding='utf-8') as json_file:
                 content = metadata.to_json()
                 json.dump(content, json_file, indent=4)
-
-        self.log(f"Data card saved with files: {datasets_produced}", level="INFO")

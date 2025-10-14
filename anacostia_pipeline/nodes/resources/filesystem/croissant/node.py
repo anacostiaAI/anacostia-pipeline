@@ -1,5 +1,6 @@
 from logging import Logger
 from typing import List, Union
+from contextlib import contextmanager
 
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
@@ -37,16 +38,35 @@ class DatasetRegistryNode(FilesystemStoreNode):
             monitoring=False   # disable monitoring for the Croissant data store
         )
 
-    def before_run_ends(self):
-        self.save_data_card()
-        #self.tag_artifact(filepath=model_card_path, model_path=model_path)
-        #self.tag_artifact(filepath=model_path, model_card_path=model_card_path)
-
-    def save_data_card(self):
+    @contextmanager
+    def save_data_card(self, data_card_path: str, datasets_paths: List[str], overwrite: bool = False, atomic: bool = True):
         """
         Save a data card to the filesystem.
         Args:
-            files_used (List[str]): The list of files used during the run.
+            data_card_path (str): The path where the data card should be saved.
+            datasets_paths (List[str]): The list of dataset paths to be included in the data card.
+            overwrite (bool): Whether to overwrite the data card if it already exists. Default is False.
+            atomic (bool): Whether to use atomic write operations. Default is True.
+        Yields:
+            str: The full path for you to save the data card.
+        Raises:
+            Exception: If there is an error during the save operation.
+        
+        Example Usage:
+            with dataset_registry_node.save_data_card(data_card_path="data_card.json", datasets_paths=["data1.txt", "data2.txt"]) as full_path:
+                with open(full_path, 'w') as f:
+                    f.write("Your data card content here")
         """
-        # Implement the logic to save the data card
-        pass
+
+        try:
+            with self.save_artifact(filepath=data_card_path, overwrite=overwrite, atomic=atomic) as fullpath:
+                yield fullpath
+            
+            # when we get here, the inner manager has already committed and recorded tag the datasets paths to the data card path
+            for dataset_path in datasets_paths:
+                self.tag_artifact(filepath=dataset_path, data_card_path=data_card_path)
+                self.tag_artifact(filepath=data_card_path, dataset_path=dataset_path)
+
+        except Exception as e:
+            self.log(f"Failed to save data card {data_card_path}: {e}", level="ERROR")
+            raise e
