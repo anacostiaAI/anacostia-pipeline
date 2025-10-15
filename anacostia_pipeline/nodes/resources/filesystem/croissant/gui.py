@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
@@ -21,14 +23,32 @@ class DatasetRegistryGUI(BaseGUI):
 
         self.metadata_store = metadata_store
         self.metadata_store_client = metadata_store_client
-        
+
         @self.get("/home", response_class=HTMLResponse)
         async def endpoint(request: Request):
+            data_card_paths = []
+            for path in os.listdir(self.node.resource_path):
+                if path.endswith(".json"):
+                    data_card_paths.append(path)
+            
             return dataset_registry_home(
-                update_endpoint=f"{self.get_gui_url()}/update_home_page"
-            ) 
-        
+                update_endpoint=f"{self.get_gui_url()}/update_home_page",
+                dataset_entries=data_card_paths
+            )
+
         @self.get("/update_home_page", response_class=HTMLResponse)
         async def update_home_page(request: Request):
-            return "<div>No model entries found</div>"
+            data_card_paths = []
+            for path in os.listdir(self.node.resource_path):
+                if path.endswith(".json"):
+                    data_card_paths.append(path)
+            
+            return "\n".join([ f'<div>{entry}</div>' for entry in data_card_paths ])
         
+        @self.get("/modal/", response_class=HTMLResponse)
+        async def modal(action: str, card_path: str = None):
+            if action == "open":
+                pass
+
+            elif action == "close":
+                return ""
