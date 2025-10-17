@@ -35,3 +35,10 @@ Note: See filesystem_store.py for an example of how to create your own resource 
 ### Action Node
 1. Inherit the ```BaseActionNode``` class 
 2. Override the ```execute()``` method in ```BaseActionNode```
+
+## Tips for developing your own distributed pipeline and run tests:
+1. Install `mkcert`
+```
+brew install mkcert
+mkcert -install
+```
