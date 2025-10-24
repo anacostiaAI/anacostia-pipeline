@@ -8,8 +8,7 @@ from fastapi.responses import HTMLResponse
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
-from anacostia_pipeline.nodes.resources.filesystem.croissant.fragments import dataset_registry_home, data_entry_card, data_card_modal
-from anacostia_pipeline.nodes.resources.filesystem.croissant.fragments import card_entry
+from anacostia_pipeline.nodes.resources.filesystem.croissant.fragments import dataset_registry_home, dataset_card_modal, dataset_card
 
 
 
@@ -41,10 +40,13 @@ class DatasetRegistryGUI(BaseGUI):
 
                 if data_card_path not in self.rendered_cards:
                     self.rendered_cards.append(data_card_path)
-                    data_card_path = os.path.join(self.node.resource_path, data_card_path)
+                    data_card_fullpath = os.path.join(self.node.resource_path, data_card_path)
                     
                     entries_to_render.append(
-                        card_entry(data_card_path=data_card_path)
+                        dataset_card(
+                            data_card_path=data_card_fullpath,
+                            modal_open_endpoint=f"{self.get_gui_url()}/modal/?action=open&card_path={data_card_path}"
+                        )
                     )
                 
             return entries_to_render
@@ -81,13 +83,13 @@ class DatasetRegistryGUI(BaseGUI):
         @self.get("/modal/", response_class=HTMLResponse)
         async def modal(action: str, card_path: str = None):
             if action == "open":
-                card_path = f"{self.node.resource_path}/{card_path}"
+                card_path = os.path.join(self.node.resource_path, card_path)
 
                 with open(card_path, "r", encoding="utf-8") as file:
                     modal_html_str = json.load(file)
                     modal_html_str = json.dumps(modal_html_str, indent=4)
 
-                    return data_card_modal(
+                    return dataset_card_modal(
                         modal_close_endpoint=f"{self.get_gui_url()}/modal/?action=close",
                         modal_html_str=modal_html_str
                     )
