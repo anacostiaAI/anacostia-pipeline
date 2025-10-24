@@ -1,5 +1,6 @@
 from typing import List, Dict, Union
 import json
+import os
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -8,6 +9,7 @@ from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.croissant.fragments import dataset_registry_home, data_entry_card, data_card_modal
+from anacostia_pipeline.nodes.resources.filesystem.croissant.fragments import card_entry
 
 
 
@@ -27,6 +29,7 @@ class DatasetRegistryGUI(BaseGUI):
 
         self.metadata_store = metadata_store
         self.metadata_store_client = metadata_store_client
+        self.rendered_cards = []
 
         def render_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
             data_card_entries = [entry for entry in file_entries if entry["location"].endswith(".json") is True]
@@ -35,13 +38,14 @@ class DatasetRegistryGUI(BaseGUI):
 
             for data_card_entry in data_card_entries:
                 data_card_path = data_card_entry['location']
-                
-                entries_to_render.append(
-                    data_entry_card(
-                        data_card_entry=data_card_entry, 
-                        modal_open_endpoint=f"{self.get_gui_url()}/modal/?action=open&card_path={data_card_path}"
+
+                if data_card_path not in self.rendered_cards:
+                    self.rendered_cards.append(data_card_path)
+                    data_card_path = os.path.join(self.node.resource_path, data_card_path)
+                    
+                    entries_to_render.append(
+                        card_entry(data_card_path=data_card_path)
                     )
-                )
                 
             return entries_to_render
         
@@ -81,7 +85,7 @@ class DatasetRegistryGUI(BaseGUI):
 
                 with open(card_path, "r", encoding="utf-8") as file:
                     modal_html_str = json.load(file)
-                    modal_html_str=json.dumps(modal_html_str, indent=4)
+                    modal_html_str = json.dumps(modal_html_str, indent=4)
 
                     return data_card_modal(
                         modal_close_endpoint=f"{self.get_gui_url()}/modal/?action=close",
