@@ -40,6 +40,9 @@ def sqlmetadatastore_home(data_options: Dict[str, str], runs: List[Dict[str, str
             <!-- Bulma CSS --> 
             <link rel="stylesheet" href="/static/css/third_party/bulma.css">
 
+            <!-- custom CSS for tables -->
+            <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/tables.css">
+
             <!-- Note: the /static directory is not mounted here, but in the main webserver -->
             <link rel="stylesheet" type="text/css" href="/static/css/styles/sqlmetadatastore.css">
             '''

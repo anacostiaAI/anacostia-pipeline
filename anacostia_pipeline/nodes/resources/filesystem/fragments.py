@@ -31,6 +31,9 @@ def filesystemstore_home(sse_endpoint: str, event_name: str, file_entries: List[
             <!-- Bulma CSS --> 
             <link rel="stylesheet" href="/static/css/third_party/bulma.css">
 
+            <!-- custom CSS for tables -->
+            <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/tables.css">
+
             <!-- CSS for filesystem store node -->
             <link rel="stylesheet" type="text/css" href="/static/css/styles/filesystemstore.css">
             '''

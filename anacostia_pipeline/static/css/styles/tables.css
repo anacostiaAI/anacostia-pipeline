@@ -1,8 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@400;600&display=swap');
-
 /* General table styling scoped to node content */
 #page_content table {
-    font-family: 'Rethink Sans', 'Helvetica Neue', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     border-collapse: collapse;
     width: 100%;
     font-size: 14px;
