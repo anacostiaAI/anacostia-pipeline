@@ -4,7 +4,7 @@
     top: 0;
     left: 0;
     width: 100vw;
-    background-color: #333;
+    background-color: #1e293b;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -17,22 +17,58 @@
 }
 
 .home-navbar img:hover {
-    background-color: #a9a9a9;
+    background-color: #334155;
 }
 
 /* the 'Anacostia Pipeine' title */
 .home-navbar-title {
-    color: white;
+    color: #F1F5F9;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     text-decoration: none;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin: 1rem 0;
+    margin-left: 0.6rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+/* Accent underline animation */
+.home-navbar-title::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: #3b82f6;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+}
+
+.home-navbar-title:hover::after {
+    transform: scaleX(1);
+}
+
+.home-navbar-title:hover,
+.home-navbar-title:visited,
+.home-navbar-title:active,
+.home-navbar-title:focus {
+    color: #ffffff !important;
+}
+
+@media (max-width: 480px) {
+    .home-navbar-title {
+        font-size: 1.4rem;
+    }
+    .home-navbar-title::after {
+        display: none;
+    }
 }
 
 /* Dropdown button styling */
 .dropdown-button {
-    background-color: #333;
+    background-color: #1e293b;
     color: white;
     font-size: 1rem;
     padding: 1.1rem;
@@ -77,8 +113,8 @@
 
 /* Change color of dropdown button and color of button text on hover */
 .dropdown:hover .dropdown-button {
-    background-color: #a9a9a9;
-    color: black;
+    background-color: #334155;
+    color: white;
 }
 
 #page_content {
