@@ -1,3 +1,9 @@
+.table_container {
+    width: 90%;
+    margin: auto;
+    color: dimgray;
+}
+
 /* General table styling scoped to node content */
 #page_content table {
     font-family: Arial, Helvetica, sans-serif;

@@ -37,9 +37,6 @@ def sqlmetadatastore_home(data_options: Dict[str, str], runs: List[Dict[str, str
     return f"""
         {head_template(
             '''
-            <!-- Bulma CSS --> 
-            <link rel="stylesheet" href="/static/css/third_party/bulma.css">
-
             <!-- custom CSS for tables -->
             <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/tables.css">
 
@@ -72,7 +69,7 @@ def sqlmetadatastore_home(data_options: Dict[str, str], runs: List[Dict[str, str
                 </div>
             </div>
         </div>
-        <div id="table_container" class="container">
+        <div id="table_container" class="table_container">
             {sqlmetadatastore_runs_table(runs, data_options["runs"])}
         </div>
     """
