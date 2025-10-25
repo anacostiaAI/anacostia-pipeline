@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@800&display=swap');
-
 /* Navbar styling */
 .home-navbar {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
-    background-color: #1e293b;
+    background-color: #333;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -19,60 +17,23 @@
 }
 
 .home-navbar img:hover {
-    background-color: #334155;
+    background-color: #a9a9a9;
 }
 
 /* the 'Anacostia Pipeine' title */
 .home-navbar-title {
-    color: #F1F5F9;
-    font-family: 'Rethink Sans', Arial, Helvetica, sans-serif;
-    font-weight: 800;
-    font-size: 1.75rem;
-    letter-spacing: -0.02em;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1.5rem;
     text-decoration: none;
-    margin: 1rem 0;
-    margin-left: 0.6rem;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    position: relative;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
-
-/* Accent underline animation */
-.home-navbar-title::after {
-    content: '';
-    display: block;
-    width: 100%;
-    height: 3px;
-    background: #3b82f6;
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.25s ease;
-}
-.home-navbar-title:hover::after {
-    transform: scaleX(1);
-}
-
-.home-navbar-title:hover,
-.home-navbar-title:visited,
-.home-navbar-title:active,
-.home-navbar-title:focus {
-    color: #ffffff !important;
-}
-
-@media (max-width: 480px) {
-    .home-navbar-title {
-        font-size: 1.4rem;
-    }
-    .home-navbar-title::after {
-        display: none;
-    }
-}
-
-
 
 /* Dropdown button styling */
 .dropdown-button {
-    background-color: #1e293b;
-    color: black;
+    background-color: #333;
+    color: white;
     font-size: 1rem;
     padding: 1.1rem;
     height: auto;
@@ -116,33 +77,13 @@
 
 /* Change color of dropdown button and color of button text on hover */
 .dropdown:hover .dropdown-button {
-    background-color: #334155;
+    background-color: #a9a9a9;
     color: black;
 }
 
 #page_content {
     height: 95vh;
     width: 100vw;
-}
-
-/* Force navbar title color */
-.home-navbar-title {
-    color: #ffffff !important;
-}
-
-/* Override navbar color explicitly */
-nav.home-navbar {
-    background-color: #1e293b !important;
-}
-
-/* Ensure dropdown button matches */
-nav.home-navbar .dropdown-button {
-    background-color: #1e293b !important;
-    color: white !important;
-}
-
-.dropdown:hover .dropdown-button {
-    color: white !important;
 }
 
 /* Add some spacing below navbar */

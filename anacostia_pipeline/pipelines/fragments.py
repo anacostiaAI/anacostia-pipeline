@@ -75,10 +75,7 @@ def head_template(user_elements: str = "") -> str:
         <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/home.css">
         <link hx-head="re-eval" rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
 
-        <!-- custom CSS for tables -->
-         <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/tables.css">
-
-         <!-- custom CSS for node bar -->
+        <!-- custom CSS for node bar -->
         <link hx-head="re-eval" rel="stylesheet" type="text/css" href="/static/css/styles/node_bar.css">
     </head> 
     """
@@ -102,39 +99,39 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
 
     dropdown_content = []
 
-    # for metadata store nodes with /home endpoint, add a link to the dropdown tab, set the color to #FF6F61 (light red)
+    # for metadata store nodes with /home endpoint, add a link to the dropdown tab, set the color to #F69C9E (light red)
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#FF6F61;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#F69C9E;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] != "" and node["base_type"] == "BaseMetadataStoreNode"
     ])
 
-    # for metadata store nodes without /home endpoint, add a link to the dropdown tab, set the color to #D4573F (dark red) and disable the link
+    # for metadata store nodes without /home endpoint, add a link to the dropdown tab, set the color to #d04427 (dark red) and disable the link
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#D4573F; cursor: not-allowed;">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#d04427; cursor: not-allowed;">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] == "" and node["base_type"] == "BaseMetadataStoreNode"
     ])
 
-    # for resource nodes with /home endpoint, add a link to the dropdown tab, set the color to #7ED957 (light green)
+    # for resource nodes with /home endpoint, add a link to the dropdown tab, set the color to #A8D5B1 (light green)
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#7ED957;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#A8D5B1;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] != "" and node["base_type"] == "BaseResourceNode"
     ])
 
-    # for resource nodes without /home endpoint, add a link to the dropdown tab, set the color to #5CB84C (dark green) and disable the link
+    # for resource nodes without /home endpoint, add a link to the dropdown tab, set the color to #89BE90 (dark green) and disable the link
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#5CB84C; cursor: not-allowed;">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#89BE90; cursor: not-allowed;">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] == "" and node["base_type"] == "BaseResourceNode"
     ])
 
-    # for action nodes with /home endpoint, add a link to the dropdown tab, set the color to #8EC9FF (light blue)
+    # for action nodes with /home endpoint, add a link to the dropdown tab, set the color to #CBDDE9 (light blue)
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#8EC9FF;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#CBDDE9;" hx-get="{node["endpoint"]}" hx-target="#page_content" hx-swap="innerHTML" hx-trigger="click">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] != "" and node["base_type"] == "BaseActionNode"
     ])
 
-    # for action nodes without /home endpoint, add a link to the dropdown tab, set the color to #5C8DD6 (dark blue) and disable the link
+    # for action nodes without /home endpoint, add a link to the dropdown tab, set the color to #809CC8 (dark blue) and disable the link
     dropdown_content.extend([
-        f'''<a id="{node["id"]}_tab" style="background-color:#5C8DD6; cursor: not-allowed;">{node["label"]}</a>'''
+        f'''<a id="{node["id"]}_tab" style="background-color:#809CC8; cursor: not-allowed;">{node["label"]}</a>'''
         for node in nodes if node["endpoint"] == "" and node["base_type"] == "BaseActionNode"
     ])
 
@@ -146,7 +143,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
         { head_template() }
         <body hx-ext="head-support">
             <nav class="home-navbar">
-                <img src="/static/img/dag-logo-circle.svg" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
+                <img src="/static/img/anacostia_logo.png" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
                 <a href="#" class="home-navbar-title">Anacostia Pipeline</a>
                 <div class="dropdown">
                     <button class="dropdown-button">Nodes ▽</button>
