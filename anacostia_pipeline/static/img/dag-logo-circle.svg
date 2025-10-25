@@ -1,0 +1,43 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background for navbar use -->
+  <rect width="64" height="64" fill="transparent"/>
+  
+  <!-- Six nodes concept within circle -->
+  <g transform="translate(32, 32)">
+    <!-- Outer circle boundary -->
+    <circle cx="0" cy="0" r="28" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.5"/>
+    <circle cx="0" cy="0" r="28" fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.7"/>
+    
+    <!-- Straight line connections showing DAG flow -->
+    <!-- Primary flow paths -->
+    <line x1="-18" y1="-12" x2="0" y2="-20" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="18" y1="-12" x2="0" y2="-20" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="0" y1="-20" x2="0" y2="0" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="-18" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="18" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-18" y1="12" x2="18" y2="12" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Six nodes positioned in strategic locations -->
+    <!-- Top input nodes -->
+    <circle cx="-18" cy="-12" r="4" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+    <circle cx="18" cy="-12" r="4" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+    
+    <!-- Top center processing node -->
+    <circle cx="0" cy="-20" r="4" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+    
+    <!-- Center processing node -->
+    <circle cx="0" cy="0" r="4.5" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+    
+    <!-- Bottom output nodes -->
+    <circle cx="-18" cy="12" r="4" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+    <circle cx="18" cy="12" r="4" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+    
+    <!-- Inner dots for visual hierarchy and node identification -->
+    <circle cx="-18" cy="-12" r="1.5" fill="#1e40af"/>
+    <circle cx="18" cy="-12" r="1.5" fill="#1e40af"/>
+    <circle cx="0" cy="-20" r="1.5" fill="#1e40af"/>
+    <circle cx="0" cy="0" r="2" fill="#3b82f6"/>
+    <circle cx="-18" cy="12" r="1.5" fill="#60a5fa"/>
+    <circle cx="18" cy="12" r="1.5" fill="#60a5fa"/>
+  </g>
+</svg>
