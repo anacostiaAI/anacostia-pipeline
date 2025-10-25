@@ -140,9 +140,9 @@ def dataset_card(data_card_path: str, modal_open_endpoint: str) -> str:
                 {record_set_entry(data_card["recordSet"])}
             </details>
 
-            <details hx-get="{modal_open_endpoint}" hx-trigger="click" hx-target="#modal-container" hx-swap="innerHTML">
+            <open-modal-btn hx-get="{modal_open_endpoint}" hx-trigger="click" hx-target="#modal-container" hx-swap="innerHTML">
                 <summary>View Raw JSON-LD</summary>
-            </details>
+            </open-modal-btn>
 
         </article>
         '''

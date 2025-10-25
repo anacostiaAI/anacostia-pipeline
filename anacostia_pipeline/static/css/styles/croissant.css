@@ -116,6 +116,25 @@ header.page h1 {
     white-space: nowrap;
 }
 
+open-modal-btn { 
+    border-top: 1px solid var(--border);
+}
+open-modal-btn > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 18px;
+    font-weight: 600;
+    outline: none;
+    background-color: dodgerblue;
+    color: var(--code-bg);
+    text-align: center;
+}
+open-modal-btn > summary::after {
+    float: right;
+    transition: transform .2s ease;
+    opacity: .7;
+}
+
 details { border-top: 1px solid var(--border); }
 details > summary {
     list-style: none;
