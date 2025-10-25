@@ -30,13 +30,24 @@ class DatasetRegistryGUI(BaseGUI):
         self.metadata_store_client = metadata_store_client
         self.rendered_cards = []
 
-        def render_file_entries(file_entries: Union[List[Dict], Dict]) -> Union[List[Dict], Dict]:
+        def render_file_entries(file_entries: Union[List[Dict], Dict], full_page_reload: bool = False) -> Union[List[Dict], Dict]:
             data_card_entries = [entry for entry in file_entries if entry["location"].endswith(".json") is True]
 
             entries_to_render = []
 
             for data_card_entry in data_card_entries:
                 data_card_path = data_card_entry['location']
+
+                if full_page_reload is True:
+                    # on full page reload, render all data cards
+                    data_card_fullpath = os.path.join(self.node.resource_path, data_card_path)
+                    
+                    entries_to_render.append(
+                        dataset_card(
+                            data_card_path=data_card_fullpath,
+                            modal_open_endpoint=f"{self.get_gui_url()}/modal/?action=open&card_path={data_card_path}"
+                        )
+                    )
 
                 if data_card_path not in self.rendered_cards:
                     self.rendered_cards.append(data_card_path)
@@ -59,8 +70,7 @@ class DatasetRegistryGUI(BaseGUI):
                 if self.metadata_store_client is not None:
                     file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
-            file_entries.reverse()
-            data_card_entries = render_file_entries(file_entries)
+            data_card_entries = render_file_entries(file_entries, full_page_reload=True)
 
             return dataset_registry_home(
                 update_endpoint=f"{self.get_gui_url()}/update_home_page",
@@ -75,7 +85,6 @@ class DatasetRegistryGUI(BaseGUI):
                 if self.metadata_store_client is not None:
                     file_entries = self.metadata_store_client.get_entries(resource_node_name=self.node.name)
 
-            file_entries.reverse()
             data_card_entries = render_file_entries(file_entries)
             data_card_entries_str = "\n".join(data_card_entries) 
             return data_card_entries_str

@@ -143,7 +143,7 @@ def index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoi
         { head_template() }
         <body hx-ext="head-support">
             <nav class="home-navbar">
-                <img src="/static/img/anacostia_logo.png" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
+                <img src="/static/img/dag-black.svg" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
                 <a href="#" class="home-navbar-title">Anacostia Pipeline</a>
                 <div class="dropdown">
                     <button class="dropdown-button">Nodes ▽</button>
