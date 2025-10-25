@@ -13,14 +13,11 @@
     --code-bg: #f3f4f8;
 }
 
-body {
-    margin: 0;
-    background: var(--bg);
-}
-
 .wrap {
-    max-width: 1200px;
-    margin: 40px auto;
+    max-width: 95%;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    margin: 10px auto;
     padding: 0 20px;
     font: 500 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
     color: var(--text);
@@ -53,6 +50,7 @@ header.page h1 {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 16px;
+    padding-bottom: 20px;
     grid-auto-rows: auto;   /* each row height adapts to its tallest cell */
     align-items: start;     /* align items to the top of their grid area */
 }
