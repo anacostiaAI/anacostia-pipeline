@@ -2,3 +2,151 @@
     margin-bottom: 10px;
     margin-left: 10px;
 }
+
+/* ====== Base design tokens (tweak to taste) ====== */
+:root{
+  --radius: .375rem;          /* ~6px */
+  --shadow-1: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.02);
+  --shadow-2: 0 8px 16px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.03);
+  --bg: #fff;
+  --text: #363636;
+  --muted: #4a4a4a;
+  --line: #dbdbdb;
+  --line-hover: #b5b5b5;
+  --hover: #f5f5f5;
+  --focus: #485fc7;           /* Bulma's primary-ish blue */
+}
+
+/* ====== Button (Bulma-like .button) ====== */
+.button{
+  appearance: none;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .5em 1em;
+  font: 600 1rem/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: border-color .15s ease, box-shadow .15s ease, transform .02s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+}
+.button:hover{ border-color: var(--line-hover); }
+.button:active{ transform: translateY(1px); }
+.button:focus-visible{
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Bulma-like "icon-text" layout */
+.icon-text{
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+}
+.icon{
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  font-size: .9em; /* keep the ▼ balanced */
+}
+
+/* ====== Dropdown container ====== */
+.dropdown{
+  position: relative;
+  display: inline-block;
+}
+.dropdown.is-hoverable:hover .dropdown-menu{
+  display: block;
+}
+
+/* Trigger wrapper (keeps spacing consistent with Bulma) */
+.dropdown-trigger{
+  display: inline-flex;
+}
+
+/* ====== Menu panel ====== */
+.dropdown-menu{
+  position: absolute;
+  left: 0;
+  top: calc(100% + .5rem);
+  min-width: 12rem;           /* similar to Bulma's comfortable width */
+  z-index: 50;
+  display: none;              /* shown on hover */
+}
+.dropdown-menu:focus-within{ display: block; } /* keep open if keyboarding */
+
+/* Panel content box */
+.dropdown-content{
+  background: var(--bg);
+  border: 1px solid rgba(10,10,10,.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  padding: .25rem 0;
+  overflow: hidden;
+}
+
+/* Items */
+.dropdown-item{
+  display: block;
+  padding: .5rem 1rem;
+  font: 500 0.95rem/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color .12s ease, color .12s ease;
+}
+.dropdown-item:hover,
+.dropdown-item:focus{
+  background: var(--hover);
+  color: var(--text);
+}
+.dropdown-item.is-active{
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ====== Accessibility niceties ====== */
+.dropdown .dropdown-item:focus-visible{
+  outline: 2px solid var(--focus);
+  outline-offset: -2px; /* inside the item */
+}
+
+/* ====== Dark mode (optional, subtle) ====== */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg: #1f1f1f;
+    --text: #eaeaea;
+    --muted: #d0d0d0;
+    --line: #3a3a3a;
+    --line-hover: #4a4a4a;
+    --hover: #2a2a2a;
+    --shadow-1: 0 2px 3px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.02);
+    --shadow-2: 0 12px 24px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03);
+    --focus: #9aa7ff;
+  }
+}
+
+/* Keep menu open when hovering either the trigger OR the menu */
+.dropdown.is-hoverable:hover .dropdown-menu,
+.dropdown.is-hoverable .dropdown-menu:hover,
+.dropdown.is-hoverable:focus-within .dropdown-menu{
+  display: block;
+}
+
+/* Remove the physical gap so hover doesn't break while moving down */
+.dropdown-menu{
+  top: 100%;            /* was: calc(100% + .5rem) */
+}
+
+/* Optional: recreate visual spacing without breaking hover.
+   This invisible strip extends the hover area upward. */
+.dropdown.is-hoverable .dropdown-menu::before{
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: -8px;            /* match desired visual offset */
+  height: 8px;          /* acts as a hover bridge */
+}

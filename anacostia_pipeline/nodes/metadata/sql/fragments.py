@@ -54,7 +54,7 @@ def sqlmetadatastore_home(data_options: Dict[str, str], runs: List[Dict[str, str
                     </span>
                 </button>
             </div>
-            <div class="dropdown-menu" id="dropdown-menu3" role="menu">
+            <div class="dropdown-menu is-hoverable" id="dropdown-menu3" role="menu">
                 <div class="dropdown-content">
                     {
                         newline.join([
