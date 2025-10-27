@@ -275,6 +275,23 @@ class PipelineServer(FastAPI):
         def dag_page(response: Response):
             response.headers["HX-Redirect"] = "/"
 
+    def log(self, message: str, level="DEBUG") -> None:
+        if self.logger is not None:
+            if level == "DEBUG":
+                self.logger.debug(message)
+            elif level == "INFO":
+                self.logger.info(message)
+            elif level == "WARNING":
+                self.logger.warning(message)
+            elif level == "ERROR":
+                self.logger.error(message)
+            elif level == "CRITICAL":
+                self.logger.critical(message)
+            else:
+                raise ValueError(f"Invalid log level: {level}")
+        else:
+            print(message)
+
     async def process_queue(self):
         while True:
             if self.queue.empty() is False and self.connected is True:
@@ -285,12 +302,12 @@ class PipelineServer(FastAPI):
                         await self.client.post(f"{self.scheme}://{self.predecessor_host}:{self.predecessor_port}/send_event", json=message)
                 
                 except httpx.ConnectError as e:
-                    self.logger.error(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}")
+                    self.log(f"Could not connect to root server at {self.predecessor_host}:{self.predecessor_port} - {str(e)}", "ERROR")
                     self.queue.put(message)
                     self.connected = False
 
                 except Exception as e:
-                    self.logger.error(f"Error forwarding message from queue: {str(e)}")
+                    self.log(f"Error forwarding message from queue: {str(e)}", "ERROR")
                     self.queue.put(message)
                     self.connected = False
                 
@@ -300,7 +317,7 @@ class PipelineServer(FastAPI):
             try:
                 await asyncio.sleep(0.1)
             except asyncio.CancelledError:
-                self.logger.info("Background task cancelled; breaking out of queue processing loop")
+                self.log("Background task cancelled; breaking out of queue processing loop", "INFO")
                 break 
 
     async def connect(self):
