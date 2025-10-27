@@ -28,7 +28,7 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
 setup(
     name="anacostia_pipeline",
-    version="0.8.7",
+    version="0.8.8",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
