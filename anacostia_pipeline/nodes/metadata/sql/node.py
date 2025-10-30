@@ -132,9 +132,10 @@ class BaseSQLMetadataStoreNode(BaseMetadataStoreNode, ABC):
 
         # Create the hash for the run by retrieving the hashes of all artifacts, metrics, params, and tags associated with the current run into a list,
         # sorting the list, concatenating the hashes in the list into a string, and then hashing the string
-        using_artifact_entries = self.get_entries(state="using")
-        produced_artifact_entries = self.get_entries(state="produced")
-        entries = using_artifact_entries + produced_artifact_entries
+        using_artifact_entries = self.get_entries(state="using", run_id=self.get_run_id())
+        produced_artifact_entries = self.get_entries(state="produced", run_id=self.get_run_id())
+        used_artifact_entries = self.get_entries(state="used", run_id=self.get_run_id())
+        entries = using_artifact_entries + produced_artifact_entries + used_artifact_entries
         artifact_hashes = [entry["hash"] for entry in entries]
         artifact_hashes = ''.join(sorted(artifact_hashes))
 

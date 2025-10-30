@@ -35,6 +35,7 @@ setup(
     long_description=pathlib.Path("README.md").read_text(),
     long_description_content_type='text/markdown',
     packages=find_packages(),
+    url="https://github.com/anacostiaAI/anacostia-pipeline",
     package_data={
         'anacostia_pipeline': [*static_files]
     },
