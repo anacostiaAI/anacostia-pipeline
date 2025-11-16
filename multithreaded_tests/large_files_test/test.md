@@ -1,0 +1,42 @@
+### Test Objective:
+Show the simplest example possible of two pipeline signalling each other over the network.
+
+### Pipeline Configuration:
+`test_pipeline`:
+- Server running on https://127.0.0.1:8000
+- Nodes:
+    - `metadata_store`
+        - Type: `SQLiteMetadataStoreNode`
+        - Running on https://127.0.0.1:8000/metadata_store
+        - Purpose: to provide a central metadata store between the predecessor and successor pipeline.
+        - Database location: `./testing_artifacts/metadata_store/metadata.db`
+        - Remote successors: `data_store`
+    - `data_store`
+        - Type: `FilesystemStoreNode`
+        - Running on https://127.0.0.1:8001/data_store
+        - Storage directory: `./testing_artifacts/data_store`
+        - Purpose: to detect incoming files dumped into the `./testing_artifacts/data_store` folder and to trigger the pipeline.
+        - Successors: `logging_root`
+    - `logging_node`
+        - Type: `BaseActionNode`
+        - Running on https://127.0.0.1:8001/logging_root
+        - Purpose: only here to provide a placeholder.
+
+### Test Setup:
+Spin up `shakespeare_eval_pipeline` pipeline and then spin up `test_pipeline`.
+
+### Pipeline Trigger:
+Files will be created and dumped into the `./testing_artifacts/data_store` folder.
+`data_store` node will monitor the folder and trigger pipeline upon new files being dumped into the folder.
+
+### Pipeline operation:
+Upon being triggered, `logging_node` will trigger `shakespeare_eval` over the network.
+
+### Instructions to run test:
+Run `run_test.sh` file to automatically run tests.
+To run tests manually:
+1. Open up two terminals
+2. Run `python setup.py` in terminal 1
+3. Run `python test.py` in terminal 2
+5. Go back to terminal 1 and run `python create_files.py`
+6. Open up a browser and navigate to https://127.0.0.1:8000 to see the GUI
