@@ -5,6 +5,7 @@ tests/testing_artifacts/
 .vscode/
 anacostia_pipeline/engine/subexample.py
 testing_artifacts/
+prep_artifacts/
 anacostia_pipeline/static/js/htmx.js
 .env
 venv
@@ -16,6 +17,3 @@ dist/
 **/output_artifacts/
 *.pem
 *.key
-
-create_files.py
-test.py

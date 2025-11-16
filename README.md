@@ -45,6 +45,7 @@ pip install anacostia-pipeline
 ```python
 import os
 import shutil
+import time
 
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
@@ -96,7 +97,7 @@ server = AnacostiaServer(config=config)
 with server.run_in_thread():
     while True:
         try:
-            pass    # Keep the server running
+            time.sleep(1)    # Keep the server running
         except (KeyboardInterrupt, SystemExit):
             print("Shutting down the server...")
             break
