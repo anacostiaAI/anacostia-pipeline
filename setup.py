@@ -54,7 +54,9 @@ setup(
         "httpx" 
     ],
     extras_require={
-        "aws": ["boto3"]
+        "aws": ["boto3"],
+        "croissant": ["mlcroissant"],
+        "huggingface": ["transformers", "datasets", "huggingface_hub"]
     },
     # Define the command-line entry point for the package. This allows users to run the tool using the command `anacostia` in terminal.
     entry_points={
