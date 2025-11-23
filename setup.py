@@ -55,5 +55,11 @@ setup(
     ],
     extras_require={
         "aws": ["boto3"]
+    },
+    # Define the command-line entry point for the package. This allows users to run the tool using the command `anacostia` in terminal.
+    entry_points={
+        "console_scripts": [
+            "anacostia = anacostia_pipeline.cli:main",
+        ]
     }
 )
