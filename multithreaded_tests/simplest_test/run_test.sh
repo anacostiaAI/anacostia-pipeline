@@ -2,8 +2,6 @@
 
 # remember to make file executable with chmod +x run_test.sh
 
-SCRIPT="test.py"
-
 # Set up cleanup function to terminate both processes
 cleanup() {
     echo -e "\nTerminating pipeline..."
@@ -29,7 +27,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "Starting root server on port 8000"
-python3 $SCRIPT &
+anacostia --app "test:pipeline" &
 PID=$!
 
 # Give the server time to start
