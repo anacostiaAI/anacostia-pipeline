@@ -34,12 +34,16 @@ class Connector(FastAPI):
         # this happens when the Connector is initialized when PipelineServer call node.setup_connector()
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient()
+            self.client = httpx.AsyncClient(timeout=httpx.Timeout(2.0))
             self.scheme = "http"
         else:
             # If SSL certificates are provided, use them to create the client
             try:
-                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.client = httpx.AsyncClient(
+                    verify=self.ssl_ca_certs,
+                    cert=(self.ssl_certfile, self.ssl_keyfile),
+                    timeout=httpx.Timeout(2.0),
+                )
                 self.scheme = "https"
 
                 for predecessor_url in self.node.remote_predecessors:
@@ -137,7 +141,7 @@ class Connector(FastAPI):
                 tasks.append(
                     self.client.post(f"{connection}/connector/connect", json=json)
                 )
-            responses = await asyncio.gather(*tasks)
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
             return responses
  
         if len(self.node.remote_successors) > 0:
@@ -167,7 +171,7 @@ class Connector(FastAPI):
                 json = connection_mode.model_dump()
                 tasks.append(self.client.post(f"{predecessor_url}/connector/backward_signal", json=json))
 
-            responses = await asyncio.gather(*tasks)
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
             return responses
         
         if len(self.node.remote_predecessors) > 0:
@@ -194,7 +198,7 @@ class Connector(FastAPI):
                 json = connection_mode.model_dump()
                 tasks.append(self.client.post(f"{successor_url}/connector/forward_signal", json=json))
 
-            responses = await asyncio.gather(*tasks)
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
             return responses
 
         if len(self.node.remote_successors) > 0:

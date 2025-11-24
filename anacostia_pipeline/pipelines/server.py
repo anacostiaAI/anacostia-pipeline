@@ -117,12 +117,16 @@ class PipelineServer(FastAPI):
 
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient()
+            self.client = httpx.AsyncClient(timeout=httpx.Timeout(2.0))
             self.scheme = "http"
         else:
             # If SSL certificates are provided, use them to create the client
             try:
-                self.client = httpx.AsyncClient(verify=self.ssl_ca_certs, cert=(self.ssl_certfile, self.ssl_keyfile))
+                self.client = httpx.AsyncClient(
+                    verify=self.ssl_ca_certs,
+                    cert=(self.ssl_certfile, self.ssl_keyfile),
+                    timeout=httpx.Timeout(2.0),
+                )
                 self.scheme = "https"
             except httpx.ConnectError as e:
                 raise ValueError(f"Failed to create HTTP client with SSL certificates: {e}")
@@ -332,11 +336,14 @@ class PipelineServer(FastAPI):
             pipeline_server_model = PipelineConnectionModel(predecessor_host=self.host, predecessor_port=self.port).model_dump()
             task.append(self.client.post(f"{leaf_ip_address}/connect", json=pipeline_server_model))
 
-        responses = await asyncio.gather(*task)
+        responses = await asyncio.gather(*task, return_exceptions=True)
 
         successor_node_models: List[NodeModel] = []
 
         for response in responses:
+            if isinstance(response, Exception):
+                self.log(f"Connect to leaf failed: {response}", "ERROR")
+                continue
             # Extract the leaf graph structure from the responses, this information will be used to construct the graph on the frontend
             response_data = response.json()
             self.successor_pipeline_models.append(response_data)
@@ -402,7 +409,7 @@ class PipelineServer(FastAPI):
         for leaf_ip_address in self.successor_ip_addresses:
             tasks.append(self.client.post(f"{leaf_ip_address}/finish_connect"))
 
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     def frontend_json(self):
         model = self.pipeline.pipeline_model.model_dump()
@@ -437,9 +444,24 @@ class PipelineServer(FastAPI):
         return model
 
     async def disconnect(self):
+        # Close primary client and any auxiliary clients/loops on connectors/servers/remote clients
         await self.client.aclose()
         for connector in self.connectors:
             await connector.client.aclose()
+        
+        # the following was CODEX generated to properly close the event loops and threads of the node servers and remote clients
+        for node_server in self.node_servers:
+            if hasattr(node_server, "client") and node_server.client is not None:
+                await node_server.client.aclose()
+        for remote_client in self.remote_clients:
+            if hasattr(remote_client, "client") and remote_client.client is not None:
+                await remote_client.client.aclose()
+            loop_thread = getattr(remote_client, "loop_thread", None)
+            if loop_thread is not None and loop_thread.is_alive():
+                loop = getattr(remote_client, "loop", None)
+                if loop is not None:
+                    loop.call_soon_threadsafe(loop.stop)
+                loop_thread.join()
     
     def get_config(self):
         return uvicorn.Config(

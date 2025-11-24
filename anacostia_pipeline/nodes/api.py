@@ -50,7 +50,7 @@ class BaseServer(FastAPI):
         if self.client_url is not None:
             if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
                 # If no SSL certificates are provided, create a client without them
-                self.client = httpx.AsyncClient(base_url=self.client_url)
+                self.client = httpx.AsyncClient(base_url=self.client_url, timeout=httpx.Timeout(2.0))
                 self.scheme = "http"
             else:
                 # If SSL certificates are provided, use them to create the client
@@ -58,7 +58,8 @@ class BaseServer(FastAPI):
                     self.client = httpx.AsyncClient(
                         base_url=self.client_url, 
                         verify=self.ssl_ca_certs, 
-                        cert=(self.ssl_certfile, self.ssl_keyfile)
+                        cert=(self.ssl_certfile, self.ssl_keyfile),
+                        timeout=httpx.Timeout(2.0),
                     )
                     self.scheme = "https"
 
@@ -136,6 +137,11 @@ class BaseServer(FastAPI):
             return response.result()
         else:
             raise RuntimeError("Event loop is not running. Cannot connect to client.")
+
+    # the following was CODEX generated to properly close the event loops and threads of the node servers and remote clients
+    async def aclose(self) -> None:
+        if hasattr(self, "client") and self.client is not None:
+            await self.client.aclose()
 
 class BaseClient(FastAPI):
     """
@@ -261,7 +267,7 @@ class BaseClient(FastAPI):
     def setup_http_client(self) -> None:
         if self.ssl_ca_certs is None or self.ssl_certfile is None or self.ssl_keyfile is None:
             # If no SSL certificates are provided, create a client without them
-            self.client = httpx.AsyncClient(base_url=self.server_url)
+            self.client = httpx.AsyncClient(base_url=self.server_url, timeout=httpx.Timeout(2.0))
 
             # Validate that server_url is using HTTPS if SSL certificates are provided
             if self.server_url:
@@ -274,7 +280,8 @@ class BaseClient(FastAPI):
                 self.client = httpx.AsyncClient(
                     base_url=self.server_url, 
                     verify=self.ssl_ca_certs, 
-                    cert=(self.ssl_certfile, self.ssl_keyfile)
+                    cert=(self.ssl_certfile, self.ssl_keyfile),
+                    timeout=httpx.Timeout(2.0),
                 )
 
                 # Validate that server_url is using HTTPS if SSL certificates are provided
@@ -301,3 +308,15 @@ class BaseClient(FastAPI):
             self.log("Event loop stopped by user", level="INFO")
             self.loop.call_soon_threadsafe(self.loop.stop)
             self.loop_thread.join()
+
+    # the following was CODEX generated to properly close the event loops and threads of the node servers and remote clients
+    async def aclose(self) -> None:
+        if hasattr(self, "client") and self.client is not None:
+            await self.client.aclose()
+        # Only stop a private loop thread started by this client; do not touch shared loops set by PipelineServer
+        loop_thread = getattr(self, "loop_thread", None)
+        if loop_thread is not None and loop_thread.is_alive():
+            loop = getattr(self, "loop", None)
+            if loop is not None:
+                loop.call_soon_threadsafe(loop.stop)
+            loop_thread.join()
