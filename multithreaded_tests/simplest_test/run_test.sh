@@ -27,7 +27,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "Starting root server on port 8000"
-anacostia --app "test:pipeline" &
+anacostia --app test:service &
 PID=$!
 
 # Give the server time to start
