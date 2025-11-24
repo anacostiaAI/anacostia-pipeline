@@ -82,20 +82,25 @@ class PipelineServer(FastAPI):
             app.pipeline.launch_nodes()   # Launch the nodes in the pipeline
             await app.connect()     # Connect to the leaf services
 
-            yield
-
-            # Cancel and cleanup the background task when the app shuts down
-            app.background_task.cancel()
             try:
-                await app.background_task
+                yield
             except asyncio.CancelledError:
+                # uvicorn cancels lifespan on Ctrl+C; swallow to allow orderly shutdown
                 pass
+            finally:
+                # Cancel and cleanup the background task when the app shuts down
+                if app.background_task is not None:
+                    app.background_task.cancel()
+                    try:
+                        await app.background_task
+                    except asyncio.CancelledError:
+                        pass
 
-            app.pipeline.terminate_nodes()  # Terminate the nodes in the pipeline
-            await app.disconnect()  # Disconnect from the leaf services
+                app.pipeline.terminate_nodes()  # Terminate the nodes in the pipeline
+                await app.disconnect()  # Disconnect from the leaf services
 
-            if app.logger is not None:
-                app.logger.info(f"Pipeline server '{app.name}' shut down")
+                if app.logger is not None:
+                    app.logger.info(f"Pipeline server '{app.name}' shut down")
         
         super().__init__(lifespan=lifespan, *args, **kwargs)
         self.name = name
