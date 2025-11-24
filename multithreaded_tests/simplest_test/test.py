@@ -5,6 +5,8 @@ from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStor
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
+from anacostia_pipeline.pipelines.server import PipelineServer
+
 
 # Create the testing artifacts directory for the SQLAlchemy tests
 tests_path = "./testing_artifacts"
@@ -41,12 +43,11 @@ printing_node = PrintingNode("logging_node", data_store=data_store)
 # Create the pipeline
 pipeline = Pipeline(name="test_pipeline", nodes=[metadata_store, data_store, printing_node])
 
-"""
-from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
-
 # Create the web server
 service = PipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0.0.1", port=8000)
 
+
+"""
 config = service.get_config()
 server = AnacostiaServer(config=config)
 

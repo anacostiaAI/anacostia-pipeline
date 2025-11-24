@@ -9,9 +9,7 @@ import argparse
 import importlib
 import inspect
 import uvicorn
-from fastapi import FastAPI
 
-from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.server import PipelineServer
 
 
@@ -64,11 +62,9 @@ def _run_app(app_path: str, host: str = "127.0.0.1", port: int = 8000):
         raise SystemExit(f"Could not import module '{module_name}' for --app: {exc}") from exc
 
     try:
-        pipeline = getattr(module, attr_name)
-        if not isinstance(pipeline, Pipeline):
-            raise TypeError(f"Attribute {attr_name} in module {module_name} is not a Pipeline instance, got {type(pipeline)}")
-
-        fastapi_app = PipelineServer(name="test_pipeline", pipeline=pipeline, host=host, port=port)
+        fastapi_app = getattr(module, attr_name)
+        if not isinstance(fastapi_app, PipelineServer):
+            raise TypeError(f"Attribute {attr_name} in module {module_name} is not a PipelineServer instance, got {type(fastapi_app)}")
 
     except AttributeError as exc:
         raise SystemExit(
@@ -80,9 +76,13 @@ def _run_app(app_path: str, host: str = "127.0.0.1", port: int = 8000):
 
     # Call the target (e.g., `run()`)
     uvicorn.run(
-        fastapi_app,  # like uvicorn myserver.app:app
-        host=host,
-        port=port,
+        app=fastapi_app,
+        host=fastapi_app.host,
+        port=fastapi_app.port,
+        ssl_ca_certs=fastapi_app.ssl_ca_certs,
+        ssl_certfile=fastapi_app.ssl_certfile,
+        ssl_keyfile=fastapi_app.ssl_keyfile,
+        log_config=fastapi_app.uvicorn_access_log_config,
         reload=False,        # we already have our own reloader
     )
 
