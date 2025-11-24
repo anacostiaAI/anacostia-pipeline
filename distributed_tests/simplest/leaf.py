@@ -1,5 +1,4 @@
 import os
-import shutil
 from typing import List
 from pathlib import Path
 
@@ -11,13 +10,6 @@ import logging
 from loggers import LEAF_ANACOSTIA_LOGGING_CONFIG, LEAF_ACCESS_LOGGING_CONFIG
 from logging.config import dictConfig
 from logging import Logger
-import argparse
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument('host', type=str)
-parser.add_argument('port', type=int)
-args = parser.parse_args()
 
 
 dictConfig(LEAF_ANACOSTIA_LOGGING_CONFIG)
@@ -51,14 +43,15 @@ pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval], 
 service = PipelineServer(
     name="shakespeare_eval_pipeline",
     pipeline=pipeline,
-    host=args.host, 
-    port=args.port,
+    host="127.0.0.1", 
+    port=8001,
     logger=logger, uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG,
     ssl_ca_certs=mkcert_ca,
     ssl_certfile=ssl_certfile,
     ssl_keyfile=ssl_keyfile
 )
 
+"""
 config = service.get_config()
 server = AnacostiaServer(config=config)
 
@@ -69,3 +62,4 @@ with server.run_in_thread():
         except (KeyboardInterrupt, SystemExit):
             print("Shutting down the server...")
             break
+"""

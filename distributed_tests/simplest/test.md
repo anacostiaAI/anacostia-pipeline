@@ -49,3 +49,8 @@ To run tests manually:
 4. Run `python root.py "127.0.0.1" 8000 "127.0.0.1" 8001` in terminal 3
 5. Go back to terminal 1 and run `python create_files.py`
 6. Open up a browser and navigate to https://127.0.0.1:8000 to see the GUI
+
+### Note:
+If the pipeline keeps on triggering runs, check to make sure you've used read the files being deposited into the data store. 
+If you don't use the context manager in the data store to read in those files and mark them as used, the pipeline will keep on triggering
+because there are always new files.
