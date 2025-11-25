@@ -38,7 +38,7 @@ class ShakespeareEvalNode(BaseActionNode):
 
 shakespeare_eval = ShakespeareEvalNode("shakespeare_eval", loggers=logger)
 
-pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval], loggers=[logger])
+pipeline = Pipeline(name="shakespeare_eval_pipeline", nodes=[shakespeare_eval])
 
 service = PipelineServer(
     name="shakespeare_eval_pipeline",
