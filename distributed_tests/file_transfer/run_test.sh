@@ -79,7 +79,7 @@ python setup.py
 echo "Done."
 
 echo "Starting leaf server on port $LEAF_PORT..."
-python3 $LEAF_SCRIPT "127.0.0.1" $LEAF_PORT &
+anacostia --app leaf:service &
 LEAF_PID=$!
 
 # Give the server time to start
@@ -92,7 +92,7 @@ if ! kill -0 $LEAF_PID 2>/dev/null; then
 fi
 
 echo "Starting root server on port $ROOT_PORT connecting to server on port $LEAF_PORT..."
-python3 $ROOT_SCRIPT "127.0.0.1" $ROOT_PORT "127.0.0.1" $LEAF_PORT &
+anacostia --app root:service &
 ROOT_PID=$!
 
 # Verify leaf server started successfully

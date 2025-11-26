@@ -1,4 +1,3 @@
-import argparse
 import logging
 from logging import Logger
 from typing import List
@@ -7,7 +6,7 @@ from pathlib import Path
 from logging.config import dictConfig
 
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
@@ -16,10 +15,8 @@ from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('host', type=str)
-parser.add_argument('port', type=int)
-args = parser.parse_args()
+leaf_host = "127.0.0.1"
+leaf_port = 8001
 
 leaf_test_path = "./testing_artifacts"
 path = f"./leaf-artifacts"
@@ -94,8 +91,8 @@ pipeline = Pipeline(
 service = PipelineServer(
     name="leaf", 
     pipeline=pipeline, 
-    host=args.host, 
-    port=args.port, 
+    host=leaf_host, 
+    port=leaf_port, 
     remote_clients=[metadata_store_rpc, model_registry_rpc, plots_store_rpc], 
     logger=logger,
     allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
@@ -108,6 +105,9 @@ service = PipelineServer(
     uvicorn_access_log_config=LEAF_ACCESS_LOGGING_CONFIG
 )
 
+"""
+from anacostia_pipeline.pipelines.server import AnacostiaServer
+
 config = service.get_config()
 server = AnacostiaServer(config=config)
 
@@ -118,4 +118,5 @@ with server.run_in_thread():
         except (KeyboardInterrupt, SystemExit):
             print("Shutting down the server...")
             break
+"""
 

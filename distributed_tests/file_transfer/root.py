@@ -1,5 +1,4 @@
 import logging
-import argparse
 from typing import List
 from pathlib import Path
 from logging.config import dictConfig
@@ -10,19 +9,17 @@ from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNo
 from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 
 from utils import *
 from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('root_host', type=str)
-parser.add_argument('root_port', type=int)
-parser.add_argument('leaf_host', type=str)
-parser.add_argument('leaf_port', type=int)
-args = parser.parse_args()
+root_host = "127.0.0.1"
+root_port = 8000
+leaf_host = "127.0.0.1"
+leaf_port = 8001
 
 dictConfig(ROOT_ANACOSTIA_LOGGING_CONFIG)
 logger = logging.getLogger("root_anacostia")
@@ -121,19 +118,19 @@ plots_path = f"{output_path}/plots"
 metadata_store = SQLiteMetadataStoreNode(
     name="metadata_store", 
     uri=f"sqlite:///{metadata_store_path}/metadata.db",
-    client_url=f"https://{args.leaf_host}:{args.leaf_port}/metadata_store_rpc"
+    client_url=f"https://{leaf_host}:{leaf_port}/metadata_store_rpc"
 )
 model_registry = ModelRegistryNode(
     name="model_registry", 
     resource_path=model_registry_path, 
     metadata_store=metadata_store,
-    client_url=f"https://{args.leaf_host}:{args.leaf_port}/model_registry_rpc"
+    client_url=f"https://{leaf_host}:{leaf_port}/model_registry_rpc"
 )
 plots_store = PlotsStoreNode(
     name="plots_store", 
     resource_path=plots_path, 
     metadata_store=metadata_store,
-    client_url=f"https://{args.leaf_host}:{args.leaf_port}/plots_store_rpc"
+    client_url=f"https://{leaf_host}:{leaf_port}/plots_store_rpc"
 )
 haiku_data_store = MonitoringDataStoreNode("haiku_data_store", haiku_data_store_path, metadata_store)
 retraining = ModelRetrainingNode(
@@ -142,7 +139,7 @@ retraining = ModelRetrainingNode(
     plots_store=plots_store, 
     model_registry=model_registry, 
     metadata_store=metadata_store, 
-    remote_successors=[f"https://{args.leaf_host}:{args.leaf_port}/shakespeare_eval", f"https://{args.leaf_host}:{args.leaf_port}/haiku_eval"]
+    remote_successors=[f"https://{leaf_host}:{leaf_port}/shakespeare_eval", f"https://{leaf_host}:{leaf_port}/haiku_eval"]
 )
 
 pipeline = Pipeline(
@@ -154,8 +151,8 @@ pipeline = Pipeline(
 service = PipelineServer(
     name="root", 
     pipeline=pipeline, 
-    host=args.root_host, 
-    port=args.root_port, 
+    host=root_host, 
+    port=root_port, 
     logger=logger, 
     allow_origins=["https://127.0.0.1:8000", "https://localhost:8000"],
     allow_credentials=True,
@@ -167,6 +164,9 @@ service = PipelineServer(
     uvicorn_access_log_config=ROOT_ACCESS_LOGGING_CONFIG
 )
 
+"""
+from anacostia_pipeline.pipelines.server import AnacostiaServer
+
 config = service.get_config()
 server = AnacostiaServer(config=config)
 
@@ -177,3 +177,4 @@ with server.run_in_thread():
         except (KeyboardInterrupt, SystemExit):
             print("Shutting down the server...")
             break
+"""
