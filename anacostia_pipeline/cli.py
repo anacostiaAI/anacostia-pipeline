@@ -11,7 +11,7 @@ import inspect
 import uvicorn
 
 from anacostia_pipeline.pipelines.server import PipelineServer
-from anacostia_pipeline.tutorial import app
+from anacostia_pipeline.tutorial import tutorial_app
 
 
 
@@ -22,7 +22,7 @@ _CHILD_ENV_VAR = "ANACOSTIA_RELOADER_CHILD"
 def _run_default_app(host: str = "127.0.0.1", port: int = 8000):
     # Call the target (e.g., `run()`)
     uvicorn.run(
-        app,
+        tutorial_app,
         host=host,
         port=port,
         reload=False,        # we already have our own reloader

@@ -3,9 +3,9 @@ from fastapi.responses import HTMLResponse
 
 
 
-app = FastAPI()
+tutorial_app = FastAPI()
 
-@app.get("/", response_class=HTMLResponse)
+@tutorial_app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return f"""
         <!DOCTYPE html>
