@@ -11,6 +11,7 @@ import inspect
 import uvicorn
 
 from anacostia_pipeline.pipelines.server import PipelineServer
+from anacostia_pipeline.tutorial import app
 
 
 
@@ -19,17 +20,9 @@ _CHILD_ENV_VAR = "ANACOSTIA_RELOADER_CHILD"
 
 
 def _run_default_app(host: str = "127.0.0.1", port: int = 8000):
-    from fastapi import FastAPI
-    #fastapi_app = getattr(module, attr_name)
-    fastapi_app = FastAPI()
-
-    @fastapi_app.get("/")
-    async def read_root():
-        return {"message": "Hello from Anacostia default app!"}
-
     # Call the target (e.g., `run()`)
     uvicorn.run(
-        fastapi_app,  # like uvicorn myserver.app:app
+        app,
         host=host,
         port=port,
         reload=False,        # we already have our own reloader
