@@ -1,4 +1,3 @@
-import argparse
 import logging
 from logging import Logger
 from typing import List
@@ -7,7 +6,7 @@ from pathlib import Path
 from logging.config import dictConfig
 
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
+from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
@@ -49,7 +48,7 @@ class ShakespeareEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         self.metadata_store_rpc.log_metrics(node_name=self.name, shakespeare_test_loss=1.47)
-        run_id = self.metadata_store_rpc.get_run_id()
+        run_id = self.get_run_id()
         return True
 
 class HaikuEvalNode(BaseActionNode):
@@ -69,7 +68,7 @@ class HaikuEvalNode(BaseActionNode):
         tags = self.metadata_store_rpc.get_metrics()
         self.log(f"Tags: {tags}", level="INFO")
         
-        run_id = self.metadata_store_rpc.get_run_id()
+        run_id = self.get_run_id()
         return True
 
 metadata_store_rpc = SQLMetadataStoreClient(client_name="metadata_store_rpc")
@@ -102,6 +101,8 @@ service = PipelineServer(
 )
 
 """
+from anacostia_pipeline.pipelines.server import AnacostiaServer
+
 config = service.get_config()
 server = AnacostiaServer(config=config)
 
