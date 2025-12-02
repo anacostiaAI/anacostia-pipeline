@@ -141,6 +141,11 @@ class SQLMetadataStoreServer(BaseMetadataStoreServer):
         async def get_entries(resource_node_name: str, state: str):
             entries = self.metadata_store.get_entries(resource_node_name, state)
             return entries
+        
+        @self.get("/get_artifact_hash/")
+        async def get_artifact_hash(location: str):
+            artifact_hash = self.metadata_store.get_artifact_hash(location)
+            return {"artifact_hash": artifact_hash}
 
 
 class SQLMetadataStoreClient(BaseMetadataStoreClient):
@@ -527,4 +532,23 @@ class SQLMetadataStoreClient(BaseMetadataStoreClient):
             return result
         except Exception as e:
             self.log(f"Error occurred while getting entries: {e}", level="ERROR")
+            raise e
+    
+    def get_artifact_hash(self, location: str):
+        """
+        Get the artifact hash for a specific location.
+        This method sends a GET request to the server to retrieve the artifact hash.
+        """
+
+        async def _get_artifact_hash(location: str):
+            response = await self.client.get(f"/get_artifact_hash/?location={location}")
+            artifact_hash = response.json()["artifact_hash"]
+            return artifact_hash
+
+        task = asyncio.run_coroutine_threadsafe(_get_artifact_hash(location), self.loop)
+        try:
+            result = task.result()
+            return result
+        except Exception as e:
+            self.log(f"Error occurred while getting artifact hash: {e}", level="ERROR")
             raise e

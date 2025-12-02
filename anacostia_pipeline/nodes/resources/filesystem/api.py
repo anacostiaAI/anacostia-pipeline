@@ -1,4 +1,5 @@
-from typing import List, Union, Any, Optional, Callable
+from typing import List, Union, Any, Optional, Iterator
+from contextlib import contextmanager
 from logging import Logger
 import os
 import hashlib
@@ -28,6 +29,32 @@ class FilesystemStoreServer(BaseResourceServer):
             node, client_url, host, port, loggers, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs
         )
         self.resource_path: str = node.resource_path
+
+        @self.post("/mark_using/{filepath:path}")
+        async def mark_using(filepath: str):
+            self.log(f"Received request to mark using: {filepath}", level="INFO")
+            try:
+                self.node.mark_using(filepath)
+                return JSONResponse(
+                    content={"status": f"Artifact '{filepath}' marked as using."},
+                    status_code=200
+                )
+            except Exception as e:
+                self.log(f"Error marking using: {str(e)}", level="ERROR")
+                raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+        @self.post("/mark_used/{filepath:path}")
+        async def mark_used(filepath: str):
+            self.log(f"Received request to mark used: {filepath}", level="INFO")
+            try:
+                self.node.mark_used(filepath)
+                return JSONResponse(
+                    content={"status": f"Artifact '{filepath}' marked as used."},
+                    status_code=200
+                )
+            except Exception as e:
+                self.log(f"Error marking used: {str(e)}", level="ERROR")
+                raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
         async def get_artifact(filepath: str):
@@ -279,19 +306,71 @@ class FilesystemStoreClient(BaseResourceClient):
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
-    # TODO: add the load_artifact method to BaseResourceRPCclient
-    def load_artifact(self, filepath: str, load_fn: Callable[[str, Any], Any], *args, **kwargs) -> Any:
+    def mark_using(self, filepath: str) -> None:
         """
-        Load an artifact from the specified path relative to the resource_path.
+        Mark an artifact as used on the FilesystemStoreRPCserver on the root pipeline.
+        Args:
+            filepath (str): Path of the artifact to mark as used, relative to the resource_path.
+                            Example: "data/file.txt" will mark the file at resource_path/data/file.txt as used.
+        Raises:
+            HTTPException: If the response code from /mark_using is not 200.
+        """
+
+        async def _mark_using(filepath: str):
+            url = f"/mark_using/{filepath}"
+            response = await self.client.post(url)
+            if response.status_code != 200:
+                self.log(f"Error in mark_using: Server returned status code {response.status_code}", level="ERROR")
+                self.log(f"Response: {await response.text()}", level="ERROR")
+                raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
+            else:
+                self.log(f"Artifact marked as used successfully: {filepath}", level="INFO")
+                return True
+
+        try:
+            asyncio.run_coroutine_threadsafe(_mark_using(filepath), self.loop)
+
+        except Exception as e:
+            self.log(f"Error: An exception occurred while marking the artifact as used: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: An exception occurred while marking the artifact as used: {str(e)}")
+    
+    def mark_used(self, filepath: str) -> None:
+        """
+        Mark an artifact as used on the FilesystemStoreRPCserver on the root pipeline.
+        Args:
+            filepath (str): Path of the artifact to mark as used, relative to the resource_path.
+                            Example: "data/file.txt" will mark the file at resource_path/data/file.txt as used.
+        Raises:
+            HTTPException: If the response code from /mark_used is not 200.
+        """
+
+        async def _mark_used(filepath: str):
+            url = f"/mark_used/{filepath}"
+            response = await self.client.post(url)
+            if response.status_code != 200:
+                self.log(f"Error in mark_used: Server returned status code {response.status_code}", level="ERROR")
+                self.log(f"Response: {await response.text()}", level="ERROR")
+                raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
+            else:
+                self.log(f"Artifact marked as used successfully: {filepath}", level="INFO")
+                return True
+
+        try:
+            asyncio.run_coroutine_threadsafe(_mark_used(filepath), self.loop)
+
+        except Exception as e:
+            self.log(f"Error: An exception occurred while marking the artifact as used: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: An exception occurred while marking the artifact as used: {str(e)}")
+    
+    @contextmanager
+    def load_artifact(self, filepath: str) -> Iterator[Any]:
+        """
+        Context manager to load an artifact from the specified path relative to the resource_path.
 
         Args:
             filepath (str): Path of the artifact to load, relative to the resource_path.
                             Example: "data/file.txt" will load the file at resource_path/data/file.txt.
-            load_fn (Callable[[str, Any], Any]): A function that takes the full path to the artifact and additional arguments,
-                                                 and returns the loaded artifact. 
-                                                 Note: if you subclass FilesystemStoreClient, make sure to include a default argument for load_fn.
-            *args: Additional positional arguments to pass to `load_fn`.
-            **kwargs: Additional keyword arguments to pass to `load_fn`.
+                            **IMPORTANT NOTE**: make sure filepath does not start with a leading '/'.
 
         Returns:
             Any: The loaded artifact.
@@ -299,14 +378,50 @@ class FilesystemStoreClient(BaseResourceClient):
         Raises:
             FileNotFoundError: If the artifact file does not exist.
             Exception: If an error occurs during loading.
-        """
         
-        artifact_save_path = os.path.join(self.storage_directory, filepath)
-        if os.path.exists(artifact_save_path) is False:
-            raise FileExistsError(f"File '{artifact_save_path}' does not exists.")
+        ## Usage patterns:
+        1. Loading a file
+        ```
+        fs_store = FilesystemStoreNode(...)
+
+        with fs_store.load_artifact("data/file.txt") as full_path:
+            with open(full_path, "r", encoding="utf-8") as f:
+                buf = f.read()
+        ```
+        2. Loading a PyTorch model
+        ```
+        import torch
+        
+        fs_store = FilesystemStoreNode(...)
+
+        with fs_store.load_artifact("models/model.pt") as full_path:
+            # load the model weights
+            torch.load(full_path, map_location="cpu")
+            
+            # use the model here
+            model.eval()
+            ...
+        ```
+        """
+
+        # Note: if self.storage_directory = "/path/to/dir" and filepath = "subdir/file.txt", then
+        # os.path.join(self.storage_directory, filepath) will give "/path/to/dir/subdir/file.txt"
+        # if self.storage_directory = "/path/to/dir/" and filepath = "/path/to/dir/subdir/file.txt", then
+        # os.path.join(self.storage_directory, filepath) will still give "/path/to/dir/subdir/file.txt"
+        artifact_path = os.path.join(self.storage_directory, filepath)
+        if not os.path.exists(artifact_path):
+            raise FileNotFoundError(f"File '{artifact_path}' does not exist.")
 
         try:
-            return load_fn(artifact_save_path, *args, **kwargs)
+            relative_path = os.path.relpath(artifact_path, self.storage_directory)
+
+            self.mark_using(relative_path)
+
+            # yield the full path to the artifact for the caller to use
+            yield artifact_path
+
+            self.mark_used(relative_path)
+
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
-            raise e
+            raise

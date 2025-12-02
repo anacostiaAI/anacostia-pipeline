@@ -314,9 +314,9 @@ class BaseClient(FastAPI):
         if hasattr(self, "client") and self.client is not None:
             await self.client.aclose()
         # Only stop a private loop thread started by this client; do not touch shared loops set by PipelineServer
-        loop_thread = getattr(self, "loop_thread", None)
+        loop_thread: threading.Thread = getattr(self, "loop_thread", None)
         if loop_thread is not None and loop_thread.is_alive():
-            loop = getattr(self, "loop", None)
+            loop: asyncio.AbstractEventLoop = getattr(self, "loop", None)
             if loop is not None:
                 loop.call_soon_threadsafe(loop.stop)
             loop_thread.join()

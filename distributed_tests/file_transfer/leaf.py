@@ -12,6 +12,7 @@ from anacostia_pipeline.nodes.metadata.sql.api import SQLMetadataStoreClient
 from anacostia_pipeline.nodes.resources.filesystem.api import FilesystemStoreClient
 from utils import create_file
 from loggers import LEAF_ACCESS_LOGGING_CONFIG, LEAF_ANACOSTIA_LOGGING_CONFIG
+from shared_lib import ModelRegistryClient
 
 
 
@@ -39,7 +40,7 @@ ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 class ShakespeareEvalNode(BaseActionNode):
     def __init__(
-        self, name: str, metadata_store_rpc: SQLMetadataStoreClient, model_registry_rpc: FilesystemStoreClient = None,
+        self, name: str, metadata_store_rpc: SQLMetadataStoreClient, model_registry_rpc: ModelRegistryClient = None,
         loggers: Logger | List[Logger] = None
     ) -> None:
         super().__init__(name=name, predecessors=[], wait_for_connection=True, loggers=loggers)

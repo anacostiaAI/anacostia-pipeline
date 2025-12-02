@@ -5,14 +5,13 @@ from logging.config import dictConfig
 
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
-from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
-from anacostia_pipeline.nodes.resources.filesystem.utils import locked_file
 from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
 from anacostia_pipeline.pipelines.server import PipelineServer
 
 from utils import *
 from loggers import ROOT_ACCESS_LOGGING_CONFIG, ROOT_ANACOSTIA_LOGGING_CONFIG
+from shared_lib import MonitoringDataStoreNode, ModelRegistryNode, PlotsStoreNode, load_text_file
 
 
 
@@ -33,46 +32,6 @@ ssl_keyfile = os.path.join(BASE_DIR, "certs/private_leaf.key")
 
 
 
-def save_model(filepath: str, content: str) -> None:
-    with locked_file(filepath, 'w') as f:
-        f.write(content)
-
-def load_model(filepath: str) -> None:
-    with locked_file(filepath, "r") as file:
-        return file.read()
-
-
-class MonitoringDataStoreNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, max_old_samples: int = None) -> None:
-        super().__init__(name=name, resource_path=resource_path, metadata_store=metadata_store, max_old_samples=max_old_samples)
-
-    def load_artifact(self, filepath: str, *args, **kwargs):
-        with super().load_artifact(filepath) as fullpath:
-            return load_model(fullpath)
-
-
-class ModelRegistryNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, max_old_samples=None, client_url=client_url, monitoring=False)
-
-    def save_artifact(self, filepath: str, content: str, *args, **kwargs):
-        with super().save_artifact(filepath) as fullpath:
-            save_model(fullpath, content)
-
-    def load_artifact(self, filepath: str, *args, **kwargs):
-        with super().load_artifact(filepath) as fullpath:
-            return load_model(fullpath)
-    
-
-class PlotsStoreNode(FilesystemStoreNode):
-    def __init__(self, name: str, resource_path: str, metadata_store: BaseMetadataStoreNode, client_url: str) -> None:
-        super().__init__(name, resource_path, metadata_store, max_old_samples=None, client_url=client_url, monitoring=False)
-    
-    def load_artifact(self, filepath: str, *args, **kwargs):
-        with super().load_artifact(filepath) as fullpath:
-            return load_model(fullpath)
-    
-
 class ModelRetrainingNode(BaseActionNode):
     def __init__(
         self, name: str, 
@@ -91,13 +50,14 @@ class ModelRetrainingNode(BaseActionNode):
 
         current_artifacts = self.data_store.list_artifacts("new")
         for filepath in current_artifacts:
-            content = self.data_store.load_artifact(filepath)
-            self.log(f"current {filepath} content: {content}", level="INFO")
+            with self.data_store.load_data(filepath) as fullpath:
+                content = load_text_file(fullpath)
+                self.log(f"current {filepath} content: {content}", level="INFO")
 
         # Simulate saving a trained model
         num_artifacts = self.model_registry.get_num_artifacts('all')
 
-        self.model_registry.save_artifact(
+        self.model_registry.save_model(
             filepath=f"model{num_artifacts}.txt", content="Trained model"
         )
         self.metadata_store.tag_artifact(
