@@ -53,9 +53,8 @@ class ShakespeareEvalNode(BaseActionNode):
         run_id = self.get_run_id()
         self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
         
-        # current bug: list_artifacts() method returns nothing on Run 0 because it ran before download_artifact() was done running.
-        # this is due to download_artifact being an async function.
-        artifacts = self.model_registry_rpc.list_artifacts(state="unused")
+        artifacts = self.model_registry_rpc.list_artifacts(state="produced")
+        self.log(f"artifacts: {artifacts}", level="INFO")
 
         for artifact in artifacts:
             with self.model_registry_rpc.load_artifact(artifact) as fullpath:
