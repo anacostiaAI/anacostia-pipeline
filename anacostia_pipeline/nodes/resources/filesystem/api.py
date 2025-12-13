@@ -4,6 +4,7 @@ from logging import Logger
 import os
 import hashlib
 import asyncio
+import tempfile
 
 from fastapi import Request, HTTPException, Header
 from fastapi.responses import FileResponse, JSONResponse
@@ -54,6 +55,24 @@ class FilesystemStoreServer(BaseResourceServer):
                 )
             except Exception as e:
                 self.log(f"Error marking used: {str(e)}", level="ERROR")
+                raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        
+        @self.post("/record_produced_artifact/")
+        async def record_produced_artifact(request: Request):
+            data = await request.json()
+            filepath = data["filepath"]
+            hash = data["hash"]
+            hash_algorithm = data["hash_algorithm"]
+
+            self.log(f"Received request to record produced artifact: {filepath}", level="INFO")
+            try:
+                self.node.record_produced_artifact(filepath, hash, hash_algorithm)
+                return JSONResponse(
+                    content={"status": f"Artifact '{filepath}' marked as produced."},
+                    status_code=200
+                )
+            except Exception as e:
+                self.log(f"Error marking produced: {str(e)}", level="ERROR")
                 raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
         @self.get("/get_artifact/{filepath:path}", response_class=FileResponse)
@@ -226,7 +245,8 @@ class FilesystemStoreClient(BaseResourceClient):
             
         try:
             local_filepath = os.path.join(self.storage_directory, filepath)
-            asyncio.run_coroutine_threadsafe(_get_artifact(local_filepath, filepath), self.loop)
+            task = asyncio.run_coroutine_threadsafe(_get_artifact(local_filepath, filepath), self.loop)
+            task.result()  # Wait for completion
 
         except Exception as e:
             self.log(f"Error: An exception occurred while downloading the file: {str(e)}", level="ERROR")
@@ -300,8 +320,12 @@ class FilesystemStoreClient(BaseResourceClient):
                     raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
                 
             # Run the upload in an async context
-            asyncio.run_coroutine_threadsafe(_upload_file(), self.loop)
+            task = asyncio.run_coroutine_threadsafe(_upload_file(), self.loop)
+            task.result()  # Wait for completion
                 
+            # Note: if artifacts are assigned to a different run, it means we didn't call task.result()
+            # This happens because the run 0 returned an empty list of artifacts before the download completed
+
         except Exception as e:
             self.log(f"Error: An exception occurred while sending the file: {str(e)}", level="ERROR")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -424,4 +448,109 @@ class FilesystemStoreClient(BaseResourceClient):
 
         except Exception as e:
             self.log(f"Failed to load artifact '{filepath}': {e}", level="ERROR")
+            raise
+    
+    def record_produced_artifact(self, filepath: str, hash: str = None, hash_algorithm: str = "sha256") -> None:
+        """
+        Record a produced artifact on the FilesystemStoreRPCserver on the root pipeline.
+        Args:
+            filepath (str): Path of the artifact to record as produced, relative to the resource_path.
+                            Example: "data/file.txt" will record the file at resource_path/data/file.txt as produced.
+            hash (str): Optional hash of the artifact file.
+            hash_algorithm (str): Hash algorithm used to compute the hash. Default is "sha256".
+        Raises:
+            HTTPException: If the response code from /record_produced_artifact is not 200.
+        """
+
+        async def _record_produced_artifact(filepath: str):
+            data = {
+                "filepath": filepath,
+                "hash": hash,
+                "hash_algorithm": hash_algorithm
+            }
+            response = await self.client.post("/record_produced_artifact/", json=data)
+            if response.status_code != 200:
+                self.log(f"Error in record_produced_artifact: Server returned status code {response.status_code}", level="ERROR")
+                self.log(f"Response: {await response.text()}", level="ERROR")
+                raise HTTPException(status_code=response.status_code, detail=f"Error: Server returned status code {await response.text()}")
+            else:
+                self.log(f"Artifact recorded as produced successfully: {filepath}", level="INFO")
+                return True
+
+        try:
+            asyncio.run_coroutine_threadsafe(_record_produced_artifact(filepath), self.loop)
+
+        except Exception as e:
+            self.log(f"Error: An exception occurred while recording the artifact as produced: {str(e)}", level="ERROR")
+            raise HTTPException(status_code=500, detail=f"Error: An exception occurred while recording the artifact as produced: {str(e)}")
+    
+    @contextmanager
+    def save_artifact(
+        self,
+        filepath: str,
+        overwrite: bool = False,
+        atomic: bool = True,
+    ) -> Iterator[Any]:
+        """
+        Context manager to save an artifact to the specified path relative to the resource_path.
+
+        Args:
+            filepath (str): Path of the artifact to save, relative to the resource_path.
+                            Example: "data/file.txt" will save the file at resource_path/data/file.txt.
+                            **IMPORTANT NOTE**: make sure filepath does not start with a leading '/'.
+
+        Returns:
+            Any: The full path where the artifact can be saved.
+        Raises:
+            Exception: If an error occurs during saving.
+        ## Usage patterns:
+        """
+        
+        folder_path = os.path.join(self.storage_directory, os.path.dirname(filepath))
+        os.makedirs(folder_path, exist_ok=True)
+
+        artifact_path = os.path.join(self.storage_directory, filepath)
+
+        if os.path.exists(artifact_path) and not overwrite:
+            raise FileExistsError(
+                f"File '{artifact_path}' already exists. "
+                f"Use overwrite=True or choose a different filename."
+            )
+
+        # Choose a write target: direct path or a temp file for atomic replace.
+        tmp_path = artifact_path
+        tmp_created = False
+        if atomic:
+            # Create a unique temp file in the same directory (safe across crashes).
+            base = os.path.basename(artifact_path)
+            fd, tmp_path = tempfile.mkstemp(
+                dir=folder_path, prefix=f".{base}.", suffix=".tmp"
+            )
+            os.close(fd)
+            tmp_created = True
+
+        try:
+            # hand the caller the path to write to
+            yield (tmp_path if atomic else artifact_path)
+
+            # Commit: move temp file into place atomically (or nothing if non-atomic)
+            if atomic:
+                os.replace(tmp_path, artifact_path)
+
+            # Hash and record after the file is finalized
+            file_hash = self.hash_file(artifact_path)
+            self.record_produced_artifact(filepath, hash=file_hash, hash_algorithm="sha256")
+            self.log(f"Saved artifact to {artifact_path}", level="INFO")
+
+        except Exception as e:
+            # Best-effort cleanup of temp file on failure
+            if atomic and tmp_created and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception as cleanup_err:
+                    self.log(
+                        f"Cleanup warning: could not remove temp file '{tmp_path}': {cleanup_err}",
+                        level="WARNING",
+                    )
+            self.log(f"Failed to save artifact '{filepath}': {e}", level="ERROR")
             raise

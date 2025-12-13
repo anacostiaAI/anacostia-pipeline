@@ -75,8 +75,10 @@ class HaikuEvalNode(BaseActionNode):
         self.log("Evaluating LLM on Haiku validation dataset", level="INFO")
         
         run_id = self.get_run_id()
-        create_file(f"{self.plots_store_rpc.storage_directory}/plot{run_id}.txt", "Haiku test loss plot")
-        self.plots_store_rpc.upload_artifact(filepath=f"plot{run_id}.txt", remote_path=f"plot{run_id}.txt")
+
+        with self.plots_store_rpc.save_artifact(filepath=f"plot{run_id}.txt") as fullpath:
+            create_file(fullpath, "Haiku test loss plot")
+            self.plots_store_rpc.upload_artifact(filepath=fullpath, remote_path=f"plot{run_id}.txt")
 
         return True
 
