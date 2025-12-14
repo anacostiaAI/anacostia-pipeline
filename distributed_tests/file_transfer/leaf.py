@@ -50,13 +50,11 @@ class ShakespeareEvalNode(BaseActionNode):
     def execute(self, *args, **kwargs) -> bool:
         self.log("Evaluating LLM on Shakespeare validation dataset", level="INFO")
         
-        run_id = self.get_run_id()
-        self.model_registry_rpc.download_artifact(filepath=f"model{run_id}.txt")
-        
         artifacts = self.model_registry_rpc.list_artifacts(state="produced")
         self.log(f"artifacts: {artifacts}", level="INFO")
 
         for artifact in artifacts:
+            self.model_registry_rpc.download_artifact(filepath=artifact)
             with self.model_registry_rpc.load_artifact(artifact) as fullpath:
                 self.log(f"using {fullpath}", level="INFO")
             
