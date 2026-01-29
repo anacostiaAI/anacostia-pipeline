@@ -89,16 +89,14 @@ class FilesystemStoreNode(BaseResourceNode, ABC):
             while self.exit_event.is_set() is False:
                 for root, dirnames, filenames in os.walk(self.path):
                     for filename in filenames:
-                        filepath = os.path.join(root, filename)
-                        
-                        hash = self.hash_file(filepath)
-
-                        filepath = filepath.removeprefix(self.path)     # Remove the path prefix
-                        filepath = filepath.lstrip(os.sep)              # Remove leading separator
+                        full_filepath = os.path.join(root, filename)
+                        filepath = full_filepath.removeprefix(self.path)    # Remove the path prefix
+                        filepath = filepath.lstrip(os.sep)                  # Remove leading separator
 
                         try:
                             entry_exists = self.entry_exists(filepath) 
                             if entry_exists is False:
+                                hash = self.hash_file(full_filepath)
                                 self.record_new(filepath, hash=hash, hash_algorithm="sha256")
                                 self.log(f"detected file {filepath}", level="INFO")
                         
