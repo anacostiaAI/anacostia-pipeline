@@ -1,5 +1,5 @@
 from typing import List, Dict
-from anacostia_pipeline.pipelines.fragments import node_bar_invisible, node_bar_closed, node_bar_open, ude_head_template
+from anacostia_pipeline.pipelines.fragments import node_bar_invisible
 
 
 

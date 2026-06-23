@@ -27,7 +27,7 @@ from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer, BaseClient
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template, ude_index_template
+from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
 
 
 class PipelineConnectionModel(BaseModel):

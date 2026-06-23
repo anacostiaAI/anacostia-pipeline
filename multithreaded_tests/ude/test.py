@@ -7,7 +7,7 @@ from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStor
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from anacostia_pipeline.pipelines.server import PipelineServer, AnacostiaServer
+from anacostia_pipeline.pipelines.server import AnacostiaServer
 
 from server import UDEPipelineServer
 
