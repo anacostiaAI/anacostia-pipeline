@@ -1,4 +1,4 @@
-var scriptTag = document.querySelector('script[src="static/js/third_party/settings.js"]');
+var scriptTag = document.querySelector('script[src="static/js/src/settings.js"]');
 const anacostia_prefix = scriptTag.getAttribute('anacostia-prefix');
 
 document.addEventListener('htmx:configRequest', function(evt) {
