@@ -27,7 +27,7 @@ from anacostia_pipeline.nodes.connector import Connector
 from anacostia_pipeline.nodes.api import BaseServer, BaseClient
 from anacostia_pipeline.nodes.metadata.api import BaseMetadataStoreClient
 from anacostia_pipeline.nodes.metadata.node import BaseMetadataStoreNode
-from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template
+from anacostia_pipeline.pipelines.fragments import node_bar_closed, node_bar_open, node_bar_invisible, index_template, ude_index_template
 
 
 class PipelineConnectionModel(BaseModel):
@@ -217,7 +217,7 @@ class PipelineServer(FastAPI):
         async def index(request: Request):
             frontend_json = self.frontend_json()
             nodes = frontend_json["nodes"]
-            return index_template(nodes, frontend_json, "/graph_sse")
+            return ude_index_template(nodes, frontend_json, "/graph_sse", root_path="/ged-edap-modelsec/test-container-min-5/anacostia")
 
         @self.get("/header_bar", response_class=HTMLResponse)
         async def header_bar(node_id: str, visibility: bool = False):
