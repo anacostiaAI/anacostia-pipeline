@@ -14,4 +14,6 @@ class UDEPipelineServer(PipelineServer):
     def index(self, request: Request):
         frontend_json = self.frontend_json()
         nodes = frontend_json["nodes"]
-        return ude_index_template(nodes, frontend_json, "/graph_sse", root_path=self.root_path)
+        return ude_index_template(nodes, frontend_json, "graph_sse", root_path=self.root_path)
+        # note: we are using "graph_sse" instead of "/graph_sse" because the settings.js script apparently only applies to htmx requests, 
+        # not the htmx SSE extension.
