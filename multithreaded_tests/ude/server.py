@@ -1,9 +1,8 @@
 from anacostia_pipeline.pipelines.server import PipelineServer
 from anacostia_pipeline.pipelines.pipeline import Pipeline
-from fastapi.responses import HTMLResponse
 from fastapi import Request
 
-from fragments import ude_index_template, ude_head_template
+from fragments import ude_index_template
 
 
 
