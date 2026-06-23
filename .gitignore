@@ -18,4 +18,3 @@ dist/
 *.key
 
 create_files.py
-test.py

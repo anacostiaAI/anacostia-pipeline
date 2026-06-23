@@ -215,9 +215,7 @@ class PipelineServer(FastAPI):
     
         @self.get('/', response_class=HTMLResponse)
         async def index(request: Request):
-            frontend_json = self.frontend_json()
-            nodes = frontend_json["nodes"]
-            return ude_index_template(nodes, frontend_json, "/graph_sse", root_path="/ged-edap-modelsec/test-container-min-5/anacostia")
+            return self.index(request)
 
         @self.get("/header_bar", response_class=HTMLResponse)
         async def header_bar(node_id: str, visibility: bool = False):
@@ -274,6 +272,11 @@ class PipelineServer(FastAPI):
         @self.get('/dag_page', response_class=HTMLResponse)
         def dag_page(response: Response):
             response.headers["HX-Redirect"] = "/"
+
+    def index(self, request: Request):
+            frontend_json = self.frontend_json()
+            nodes = frontend_json["nodes"]
+            return index_template(nodes, frontend_json, "/graph_sse") 
 
     def log(self, message: str, level="DEBUG") -> None:
         if self.logger is not None:
