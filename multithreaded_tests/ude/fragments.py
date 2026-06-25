@@ -99,11 +99,7 @@ def ude_index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_en
     <!DOCTYPE html>
     <html>
         { 
-            ude_head_template(
-                user_elements=f'''
-                <script hx-preserve="true" src="static/js/src/settings.js" type="text/javascript" anacostia-prefix="{root_path}"></script>
-                '''
-            ) 
+            ude_head_template() 
         }
         <body hx-ext="head-support">
             <nav class="home-navbar">

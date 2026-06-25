@@ -6,15 +6,35 @@ from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStor
 
 
 class UDEMetadataStoreGUI(SQLMetadataStoreGUI):
-    def __init__(self, node, host: str, port: int, root_path: str, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None, *args, **kwargs):
-        super().__init__(node=node, host=host, port=port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, *args, **kwargs)
+    def __init__(
+        self, node, host: str, port: int, 
+        root_path: str, 
+        ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None,
+        *args, **kwargs
+    ):
+        super().__init__(
+            node=node, 
+            host=host, port=port, 
+            root_path=root_path,
+            ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs, 
+            *args, **kwargs
+        )
         self.root_path = root_path
+
+    def get_node_prefix(self):
+        return f"/{self.node.name}/hypermedia"
+    
+    def get_gui_url(self):
+        return f"{self.root_path}{self.get_node_prefix()}"
 
     def get_home_endpoint(self):
         if "/home" in [route.path for route in self.routes if isinstance(route, APIRoute)]:
-            return f"{self.root_path}/{self.get_node_prefix()}/home"
+            return f"http://anacostia.local{self.root_path}{self.get_node_prefix()}/home/"
         else:
             return ''
+
+    def get_status_endpoint(self):
+        return f"{self.root_path}{self.get_node_prefix()}/status"
 
 
 class UDEMetadataStoreNode(SQLiteMetadataStoreNode):
@@ -23,5 +43,10 @@ class UDEMetadataStoreNode(SQLiteMetadataStoreNode):
         self.root_path = root_path
     
     def setup_node_GUI(self, host: str, port: int, ssl_keyfile: str = None, ssl_certfile: str = None, ssl_ca_certs: str = None):
-        self.gui = UDEMetadataStoreGUI(node=self, host=host, port=port, root_path=self.root_path, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs)
+        self.gui = UDEMetadataStoreGUI(
+            node=self, 
+            host=host, port=port, 
+            root_path=self.root_path, 
+            ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile, ssl_ca_certs=ssl_ca_certs
+        )
         return self.gui
