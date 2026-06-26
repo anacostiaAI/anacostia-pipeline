@@ -1,5 +1,5 @@
 http://anacostia.local {
     handle_path /ged-edap-modelsec/test-container-min-5/anacostia/* {
-        reverse_proxy localhost:8000
+        reverse_proxy 127.0.0.1:8000
     }
 }

@@ -1,7 +1,6 @@
 import os
 import shutil
 
-from anacostia_pipeline.nodes.metadata.sql.sqlite.node import SQLiteMetadataStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.actions.node import BaseActionNode
 from anacostia_pipeline.pipelines.pipeline import Pipeline
@@ -48,7 +47,7 @@ class UDEActionNode(BaseActionNode):
 
 
 # Create the nodes
-metadata_store = UDEMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db", root_path=root_path)
+metadata_store = UDEMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
 data_store = UDEFilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store, root_path=root_path)
 printing_node = UDEActionNode("logging_node", data_store=data_store, root_path=root_path)
 
@@ -61,10 +60,4 @@ service = UDEPipelineServer(name="test_pipeline", pipeline=pipeline, host="127.0
 config = service.get_config()
 server = AnacostiaServer(config=config)
 
-with server.run_in_thread():
-    while True:
-        try:
-            pass    # Keep the server running
-        except (KeyboardInterrupt, SystemExit):
-            print("Shutting down the server...")
-            break
+# Start the server using the command line: uvicorn test:service
