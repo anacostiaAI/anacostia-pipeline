@@ -1,7 +1,10 @@
 from typing import List, Dict
 from anacostia_pipeline.pipelines.fragments import node_bar_invisible
+from anacostia_pipeline.nodes.metadata.sql.fragments import *
 
 
+
+newline = "\n"
 
 def ude_head_template(user_elements: str = "") -> str:
     """
@@ -141,4 +144,39 @@ def ude_index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_en
             </div>
         </body>
     </html>
+    """
+
+def ude_sqlmetadatastore_home(header_template: str, data_options: Dict[str, str], runs: List[Dict[str, str]]):
+    # Note: it is better to feed in the header_template as a parameter, rather than hardcoding it in this function, 
+    # this way the user can customize the header_template with their own CSS and JS files.
+    return f"""
+        {header_template}
+
+        <div id="data_type_menu" class="dropdown is-hoverable">
+            <div class="dropdown-trigger">
+                <button class="button" aria-haspopup="true" aria-controls="dropdown-menu3">
+                    <span class="icon-text">
+                        <span>View Other Tables</span>
+                        <span class="icon">▼</span>
+                    </span>
+                </button>
+            </div>
+            <div class="dropdown-menu is-hoverable" id="dropdown-menu3" role="menu">
+                <div class="dropdown-content">
+                    {
+                        newline.join([
+                            f'''
+                            <a href="{ endpoint }" class="dropdown-item" 
+                                hx-get="{ endpoint }" hx-target="#table_container" hx-swap="innerHTML" hx-trigger="click">
+                                { data_type }
+                            </a>
+                            ''' for data_type, endpoint in data_options.items()
+                        ])
+                    }
+                </div>
+            </div>
+        </div>
+        <div id="table_container" class="table_container">
+            {sqlmetadatastore_runs_table(runs, data_options["runs"])}
+        </div>
     """

@@ -274,9 +274,9 @@ class PipelineServer(FastAPI):
             response.headers["HX-Redirect"] = "/"
 
     def index(self, request: Request):
-            frontend_json = self.frontend_json()
-            nodes = frontend_json["nodes"]
-            return index_template(nodes, frontend_json, "/graph_sse") 
+        frontend_json = self.frontend_json()
+        nodes = frontend_json["nodes"]
+        return index_template(nodes, frontend_json, "/graph_sse") 
 
     def log(self, message: str, level="DEBUG") -> None:
         if self.logger is not None:
