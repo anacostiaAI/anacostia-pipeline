@@ -15,5 +15,9 @@ class UDEPipelineServer(PipelineServer):
         frontend_json = self.frontend_json()
         nodes = frontend_json["nodes"]
         return ude_index_template(nodes, frontend_json, "graph_sse", root_path=self.root_path)
-        # note: we are using "graph_sse" instead of "/graph_sse" because the settings.js script apparently only applies to htmx requests, 
-        # not the htmx SSE extension.
+        # note: the first line in dag.js had to be changed to:
+        # var scriptTag = document.querySelector('script[src="static/js/src/dag.js"]'); 
+        # because we are no longer using /static/js/src/dag.js as the path to the dag.js file, 
+        # but instead using static/js/src/dag.js as the path to the dag.js file. 
+        # This is because we are now using the root_path in the URL, which is /ged-edap-modelsec/test-container-min-5/anacostia, 
+        # and the static files are served from /ged-edap-modelsec/test-container-min-5/anacostia/static/js/src/dag.js.
