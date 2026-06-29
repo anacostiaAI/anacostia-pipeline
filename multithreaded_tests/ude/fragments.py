@@ -40,7 +40,7 @@ def ude_head_template(user_elements: str = "") -> str:
     """
 
 
-def ude_index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str, root_path: str) -> str:
+def ude_index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_endpoint: str) -> str:
     """
     The template for the Anacostia Pipeline landing page
 
