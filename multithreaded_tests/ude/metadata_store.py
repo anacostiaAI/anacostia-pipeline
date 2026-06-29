@@ -64,6 +64,36 @@ class UDEMetadataStoreGUI(BaseGUI):
                     run['end_time'] = run['end_time'].strftime("%m/%d/%Y, %H:%M:%S")
             return sqlmetadatastore_runs_table(runs, self.data_options["runs"])
         
+        @self.get("/samples", response_class=HTMLResponse)
+        async def samples(request: Request):
+            samples = self.node.get_entries()
+            for sample in samples:
+                sample['created_at'] = sample['created_at'].strftime("%m/%d/%Y, %H:%M:%S")
+                
+            return sqlmetadatastore_samples_table(samples, self.data_options["samples"])
+        
+        @self.get("/metrics", response_class=HTMLResponse)
+        async def metrics(request: Request):
+            metrics = self.node.get_metrics()
+            return sqlmetadatastore_metrics_table(metrics, self.data_options["metrics"])
+        
+        @self.get("/params", response_class=HTMLResponse)
+        async def params(request: Request):
+            params = self.node.get_params()
+            return sqlmetadatastore_params_table(params, self.data_options["params"])
+
+        @self.get("/tags", response_class=HTMLResponse)
+        async def tags(request: Request):
+            tags = self.node.get_tags()
+            return sqlmetadatastore_tags_table(tags, self.data_options["tags"])
+        
+        @self.get("/triggers", response_class=HTMLResponse)
+        async def triggers(request: Request):
+            triggers = self.node.get_triggers()
+            for trigger in triggers:
+                trigger['trigger_time'] = trigger['trigger_time'].strftime("%m/%d/%Y, %H:%M:%S")
+            
+            return sqlmetadatastore_triggers_table(triggers, self.data_options["triggers"])
 
     def home(self, runs, request: Request):
         return ude_sqlmetadatastore_home(
