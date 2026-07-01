@@ -1,6 +1,7 @@
 from typing import List, Dict
 from anacostia_pipeline.pipelines.fragments import node_bar_invisible
 from anacostia_pipeline.nodes.metadata.sql.fragments import *
+from anacostia_pipeline.nodes.resources.filesystem.fragments import *
 
 
 
@@ -106,8 +107,8 @@ def ude_index_template(nodes: List[Dict[str, str]], json_data: str, graph_sse_en
         }
         <body hx-ext="head-support">
             <nav class="home-navbar">
-                <img src="static/img/dag-black.svg" alt="Home" hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
-                <a hx-get="/dag_page" hx-target="this" hx-swap="none" hx-trigger="click" class="home-navbar-title">Anacostia Pipeline</a>
+                <img src="static/img/dag-black.svg" alt="Home" hx-get="dag_page" hx-target="this" hx-swap="none" hx-trigger="click">
+                <a hx-get="dag_page" hx-target="this" hx-swap="none" hx-trigger="click" class="home-navbar-title">Anacostia Pipeline</a>
                 <div class="dropdown">
                     <button class="dropdown-button">Nodes ▽</button>
                     <div class="dropdown-content">
@@ -178,5 +179,28 @@ def ude_sqlmetadatastore_home(header_template: str, data_options: Dict[str, str]
         </div>
         <div id="table_container" class="table_container">
             {sqlmetadatastore_runs_table(runs, data_options["runs"])}
+        </div>
+    """
+
+def ude_filesystemstore_home(header_template: str, sse_endpoint: str, event_name: str, file_entries: List[Dict[str, str]]):
+    return f"""
+        { header_template}
+        <div id="table_container" class="table_container">
+            <table class="table is-bordered is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>file_entry ID</th>
+                        <th>Run ID</th>
+                        <th>Created At</th>
+                        <th>Location</th>
+                        <th>State</th>
+                        <th>Hash</th>
+                        <th>Hash Algorithm</th>
+                    </tr>
+                </thead>
+                <tbody hx-ext="sse" sse-connect="{sse_endpoint}" sse-swap="{event_name}" hx-swap="afterbegin">
+                    { create_table_rows(file_entries) }
+                </tbody>
+            </table>
         </div>
     """

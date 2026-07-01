@@ -48,7 +48,7 @@ class UDEActionNode(BaseActionNode):
 
 # Create the nodes
 metadata_store = UDEMetadataStoreNode(name="metadata_store", uri=f"sqlite:///{metadata_store_path}/metadata.db")
-data_store = UDEFilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store, root_path=root_path)
+data_store = UDEFilesystemStoreNode(name="data_store", resource_path=data_store_path, metadata_store=metadata_store)
 printing_node = UDEActionNode("logging_node", data_store=data_store, root_path=root_path)
 
 # Create the pipeline
