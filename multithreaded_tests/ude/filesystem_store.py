@@ -4,7 +4,6 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 import asyncio
 
-from anacostia_pipeline.nodes.resources.filesystem.gui import FilesystemStoreGUI
 from anacostia_pipeline.nodes.gui import BaseGUI
 from anacostia_pipeline.nodes.resources.filesystem.node import FilesystemStoreNode
 from anacostia_pipeline.nodes.resources.filesystem.fragments import create_table_rows, table_row
