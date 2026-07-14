@@ -27,8 +27,6 @@ data_store_path = f"{tests_path}/data_store"
 
 
 
-# override the BaseActionNode to create a custom action node that uses the custom GUI.
-# This is just a placeholder for the actual implementation
 class UDETrainingNode(BaseActionNode):
     def __init__(
         self, name, model_registry: UDEModelRegistryNode, data_store: FilesystemStoreNode, predecessors,
@@ -94,7 +92,6 @@ class UDETrainingNode(BaseActionNode):
             )
 
         return True
-
 
 
 
