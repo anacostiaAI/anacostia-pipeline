@@ -33,7 +33,6 @@ def ude_model_registry_home(head_template: str, update_endpoint: str, model_entr
         {head_template}
         <div id="modal-container"></div>
         <div id="model-entries-container" hx-get="{update_endpoint}" hx-trigger="every 1s" hx-target="this" hx-swap="innerHTML">
-            hello there 
             { 
                 newline.join(model_entries) 
             }
