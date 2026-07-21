@@ -28,13 +28,14 @@ shutil.rmtree("anacostia_pipeline.egg-info", ignore_errors=True)
 
 setup(
     name="anacostia_pipeline",
-    version="0.8.8",
+    version="0.8.9",
     description="A framework for building MLOps pipelines",
     author="Minh-Quan Do",
     author_email="mdo9@gmu.edu",
     long_description=pathlib.Path("README.md").read_text(),
     long_description_content_type='text/markdown',
     packages=find_packages(),
+    url="https://github.com/anacostiaAI/anacostia-pipeline",
     package_data={
         'anacostia_pipeline': [*static_files]
     },
